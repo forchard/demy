@@ -1,2 +1,2 @@
 # demy
-Big data platform taolored for public health
+Big data platform tailored for public health

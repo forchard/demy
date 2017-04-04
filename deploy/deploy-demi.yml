@@ -1,0 +1,59 @@
+---
+- hosts: nodes
+  gather_facts: false
+  become: yes
+  name: preparing environment
+  tasks:
+    - name: jessie backports is activated
+      apt_repository:
+        repo: deb http://ftp.fr.debian.org/debian jessie-backports main
+    - name: ensure java open jdk 8 is installed 
+      apt:
+        name: openjdk-8-jdk
+        default_release: jessie-backports
+        update_cache: true
+        cache_valid_time: 300
+    - name: maven 
+      apt:
+        name: maven
+        default_release: jessie-backports
+        update_cache: true
+        cache_valid_time: 300
+    - name: compiler tools
+      apt:
+        name: "{{ item }}"
+        update_cache: yes
+        cache_valid_time: 300
+      with_items: [protobuf-compiler, build-essential, g++, autoconf, automake, libtool, cmake, zlib1g-dev, pkg-config, libssl-dev]
+    - name: create hadoop group
+      group:
+        name: hadoop
+    - name: create hadoop users
+      user:
+        name: "{{ item }}"
+        group: hadoop
+      with_items: [hadoop, spark, hive, hdfs]
+    - name: installation folder
+      file:
+        path: "{{ hadoop_install }}"
+        state: directory
+        mode: 0751
+        owner: hadoop
+        group: hadoop
+    - name: download hadoop if does not exists
+      get_url: 
+        url: "http://mirrors.ircam.fr/pub/apache/hadoop/common/hadoop-{{ hadoop_ver }}/hadoop-{{ hadoop_ver }}-src.tar.gz"
+        dest: "{{ hadoop_install }}"
+        force: false
+    - name: uncompress hadoop
+      unarchive:
+        src: "{{ hadoop_install }}/hadoop-{{ hadoop_ver }}-src.tar.gz"
+        dest: "{{ hadoop_install }}"
+        remote_src: true 
+    - name: Compile hadoop
+      command: 'mvn package -Pdist,native -DskipTests -Dtar -Dhttp.proxyHost={{ proxy_host }} -Dhttp.proxyPort={{ proxy_port }} -Dhttps.proxyHost={{ proxy_host }} -Dhttps.proxyPort={{ proxy_port }}'
+      args:
+        chdir: "{{ hadoop_install }}/hadoop-{{ hadoop_ver }}-src"
+  environment:
+    http_proxy: "{{ proxy_host }}:{{ proxy_port }}"
+  

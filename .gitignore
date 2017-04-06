@@ -1,3 +1,5 @@
 deploy/hosts
 deploy/ansible.cfg
-deploy/deploy-demi.retry
+deploy/test.yml
+*.retry
+*.swp

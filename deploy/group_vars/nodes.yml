@@ -1,0 +1,7 @@
+ansible_become_pass: "{{lookup('keyring', 'epi-servers bgdta')}}"
+hadoop_install: /space/hadoop
+proxy_host: proxy.admin2.oxa.tld
+proxy_port: 3128 
+hadoop_ver: 2.8.0
+protobuf_ver: 2.5.0
+hadoopusers: [hadoop, spark, hive, hdfs]

@@ -1,7 +1,79 @@
 ---
+- name: Users on head node & register worker hosts
+  hosts: headnode 
+  gather_facts: false
+  become: true
+  tasks:
+  - name: hadoop group present on head node
+    group:
+      name: hadoop
+    tags : create_users
+  - name: hadoop users present on head node
+    tags : create_users
+    user:
+      name: "{{ item }}"
+      generate_ssh_key: true
+      group: hadoop
+    register: created_users
+    with_items: "{{ hadoopusers }}"
+  - name: global known host present
+    tags: create_users
+    copy:
+      dest: /etc/ssh/ssh_known_hosts
+      content: ''
+      force: false
+  - name: checking hosts already registered
+    tags: create_users
+    shell: "ssh-keygen -F {{ item.split('.')[0] }} -f /etc/ssh/ssh_known_hosts || true"
+    register: host_keys_status
+    with_items: "{{ groups['nodes'] }}" 
+    changed_when: false
+  - name: gathering all missing host keys
+    tags: create_users
+    command: "ssh-keyscan -t rsa -H {{ item.item.split('.')[0] }}"
+    register: host_keys_to_insert
+    with_items: "{{ host_keys_status.results }}"
+    when: item.stdout == ''
+    changed_when: false
+    loop_control:
+      label: "{{ item.item }}"
+  - name: known hosts registered for ssh
+    tags: create_users
+    lineinfile:
+      path: /etc/ssh/ssh_known_hosts
+      line: "{{ item.stdout  }} {{ item.item.item.split('.')[0]  }}"
+      regexp: "{{ item.item.item.split('.')[0] }}$"
+      create: true
+    with_items: "{{ host_keys_to_insert.results }}"
+    when: item.skipped is undefined
+    loop_control:
+      label: "{{ item.item.item }}"
+- hosts: workernodes
+  gather_facts: false
+  become: true
+  name: worker nodes users & passwordless ssh
+  tasks:
+  - name: users present 
+    tags : create_users 
+    user: 
+      name: "{{ item.name }}"
+      group: hadoop
+      groups: ssh
+    with_items: "{{ hostvars[groups['headnode'][0]].created_users.results }}"
+    loop_control:
+      label: "{{ item.name }}"
+  - name: authorized keys present
+    tags: create_users
+    authorized_key:
+      user: "{{ item.name  }}"
+      state: present
+      key: "{{ item.ssh_public_key  }}"     
+    with_items: "{{ hostvars[groups['headnode'][0]].created_users.results }}"
+    loop_control:
+      label: "{{ item.name }}"
 - hosts: nodes
   gather_facts: false
-  become: yes
+  become: true
   name: preparing environment
   tasks:
     - name: jessie backports is activated
@@ -13,26 +85,43 @@
         default_release: jessie-backports
         update_cache: true
         cache_valid_time: 300
-    - name: maven 
-      apt:
-        name: maven
-        default_release: jessie-backports
-        update_cache: true
-        cache_valid_time: 300
     - name: compiler tools
       apt:
         name: "{{ item }}"
         update_cache: yes
         cache_valid_time: 300
-      with_items: [protobuf-compiler, build-essential, g++, autoconf, automake, libtool, cmake, zlib1g-dev, pkg-config, libssl-dev]
-    - name: create hadoop group
-      group:
-        name: hadoop
-    - name: create hadoop users
-      user:
-        name: "{{ item }}"
-        group: hadoop
-      with_items: [hadoop, spark, hive, hdfs]
+      with_items: [maven, build-essential, g++, autoconf, automake, libtool, cmake, zlib1g-dev, pkg-config, libssl-dev]
+      tags: packages
+    - name: download google protocol buffer
+      command: "wget https://github.com/google/protobuf/releases/download/v{{ protobuf_ver }}/protobuf-{{ protobuf_ver }}.tar.gz"
+      args:
+        chdir: "{{ hadoop_install }}"
+        creates: "{{ hadoop_install }}/protobuf-{{ protobuf_ver }}.tar.gz"
+      tags: protobuf
+    - name: uncompress protocol buffers 
+      unarchive:
+        src: "{{ hadoop_install }}/protobuf-{{ protobuf_ver }}.tar.gz"
+        dest: "/usr/local/src"
+        remote_src: true 
+        creates: "/usr/local/src/protobuf-{{ protobuf_ver }}" 
+      tags: protobuf
+    - name: make/install protocol buffers
+      command: "{{ item }}"
+      args:
+        chdir: "/usr/local/src/protobuf-{{ protobuf_ver }}"
+        creates: /usr/bin/protoc
+      with_items:
+        - ./autogen.sh
+        - ./configure --prefix=/usr
+        - make
+        - make install
+      tags: protobuf
+    - name: install protocols buffers for java
+      command: "mvn install -Dhttp.proxyHost={{ proxy_host }} -Dhttp.proxyPort={{ proxy_port }} -Dhttps.proxyHost={{ proxy_host }} -Dhttps.proxyPort={{ proxy_port }}"
+      args:
+        chdir: "/usr/local/src/protobuf-{{ protobuf_ver }}/java"
+        creates: "/usr/local/src/protobuf-{{ protobuf_ver }}/java/target/protobuf-java-{{ protobuf_ver }}.jar"
+      tags: protobuf
     - name: installation folder
       file:
         path: "{{ hadoop_install }}"
@@ -45,6 +134,7 @@
         url: "http://mirrors.ircam.fr/pub/apache/hadoop/common/hadoop-{{ hadoop_ver }}/hadoop-{{ hadoop_ver }}-src.tar.gz"
         dest: "{{ hadoop_install }}"
         force: false
+      tags: install_hadoop
     - name: uncompress hadoop
       unarchive:
         src: "{{ hadoop_install }}/hadoop-{{ hadoop_ver }}-src.tar.gz"
@@ -54,6 +144,9 @@
       command: 'mvn package -Pdist,native -DskipTests -Dtar -Dhttp.proxyHost={{ proxy_host }} -Dhttp.proxyPort={{ proxy_port }} -Dhttps.proxyHost={{ proxy_host }} -Dhttps.proxyPort={{ proxy_port }}'
       args:
         chdir: "{{ hadoop_install }}/hadoop-{{ hadoop_ver }}-src"
+        creates: "{{ hadoop_install }}/hadoop-{{ hadoop_ver }}-src/hadoop-dist/target/hadoop-dist-{{ hadoop_ver }}.jar"
+      tags: install_hadoop
   environment:
     http_proxy: "{{ proxy_host }}:{{ proxy_port }}"
+    https_proxy: "{{ proxy_host }}:{{ proxy_port }}"
   

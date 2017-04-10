@@ -48,10 +48,10 @@
     when: item.skipped is undefined
     loop_control:
       label: "{{ item.item.item }}"
-- hosts: workernodes
+- name: worker nodes users & passwordless ssh
+  hosts: workernodes
   gather_facts: false
   become: true
-  name: worker nodes users & passwordless ssh
   tasks:
   - name: users present 
     tags : create_users 
@@ -71,81 +71,170 @@
     with_items: "{{ hostvars[groups['headnode'][0]].created_users.results }}"
     loop_control:
       label: "{{ item.name }}"
-- hosts: nodes
+- name: put hosts ips on /etc/hosts
+  hosts: nodes
   gather_facts: false
   become: true
-  name: preparing environment
   tasks:
-    - name: jessie backports is activated
-      apt_repository:
-        repo: deb http://ftp.fr.debian.org/debian jessie-backports main
-    - name: ensure java open jdk 8 is installed 
-      apt:
-        name: openjdk-8-jdk
-        default_release: jessie-backports
-        update_cache: true
-        cache_valid_time: 300
-    - name: compiler tools
-      apt:
-        name: "{{ item }}"
-        update_cache: yes
-        cache_valid_time: 300
-      with_items: [maven, build-essential, g++, autoconf, automake, libtool, cmake, zlib1g-dev, pkg-config, libssl-dev]
-      tags: packages
-    - name: download google protocol buffer
-      command: "wget https://github.com/google/protobuf/releases/download/v{{ protobuf_ver }}/protobuf-{{ protobuf_ver }}.tar.gz"
-      args:
-        chdir: "{{ hadoop_install }}"
-        creates: "{{ hadoop_install }}/protobuf-{{ protobuf_ver }}.tar.gz"
-      tags: protobuf
-    - name: uncompress protocol buffers 
-      unarchive:
-        src: "{{ hadoop_install }}/protobuf-{{ protobuf_ver }}.tar.gz"
-        dest: "/usr/local/src"
-        remote_src: true 
-        creates: "/usr/local/src/protobuf-{{ protobuf_ver }}" 
-      tags: protobuf
-    - name: make/install protocol buffers
-      command: "{{ item }}"
-      args:
-        chdir: "/usr/local/src/protobuf-{{ protobuf_ver }}"
-        creates: /usr/bin/protoc
-      with_items:
-        - ./autogen.sh
-        - ./configure --prefix=/usr
-        - make
-        - make install
-      tags: protobuf
-    - name: install protocols buffers for java
-      command: "mvn install -Dhttp.proxyHost={{ proxy_host }} -Dhttp.proxyPort={{ proxy_port }} -Dhttps.proxyHost={{ proxy_host }} -Dhttps.proxyPort={{ proxy_port }}"
-      args:
-        chdir: "/usr/local/src/protobuf-{{ protobuf_ver }}/java"
-        creates: "/usr/local/src/protobuf-{{ protobuf_ver }}/java/target/protobuf-java-{{ protobuf_ver }}.jar"
-      tags: protobuf
-    - name: installation folder
-      file:
-        path: "{{ hadoop_install }}"
-        state: directory
-        mode: 0751
-        owner: hadoop
-        group: hadoop
-    - name: download hadoop if does not exists
-      get_url: 
-        url: "http://mirrors.ircam.fr/pub/apache/hadoop/common/hadoop-{{ hadoop_ver }}/hadoop-{{ hadoop_ver }}-src.tar.gz"
-        dest: "{{ hadoop_install }}"
-        force: false
-      tags: install_hadoop
-    - name: uncompress hadoop
-      unarchive:
-        src: "{{ hadoop_install }}/hadoop-{{ hadoop_ver }}-src.tar.gz"
-        dest: "{{ hadoop_install }}"
-        remote_src: true 
-    - name: Compile hadoop
-      command: 'mvn package -Pdist,native -DskipTests -Dtar -Dhttp.proxyHost={{ proxy_host }} -Dhttp.proxyPort={{ proxy_port }} -Dhttps.proxyHost={{ proxy_host }} -Dhttps.proxyPort={{ proxy_port }}'
-      args:
-        chdir: "{{ hadoop_install }}/hadoop-{{ hadoop_ver }}-src"
-        creates: "{{ hadoop_install }}/hadoop-{{ hadoop_ver }}-src/hadoop-dist/target/hadoop-dist-{{ hadoop_ver }}.jar"
-      tags: install_hadoop
+  - name: get ip to use
+    shell: "ip addr show {{ app_network  }} | grep \"inet \" | awk {'print $2'} | awk -F \"/\" {'print $1'}" 
+    register: app_ip
+    changed_when: false
+    tags: etc_hosts
+  - set_fact:
+      app_ip: "{{ app_ip.stdout }}"
+    tags: etc_hosts
+  - name: set ips on /rtc/hosts
+    blockinfile:
+      path: /etc/hosts
+      block: |
+        {{hostvars[item].app_ip}} {{ item.split('.')[0] }}
+      marker: "# {mark} Managed ip for {{ item }} do not edit!" 
+    with_items : "{{ groups['nodes'] }}"
+    tags: etc_hosts
+- name: install prerequisites
+  hosts: nodes
+  gather_facts: false
+  become: true
+  tasks:
+  - name: jessie backports is activated
+    apt_repository:
+      repo: deb http://ftp.fr.debian.org/debian jessie-backports main
+  - name: ensure java open jdk 8 is installed 
+    apt:
+      name: "{{ java_package }}"
+      default_release: jessie-backports
+      update_cache: true
+      cache_valid_time: 300
+  - name: compiler tools
+    apt:
+      name: "{{ item }}"
+      update_cache: yes
+      cache_valid_time: 300
+    with_items: [maven, build-essential, g++, autoconf, automake, libtool, cmake, zlib1g-dev, pkg-config, libssl-dev, rsync]
+    tags: packages
+  - name: download google protocol buffer
+    command: "wget https://github.com/google/protobuf/releases/download/v{{ protobuf_ver }}/protobuf-{{ protobuf_ver }}.tar.gz"
+    args:
+      chdir: "{{ hadoop_install }}"
+      creates: "{{ hadoop_install }}/protobuf-{{ protobuf_ver }}.tar.gz"
+    tags: protobuf
+  - name: uncompress protocol buffers 
+    unarchive:
+      src: "{{ hadoop_install }}/protobuf-{{ protobuf_ver }}.tar.gz"
+      dest: "/usr/local/src"
+      remote_src: true 
+      creates: "/usr/local/src/protobuf-{{ protobuf_ver }}" 
+    tags: protobuf
+  - name: make/install protocol buffers
+    command: "{{ item }}"
+    args:
+      chdir: "/usr/local/src/protobuf-{{ protobuf_ver }}"
+      creates: /usr/bin/protoc
+    with_items:
+    - ./autogen.sh
+    - ./configure --prefix=/usr
+    - make
+    - make install
+    tags: protobuf
+  - name: install protocols buffers for java
+    command: "mvn install -Dhttp.proxyHost={{ proxy_host }} -Dhttp.proxyPort={{ proxy_port }} -Dhttps.proxyHost={{ proxy_host }} -Dhttps.proxyPort={{ proxy_port }}"
+    args:
+      chdir: "/usr/local/src/protobuf-{{ protobuf_ver }}/java"
+      creates: "/usr/local/src/protobuf-{{ protobuf_ver }}/java/target/protobuf-java-{{ protobuf_ver }}.jar"
+    tags: protobuf
+  - name: installation folder
+    file:
+      path: "{{ hadoop_install }}"
+      state: directory
+      mode: 0751
+      owner: hadoop
+      group: hadoop
+- name: install hadoop
+  hosts: nodes
+  gather_facts: false
+  become: true
+  tasks:
+  - name: download hadoop if does not exists
+    tags: install_hadoop
+    get_url: 
+      url: "http://mirrors.ircam.fr/pub/apache/hadoop/common/hadoop-{{ hadoop_ver }}/hadoop-{{ hadoop_ver }}-src.tar.gz"
+      dest: "{{ hadoop_install }}"
+      force: false
+  - name: uncompress hadoop
+    tags: install_hadoop
+    unarchive:
+      src: "{{ hadoop_install }}/hadoop-{{ hadoop_ver }}-src.tar.gz"
+      dest: "{{ hadoop_install }}"
+      remote_src: true 
+  - name: Compile hadoop
+    tags: install_hadoop
+    command: 'mvn package -Pdist,native -DskipTests -Dtar -Dhttp.proxyHost={{ proxy_host }} -Dhttp.proxyPort={{ proxy_port }} -Dhttps.proxyHost={{ proxy_host }} -Dhttps.proxyPort={{ proxy_port }}'
+    args:
+      chdir: "{{ hadoop_install }}/hadoop-{{ hadoop_ver }}-src"
+      creates: "{{ hadoop_install }}/hadoop-{{ hadoop_ver }}-src/hadoop-dist/target/hadoop-dist-{{ hadoop_ver }}.jar"
+  - name: copy compiled version (no overwrite)
+    tags: install_hadoop
+    shell: "cp -R -v -n {{ hadoop_install }}/hadoop-{{ hadoop_ver }}-src/hadoop-dist/target/hadoop-{{ hadoop_ver }} {{ hadoop_install }}/ | wc -l"
+    register: out
+    changed_when: out.stdout!='0'
+  - name: create link to current version
+    tags: install_hadoop
+    file:
+      src: "{{ hadoop_install }}/hadoop-{{ hadoop_ver }}" 
+      dest: "{{ hadoop_home }}"
+      owner: hadoop
+      group: hadoop
+      mode: 0751
+      state: link
+      #force: true
+  - name: set hadoop home
+    tags: configure_hadoop
+    lineinfile:
+      path: "/etc/environment" 
+      regexp: '^HADOOP_PREFIX='
+      line: "HADOOP_PREFIX={{ hadoop_home  }}"
+  - name: ensure conf, log et pid folder exists
+    tags: configure_hadoop
+    file:
+      path: "{{ item }}"
+      state: directory
+      mode: 0750
+      owner: hadoop
+      group: hadoop
+    with_items:
+    - "{{ hadoop_log_dir }}"
+    - "{{ hadoop_conf_dir }}"
+    - "{{ hadoop_pid_dir }}"
+  - name: copy conf files (no overwrite)
+    tags: configure_hadoop
+    shell: "cp -R -v -n {{ hadoop_home}}/etc/hadoop/* {{ hadoop_conf_dir }} | wc -l"
+    register: out
+    changed_when: out.stdout!='0'
+  - name: update hadoop-env.sh
+    tags: configure_hadoop
+    lineinfile:
+      path: "{{ hadoop_conf_dir }}/hadoop-env.sh" 
+      regexp: "^export {{ item.var  }}"
+      line: "export {{ item.var }}={{ item.value }}"
+    with_items:
+    - {var: "JAVA_HOME", value: "{{ java_home  }}" }
+    - {var: "HADOOP_LOG_DIR", value: "{{ hadoop_log_dir }}" }
+    - {var: "HADOOP_CONF_DIR", value: "{{ hadoop_conf_dir  }}" }
+    - {var: "HADOOP_PID_DIR", value: "{{ hadoop_pid_dir  }}" }
+  - name: update core-site.xml
+    tags: configure_hadoop
+    blockinfile:
+      path: "{{ hadoop_conf_dir }}/core-site.xml" 
+      block: |
+       <property>
+        <name>{{ item.var  }}</name>
+        <value>{{ item.value }}</value>
+       </property>
+      marker: "# {mark} Managed conf for {{ item.var }} do not edit!" 
+    with_items:
+    - {var: "fs.defaultFS", value: "hdfs://{{ groups['headnode'][0].split('.')[0] }}:{{ hdfs_port  }}" }
+    - {var: "io.file.buffer.size", value: "{{ hdfs_file_buffer_bytes }}" }
   environment:
     http_proxy: "{{ proxy_host }}:{{ proxy_port }}"
     https_proxy: "{{ proxy_host }}:{{ proxy_port }}"

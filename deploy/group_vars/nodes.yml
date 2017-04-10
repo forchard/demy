@@ -1,7 +1,17 @@
 ansible_become_pass: "{{lookup('keyring', 'epi-servers bgdta')}}"
-hadoop_install: /space/hadoop
 proxy_host: proxy.admin2.oxa.tld
 proxy_port: 3128 
-hadoop_ver: 2.8.0
+app_network: prostore
+java_home: /usr/lib/jvm/java-8-openjdk-amd64
+java_package: openjdk-8-jdk
 protobuf_ver: 2.5.0
-hadoopusers: [hadoop, spark, hive, hdfs]
+hadoopusers: [hadoop, spark, hive, hdfs,yarn]
+hadoop_ver: 2.8.0
+hadoop_install: /space/hadoop
+hadoop_home: "{{ hadoop_install}}/hadoop_home"
+hadoop_log_dir: "{{ hadoop_home }}/logs/hadoop"
+hadoop_conf_dir: "{{ hadoop_home }}/etc/hadoop"
+hadoop_pid_dir: "{{ hadoop_home }}/PID"
+hdfs_port: 8020
+hdfs_file_buffer_bytes: "{{ 128*1024 }}"
+

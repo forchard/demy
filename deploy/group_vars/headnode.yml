@@ -1,1 +1,8 @@
 host_keys_to_insert: []
+
+hdfs_namenode_dir: "{{ hadoop_install }}/head_node"
+hdfs_hosts: "{{ hadoop_conf_dir }}/datanodes"
+hdfs_hosts_exclude: "{{ hadoop_conf_dir }}/datanodes-excluded"
+hdfs_blocksize_bytes: "{{ 64 *1024*1024 }}"
+hdfs_namenode_thread_count: 64
+hdfs_default_replication: 2

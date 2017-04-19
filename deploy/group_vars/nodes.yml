@@ -1,4 +1,5 @@
 ansible_become_pass: "{{lookup('keyring', 'epi-servers bgdta')}}"
+decrypt_disk_pass: "{{lookup('keyring', 'epi-servers disks')}}"
 proxy_host: proxy.admin2.oxa.tld
 proxy_port: 3128 
 app_network: prostore
@@ -6,14 +7,69 @@ java_home: /usr/lib/jvm/java-8-openjdk-amd64
 java_package: openjdk-8-jdk
 protobuf_ver: 2.5.0
 hadoopusers: [hadoop, spark, hive, hdfs,yarn]
-
+crypted_disk: space
 hadoop_ver: 2.8.0
-hadoop_install: /space/hadoop
+hadoop_install: "/{{ crypted_disk  }}/hadoop"
 hadoop_home: "{{ hadoop_install}}/hadoop_home"
-hadoop_log_dir: "{{ hadoop_home }}/logs/hadoop"
+hadoop_run: "{{ hadoop_install}}/hadoop_run"
+hadoop_log_dir: "{{ hadoop_run }}/logs/hadoop"
 hadoop_conf_dir: "{{ hadoop_home }}/etc/hadoop"
-hadoop_pid_dir: "{{ hadoop_home }}/PID"
+hadoop_pid_dir: "{{ hadoop_run }}/PID"
 
 hdfs_port: 8020
 hdfs_file_buffer_bytes: "{{ 128*1024 }}"
+
+#Head Node
+host_keys_to_insert: []
+hdfs_namenode_dir: "{{ hadoop_home }}/head_node"
+hdfs_hosts: "{{ hadoop_conf_dir }}/datanodes"
+hdfs_hosts_exclude: "{{ hadoop_conf_dir }}/datanodes-excluded"
+hdfs_blocksize_bytes: "{{ 64 *1024*1024 }}"
+hdfs_namenode_thread_count: 64
+hdfs_default_replication: 2
+
+#Data node
+hdfs_datanode_dir: "{{ hadoop_run}}/data"
+
+#Resource Manager
+yarn_acl: false  
+yarn_admin_acl: "*"
+yarn_log_aggregation: false 
+yarn_resourcemanager_port: "8032" 
+yarn_resourcescheduler_port: "8030"  
+yarn_resourcetracker_port: "8031"
+yarn_admin_port: "8033"
+yarn_webapp_port: "8090" 
+yarn_scheduler: "org.apache.hadoop.yarn.server.resourcemanager.scheduler.capacity.CapacityScheduler" 
+yarn_container_min_mb: 200 
+yarn_container_max_mb: 4096
+yarn_container_max_cores: 4
+yarn_hosts: "{{ hadoop_conf_dir }}/nodemanagers"
+yarn_hosts_exclude: "{{ hadoop_conf_dir }}/nodemanagers-excluded" 
+
+#Node managers
+yarn_nodemanager_check_vmem: true
+yarn_nodemanager_check_pmem: true
+yarn_nodemanager_vmem_pmem_ratio: 2.1
+yarn_nodemanager_local_dirs: "{{ hadoop_run }}/yarn-nm"
+yarn_nodemanager_log_dirs: "{{ hadoop_run }}/logs/yarn"
+yarn_nodemanager_log_seconds: "{{ 3600 * 24 }}"
+yarn_nodemanager_remote_log_dir: "/logs/yarn" 
+yarn_nodemanager_remote_log_dir_suffix: "logs" 
+yarn_nodemanager_detect_hardware: true
+yarn_nodemanager_memory_mb: "-1"
+yarn_nodemanager_system_reserved_memory_mb: "-1"
+yarn_nodemanager_resource_vcores: "-1"
+yarn_nodemanager_logical_procs_as_cores: true
+yarn_nodemanager_resource_pcores_multiplier: 1
+
+#Mapreduce config
+mapreduce_framework_name: "yarn"
+mapreduce_task_io_sort_factor: 100 
+mapreduce_reduce_shuffle_parallelcopies: 50  
+mapreduce_jobhistory_port: 10020
+mapreduce_jobhistory_webapp_port: 19888 
+mapreduce_jobhistory_intermediate_done_dir: "/mr-history/tmp" 
+mapreduce_jobhistory_done_dir: "/mr-history/done"
+
 

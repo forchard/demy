@@ -1,4 +1,31 @@
 ---
+- name: cheking hosts
+  hosts: nodes
+  gather_facts: false
+  become: true
+  tasks:
+  - name: crypted disk is running
+    tags: check_hosts
+    shell: "if mountpoint -q /{{ crypted_disk }}; then echo 'MOUNTED'; else echo 'NOT-MOUNTED'; fi"
+    register: mount_output
+    changed_when: false
+  - name: start crypted disk
+    tags: check_hosts
+    shell: |
+      echo -n "{{ decrypt_disk_pass }}" | cryptsetup luksOpen --key-file=- /dev/{{ hostname.stdout }}-crypt-1/{{ crypted_disk  }} {{ crypted_disk  }}
+    args:
+      executable: /bin/bash
+    register: out
+    changed_when: out.stdout=='' and out.stderr=''
+    failed_when: out.stderr != '' and not out.stderr.endswith('already exists.')
+    when: mount_output.stdout == 'NOT-MOUNTED'
+  - name: mount crypted disk 
+    tags: check_hosts
+    shell: "mount /{{ crypted_disk  }}"
+    register: out
+    changed_when: true 
+    when: mount_output.stdout == 'NOT-MOUNTED'
+     
 - name: Users on head node & register worker hosts
   hosts: headnode 
   gather_facts: false
@@ -238,13 +265,53 @@
     with_items:
     - {var: "fs.defaultFS", value: "hdfs://{{ groups['headnode'][0].split('.')[0] }}:{{ hdfs_port  }}" }
     - {var: "io.file.buffer.size", value: "{{ hdfs_file_buffer_bytes }}" }
-- name: install hadoop (head node)
+- name: install hdfs (head node)
   hosts: headnode
   gather_facts: false
   become: true
   tasks:
+  - name: produce expected hosts
+    tags: configure_hdfs
+    set_fact:
+      datanodes_list: "{% for i in groups['datanodes'] %}{{ i.split('.')[0]+'\n' }}{%endfor%}" 
+  - name: produce excluded hosts
+    tags: configure_hdfs
+    set_fact:
+      datanodes_excluded_list: "{% for i in groups['datanodes_excluded'] %}{{ i.split('.')[0]+'\n' }}{%endfor%}" 
+  - name: allowed/excluded hosts present
+    tags: configure_hdfs
+    copy:
+      content: ""
+      dest: "{{ item }}"
+      force: false
+      owner: "hadoop"
+      group: "hadoop"
+      mode: "0660"
+    with_items:
+    - "{{ hdfs_hosts }}"
+    - "{{ hdfs_hosts_exclude }}"
+  - name: allowed hosts file
+    tags: configure_hdfs
+    blockinfile:
+      path: "{{ hdfs_hosts }}"
+      block: "{{ datanodes_list }}"
+      marker: "#{mark} list of hosts managed by ansible"
+  - name: excluded hosts file
+    tags: configure_hdfs
+    blockinfile:
+      path: "{{ hdfs_hosts_exclude }}"
+      block: "{{ datanodes_excluded_list }}"
+      marker: "#{mark} list of excluded hosts managed by ansible"
+  - name: copy script to update hadoop xml files
+    tags: configure_hdfs
+    copy:
+      src: "./xmlpresent.sh"
+      dest: "/tmp/xmlpresent.sh"
+      owner: hadoop
+      group: hadoop
+      mode: 0770
   - name: update hdfs-site.xml on head node
-    tags: configure_hadoop
+    tags: configure_hdfs
     command: "/tmp/xmlpresent.sh --container-xpath \"/configuration\" --node \"property\" --property-node name --property-text \"{{ item.var  }}\" --value-node value --value \"{{ item.value  }}\" --file {{ hadoop_conf_dir }}/hdfs-site.xml"
     register: out
     changed_when: not out.stdout.startswith('NO-CHANGE')
@@ -255,19 +322,164 @@
     - {var: "dfs.blocksize", value: "{{ hdfs_blocksize_bytes }}" }
     - {var: "dfs.namenode.handler.count", value: "{{ hdfs_namenode_thread_count }}" }
     - {var: "dfs.replication", value: "{{ hdfs_default_replication }}" }
-- name: install hadoop (data node)
-  hosts: workernodes
+- name: install hdfs (data node)
+  hosts: datanodes
   gather_facts: false
   become: true
   tasks:
   - name: update hdfs-site.xml on data node
-    tags: configure_hadoop
+    tags: configure_hdfs
     command: "/tmp/xmlpresent.sh --container-xpath \"/configuration\" --node \"property\" --property-node name --property-text \"{{ item.var  }}\" --value-node value --value \"{{ item.value  }}\" --file {{ hadoop_conf_dir }}/hdfs-site.xml"
     register: out
     changed_when: not out.stdout.startswith('NO-CHANGE')
     with_items:
     - {var: "dfs.datanode.data.dir", value: "{{ hdfs_datanode_dir }}" }
-
+- name: install yarn (resource manager nodes)
+  hosts: resourcemanager
+  gather_facts: false
+  become: true
+  tasks:
+  - name: produce expected hosts
+    tags: configure_yarn
+    set_fact:
+      nodemanagers_list: "{% for i in groups['nodemanagers'] %}{{ i.split('.')[0]+'\n' }}{%endfor%}" 
+  - name: produce excluded hosts
+    tags: configure_yarn
+    set_fact:
+      nodemanagers_excluded_list: "{% for i in groups['nodemanagers_excluded'] %}{{ i.split('.')[0]+'\n' }}{%endfor%}" 
+  - name: allowed/excluded hosts present
+    tags: configure_yarn
+    copy:
+      content: ""
+      dest: "{{ item }}"
+      force: false
+      owner: "yarn"
+      group: "hadoop"
+      mode: "0660"
+    with_items:
+    - "{{ yarn_hosts }}"
+    - "{{ yarn_hosts_exclude }}"
+  - name: allowed hosts file
+    tags: configure_yarn
+    blockinfile:
+      path: "{{ yarn_hosts }}"
+      block: "{{ nodemanagers_list }}"
+      marker: "#{mark} list of hosts managed by ansible"
+  - name: excluded hosts file
+    tags: configure_yarn
+    blockinfile:
+      path: "{{ yarn_hosts_exclude }}"
+      block: "{{ nodemanagers_excluded_list }}"
+      marker: "#{mark} list of excluded hosts managed by ansible"
+- name: condigure yarn (resource manager config)
+  hosts: nodes
+  gather_facts: false
+  become: true
+  tasks:
+  - name: copy script to update hadoop xml files
+    tags: configure_yarn
+    copy:
+      src: "./xmlpresent.sh"
+      dest: "/tmp/xmlpresent.sh"
+      owner: hadoop
+      group: hadoop
+      mode: 0770
+  - name: update yarn-site.xml for resouerce manager
+    tags: configure_yarn
+    command: "/tmp/xmlpresent.sh --container-xpath \"/configuration\" --node \"property\" --property-node name --property-text \"{{ item.var  }}\" --value-node value --value \"{{ item.value  }}\" --file {{ hadoop_conf_dir }}/yarn-site.xml"
+    register: out
+    changed_when: not out.stdout.startswith('NO-CHANGE')
+    with_items:
+    - {var: "yarn.acl.enable", value: "{{ yarn_acl  }}" }
+    - {var: "yarn.admin.acl", value: "{{ yarn_admin_acl  }}" }
+    - {var: "yarn.log-aggregation-enable", value: "{{ yarn_log_aggregation  }}" }
+    - {var: "yarn.resourcemanager.address", value: "{{ groups['resourcemanager'][0].split('.')[0] }}:{{ yarn_resourcemanager_port }}" }
+    - {var: "yarn.resourcemanager.scheduler.address", value: "{{ groups['resourcemanager'][0].split('.')[0]  }}:{{ yarn_resourcescheduler_port  }}" }
+    - {var: "yarn.resourcemanager.resource-tracker.address", value: "{{ groups['resourcemanager'][0].split('.')[0]  }}:{{ yarn_resourcetracker_port }}" }
+    - {var: "yarn.resourcemanager.admin.address", value: "{{ groups['resourcemanager'][0].split('.')[0]  }}:{{ yarn_admin_port  }}" }
+    - {var: "yarn.resourcemanager.webapp.address", value: "{{ groups['resourcemanager'][0].split('.')[0]  }}:{{ yarn_webapp_port }}" }
+    - {var: "yarn.resourcemanager.scheduler.class", value: "{{ yarn_scheduler }}" }
+    - {var: "yarn.scheduler.minimum-allocation-mb", value: "{{ yarn_container_min_mb }}" }
+    - {var: "yarn.scheduler.maximum-allocation-mb", value: "{{ yarn_container_max_mb }}" }
+    - {var: "yarn.scheduler.maximum-allocation-vcores", value: "{{ yarn_container_max_cores }}" }
+    - {var: "yarn.resourcemanager.nodes.include-path", value: "{{ yarn_hosts  }}" }
+    - {var: "yarn.resourcemanager.nodes.exclude-path", value: "{{ yarn_hosts_exclude }}" }
+- name: configure yarn (node manager)
+  hosts: nodemanagers
+  gather_facts: false
+  become: true
+  tasks:
+  - name: update yarn-site.xml on node managers
+    tags: configure_yarn
+    command: "/tmp/xmlpresent.sh --container-xpath \"/configuration\" --node \"property\" --property-node name --property-text \"{{ item.var  }}\" --value-node value --value \"{{ item.value  }}\" --file {{ hadoop_conf_dir }}/yarn-site.xml"
+    register: out
+    changed_when: not out.stdout.startswith('NO-CHANGE')
+    with_items:
+    - {var: "yarn.nodemanager.local-dirs", value: "{{ yarn_nodemanager_local_dirs  }}" }
+    - {var: "yarn.nodemanager.log-dirs", value: "{{ yarn_nodemanager_log_dirs  }}" }
+    - {var: "yarn.nodemanager.log.retain-seconds", value: "{{ yarn_nodemanager_log_seconds }}" }
+    - {var: "yarn.nodemanager.remote-app-log-dir", value: "{{ yarn_nodemanager_remote_log_dir }}" }
+    - {var: "yarn.nodemanager.remote-app-log-dir-suffix", value: "{{ yarn_nodemanager_remote_log_dir_suffix  }}" }
+    - {var: "yarn.nodemanager.resource.detect-hardware-capabilities", value: "{{ yarn_nodemanager_detect_hardware }}" }
+    - {var: "yarn.nodemanager.resource.memory-mb", value: "{{ yarn_nodemanager_memory_mb  }}" }
+    - {var: "yarn.nodemanager.resource.system-reserved-memory-mb", value: "{{ yarn_nodemanager_system_reserved_memory_mb  }}" }
+    - {var: "yarn.nodemanager.resource.cpu-vcores", value: "{{ yarn_nodemanager_resource_vcores  }}" }
+    - {var: "yarn.nodemanager.resource.count-logical-processors-as-cores", value: "{{ yarn_nodemanager_logical_procs_as_cores }}" }
+    - {var: "yarn.nodemanager.resource.pcores-vcores-multiplier", value: "{{ yarn_nodemanager_resource_pcores_multiplier }}" }
+    - {var: "yarn.nodemanager.vmem-check-enabled", value: "{{ yarn_nodemanager_check_vmem }}" }
+    - {var: "yarn.nodemanager.pmem-check-enabled", value: "{{ yarn_nodemanager_check_pmem }}" }
+    - {var: "yarn.nodemanager.vmem-pmem-ratio", value: "{{ yarn_nodemanager_vmem_pmem_ratio  }}" }
+- name: configure map reduce
+  hosts: nodes
+  gather_facts: false
+  become: true
+  tasks:
+  - name: get ram
+    tags: configure_map_reduce
+    shell: "free -m | grep Mem:|awk '{ printf $2}'"
+    register: node_ram
+    changed_when: false
+  - name: get cpu
+    tags: configure_map_reduce
+    command: "nproc --all"
+    register: node_cpu
+    changed_when: false
+  - name: copy script to update hadoop xml files
+    tags: configure_map_reduce
+    copy:
+      src: "./xmlpresent.sh"
+      dest: "/tmp/xmlpresent.sh"
+      owner: hadoop
+      group: hadoop
+      mode: 0770
+  - name: copy conf file xml files
+    tags: configure_map_reduce
+    copy:
+      src: "{{ hadoop_conf_dir }}/mapred-site.xml.template"
+      dest: "{{ hadoop_conf_dir }}/mapred-site.xml"
+      remote_source: true
+      force: false
+      owner: yarn
+      group: hadoop
+      mode: 0770
+  - name: update mapred-site.xml on nodes
+    tags: configure_map_reduce
+    command: "/tmp/xmlpresent.sh --container-xpath \"/configuration\" --node \"property\" --property-node name --property-text \"{{ item.var  }}\" --value-node value --value \"{{ item.value  }}\" --file {{ hadoop_conf_dir }}/mapred-site.xml"
+    register: out
+    changed_when: not out.stdout.startswith('NO-CHANGE')
+    with_items:
+    - {var: "mapreduce.framework.name", value: "{{ mapreduce_framework_name }}" }
+    - {var: "mapreduce.map.memory.mb", value: "{{ ((1.5*node_ram.stdout|int) / (node_cpu.stdout|int))|int }}" }
+    - {var: "mapreduce.map.java.opts", value: "-Xmx{{ (node_ram.stdout|int / node_cpu.stdout|int)|int }}M" }
+    - {var: "mapreduce.reduce.memory.mb", value: "{{ ((2*node_ram.stdout|int) / (node_cpu.stdout|int))|int }}" }
+    - {var: "mapreduce.reduce.java.opts", value: "-Xmx{{ (2*node_ram.stdout|int / node_cpu.stdout|int)|int }}M" }
+    - {var: "mapreduce.task.io.sort.mb", value: "{{ ((0.5*node_ram.stdout|int) / (node_cpu.stdout|int))|int }}" }
+    - {var: "mapreduce.task.io.sort.factor", value: "{{ mapreduce_task_io_sort_factor  }}" }
+    - {var: "mapreduce.reduce.shuffle.parallelcopies", value: "{{ mapreduce_reduce_shuffle_parallelcopies  }}" }
+    - {var: "mapreduce.jobhistory.address", value: "{{ groups['resourcemanager'][0].split('.')[0]}}:{{mapreduce_jobhistory_port  }}" }
+    - {var: "mapreduce.jobhistory.webapp.address", value: "{{ groups['resourcemanager'][0].split('.')[0]}}:{{ mapreduce_jobhistory_webapp_port }}" }
+    - {var: "mapreduce.jobhistory.intermediate-done-dir", value: "{{ mapreduce_jobhistory_intermediate_done_dir  }}" }
+    - {var: "mapreduce.jobhistory.done-dir", value: "{{ mapreduce_jobhistory_done_dir  }}" }
   environment:
     http_proxy: "{{ proxy_host }}:{{ proxy_port }}"
     https_proxy: "{{ proxy_host }}:{{ proxy_port }}"

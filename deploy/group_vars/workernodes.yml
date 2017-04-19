@@ -1,1 +1,0 @@
-hdfs_datanode_dir: "{{ hadoop_install}}/data"

@@ -6,8 +6,11 @@ app_network: prostore
 java_home: /usr/lib/jvm/java-8-openjdk-amd64
 java_package: openjdk-8-jdk
 protobuf_ver: 2.5.0
-hadoopusers: [hadoop, spark, hive, hdfs,yarn]
+hadoopusers: [hadoop, spark, hive, hdfs,yarn, mapred]
 crypted_disk: space
+
+#Hadoop
+hadoop_cluster_name: "demy"
 hadoop_ver: 2.8.0
 hadoop_install: "/{{ crypted_disk  }}/hadoop"
 hadoop_home: "{{ hadoop_install}}/hadoop_home"
@@ -21,7 +24,7 @@ hdfs_file_buffer_bytes: "{{ 128*1024 }}"
 
 #Head Node
 host_keys_to_insert: []
-hdfs_namenode_dir: "{{ hadoop_home }}/head_node"
+hdfs_namenode_dir: "{{ hadoop_run }}/head_node"
 hdfs_hosts: "{{ hadoop_conf_dir }}/datanodes"
 hdfs_hosts_exclude: "{{ hadoop_conf_dir }}/datanodes-excluded"
 hdfs_blocksize_bytes: "{{ 64 *1024*1024 }}"
@@ -30,6 +33,9 @@ hdfs_default_replication: 2
 
 #Data node
 hdfs_datanode_dir: "{{ hadoop_run}}/data"
+
+#yarn
+yarn_log_dir: "{{ hadoop_run }}/logs/yarn"
 
 #Resource Manager
 yarn_acl: false  
@@ -52,7 +58,6 @@ yarn_nodemanager_check_vmem: true
 yarn_nodemanager_check_pmem: true
 yarn_nodemanager_vmem_pmem_ratio: 2.1
 yarn_nodemanager_local_dirs: "{{ hadoop_run }}/yarn-nm"
-yarn_nodemanager_log_dirs: "{{ hadoop_run }}/logs/yarn"
 yarn_nodemanager_log_seconds: "{{ 3600 * 24 }}"
 yarn_nodemanager_remote_log_dir: "/logs/yarn" 
 yarn_nodemanager_remote_log_dir_suffix: "logs" 

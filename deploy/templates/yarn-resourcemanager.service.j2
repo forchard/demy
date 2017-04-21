@@ -1,0 +1,15 @@
+[Unit]
+Description=YARN resouirce manager service
+After=network.target
+ConditionPathExists={{ hadoop_install }}
+
+[Service]
+Type=forking
+User=yarn
+ExecStart={{ hadoop_home }}/sbin/yarn-daemon.sh --config {{ hadoop_conf_dir }} start resourcemanager 
+ExecStop={{ hadoop_home }}/sbin/yarn-daemon.sh --config {{ hadoop_conf_dir }} stop resourcemanager
+Restart=on-failure
+PIDFile={{ hadoop_pid_dir }}/yarn-yarn-resourcemanager.pid
+
+[Install]
+WantedBy=multi-user.target

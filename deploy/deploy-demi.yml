@@ -27,7 +27,7 @@
     when: mount_output.stdout == 'NOT-MOUNTED'
      
 - name: Users on head node & register worker hosts
-  hosts: headnode 
+  hosts: namenode 
   gather_facts: false
   become: true
   tasks:
@@ -86,7 +86,7 @@
       name: "{{ item.name }}"
       group: hadoop
       groups: ssh
-    with_items: "{{ hostvars[groups['headnode'][0]].created_users.results }}"
+    with_items: "{{ hostvars[groups['namenode'][0]].created_users.results }}"
     loop_control:
       label: "{{ item.name }}"
   - name: authorized keys present
@@ -95,7 +95,7 @@
       user: "{{ item.name  }}"
       state: present
       key: "{{ item.ssh_public_key  }}"     
-    with_items: "{{ hostvars[groups['headnode'][0]].created_users.results }}"
+    with_items: "{{ hostvars[groups['namenode'][0]].created_users.results }}"
     loop_control:
       label: "{{ item.name }}"
 - name: put hosts ips on /etc/hosts
@@ -141,7 +141,7 @@
     with_items: [maven, build-essential, g++, autoconf, automake, libtool, cmake, zlib1g-dev, pkg-config, libssl-dev, xmlstarlet]
     tags: packages
   - name: download google protocol buffer
-    command: "wget https://github.com/google/protobuf/releases/download/v{{ protobuf_ver }}/protobuf-{{ protobuf_ver }}.tar.gz"
+    command: "wget -nc https://github.com/google/protobuf/releases/download/v{{ protobuf_ver }}/protobuf-{{ protobuf_ver }}.tar.gz"
     args:
       chdir: "{{ hadoop_install }}"
       creates: "{{ hadoop_install }}/protobuf-{{ protobuf_ver }}.tar.gz"
@@ -177,6 +177,9 @@
       mode: 0751
       owner: hadoop
       group: hadoop
+  environment:
+    http_proxy: "{{ proxy_host }}:{{ proxy_port }}"
+    https_proxy: "{{ proxy_host }}:{{ proxy_port }}"
 - name: install hadoop (all nodes)
   hosts: nodes
   gather_facts: false
@@ -184,10 +187,10 @@
   tasks:
   - name: download hadoop if does not exists
     tags: install_hadoop
-    get_url: 
-      url: "http://mirrors.ircam.fr/pub/apache/hadoop/common/hadoop-{{ hadoop_ver }}/hadoop-{{ hadoop_ver }}-src.tar.gz"
-      dest: "{{ hadoop_install }}"
-      force: false
+    command: "wget http://mirrors.ircam.fr/pub/apache/hadoop/common/hadoop-{{ hadoop_ver }}/hadoop-{{ hadoop_ver }}-src.tar.gz"
+    args:
+      chdir: "{{ hadoop_install }}"
+      creates: "{{ hadoop_install }}/hadoop-{{ hadoop_ver }}-src.tar.gz"
   - name: uncompress hadoop
     tags: install_hadoop
     unarchive:
@@ -221,7 +224,7 @@
       path: "/etc/environment" 
       regexp: '^HADOOP_PREFIX='
       line: "HADOOP_PREFIX={{ hadoop_home  }}"
-  - name: ensure conf, log et pid folder exists
+  - name: ensure conf
     tags: configure_hadoop
     file:
       path: "{{ item }}"
@@ -230,8 +233,17 @@
       owner: hadoop
       group: hadoop
     with_items:
-    - "{{ hadoop_log_dir }}"
     - "{{ hadoop_conf_dir }}"
+  - name: ensure log et pid folder exists
+    tags: configure_hadoop
+    file:
+      path: "{{ item }}"
+      state: directory
+      mode: 0770
+      owner: hadoop
+      group: hadoop
+    with_items:
+    - "{{ hadoop_log_dir }}"
     - "{{ hadoop_pid_dir }}"
   - name: copy conf files (no overwrite)
     tags: configure_hadoop
@@ -263,10 +275,13 @@
     register: out
     changed_when: not out.stdout.startswith('NO-CHANGE')
     with_items:
-    - {var: "fs.defaultFS", value: "hdfs://{{ groups['headnode'][0].split('.')[0] }}:{{ hdfs_port  }}" }
+    - {var: "fs.defaultFS", value: "hdfs://{{ groups['namenode'][0].split('.')[0] }}:{{ hdfs_port  }}" }
     - {var: "io.file.buffer.size", value: "{{ hdfs_file_buffer_bytes }}" }
+  environment:
+    http_proxy: "{{ proxy_host }}:{{ proxy_port }}"
+    https_proxy: "{{ proxy_host }}:{{ proxy_port }}"
 - name: install hdfs (head node)
-  hosts: headnode
+  hosts: namenode
   gather_facts: false
   become: true
   tasks:
@@ -310,18 +325,28 @@
       owner: hadoop
       group: hadoop
       mode: 0770
+  - name: get ip to use
+    tags: configure_hdfs
+    shell: "ip addr show {{ app_network  }} | grep \"inet \" | awk {'print $2'} | awk -F \"/\" {'print $1'}" 
+    register: app_ip
+    changed_when: false
+  - tags: configure_hdfs
+    set_fact:
+      app_ip: "{{ app_ip.stdout }}"
   - name: update hdfs-site.xml on head node
     tags: configure_hdfs
     command: "/tmp/xmlpresent.sh --container-xpath \"/configuration\" --node \"property\" --property-node name --property-text \"{{ item.var  }}\" --value-node value --value \"{{ item.value  }}\" --file {{ hadoop_conf_dir }}/hdfs-site.xml"
     register: out
     changed_when: not out.stdout.startswith('NO-CHANGE')
     with_items:
-    - {var: "dfs.namenode.name.dir", value: "{{ hdfs_namenode_dir }}" }
+    - {var: "dfs.client.local.interfaces", value: "{{ app_network }}" }
+    - {var: "dfs.namenode.name.dir", value: "file://{{ hdfs_namenode_dir }}" }
     - {var: "dfs.hosts", value: "{{ hdfs_hosts }}" }
     - {var: "dfs.hosts.exclude", value: "{{ hdfs_hosts_exclude }}" }
     - {var: "dfs.blocksize", value: "{{ hdfs_blocksize_bytes }}" }
     - {var: "dfs.namenode.handler.count", value: "{{ hdfs_namenode_thread_count }}" }
     - {var: "dfs.replication", value: "{{ hdfs_default_replication }}" }
+    - {var: "dfs.namenode.rpc-bind-host", value: " 0.0.0.0" }
 - name: install hdfs (data node)
   hosts: datanodes
   gather_facts: false
@@ -334,6 +359,7 @@
     changed_when: not out.stdout.startswith('NO-CHANGE')
     with_items:
     - {var: "dfs.datanode.data.dir", value: "{{ hdfs_datanode_dir }}" }
+    - {var: "dfs.client.local.interfaces", value: "{{ app_network }}" }
 - name: install yarn (resource manager nodes)
   hosts: resourcemanager
   gather_facts: false
@@ -371,7 +397,29 @@
       path: "{{ yarn_hosts_exclude }}"
       block: "{{ nodemanagers_excluded_list }}"
       marker: "#{mark} list of excluded hosts managed by ansible"
-- name: condigure yarn (resource manager config)
+- name: configure yarn (global)
+  hosts: nodes
+  gather_facts: false
+  become: true
+  tasks:
+  - name: yarn log folder exist 
+    tags: configure_yarn
+    file:  
+      path: "{{ yarn_log_dir }}"
+      state: directory
+      mode: 0751
+      owner: yarn
+      group: hadoop
+  - name: setting necessary environment variable
+    tags: configure_yarn
+    lineinfile:
+      path: "{{ hadoop_conf_dir }}/yarn-env.sh" 
+      regexp: "^export {{ item.var  }}"
+      line: "export {{ item.var }}={{ item.value }}"
+    with_items:
+    - {var: "YARN_LOG_DIR", value: "{{ yarn_log_dir }}"} 
+    - {var: "YARN_PID_DIR", value: "{{ hadoop_pid_dir  }}"}
+- name: configure yarn (resource manager)
   hosts: nodes
   gather_facts: false
   become: true
@@ -404,6 +452,7 @@
     - {var: "yarn.scheduler.maximum-allocation-vcores", value: "{{ yarn_container_max_cores }}" }
     - {var: "yarn.resourcemanager.nodes.include-path", value: "{{ yarn_hosts  }}" }
     - {var: "yarn.resourcemanager.nodes.exclude-path", value: "{{ yarn_hosts_exclude }}" }
+    - {var: "yarn.resourcemanager.bind-host", value: "0.0.0.0" }
 - name: configure yarn (node manager)
   hosts: nodemanagers
   gather_facts: false
@@ -416,7 +465,7 @@
     changed_when: not out.stdout.startswith('NO-CHANGE')
     with_items:
     - {var: "yarn.nodemanager.local-dirs", value: "{{ yarn_nodemanager_local_dirs  }}" }
-    - {var: "yarn.nodemanager.log-dirs", value: "{{ yarn_nodemanager_log_dirs  }}" }
+    - {var: "yarn.nodemanager.log-dirs", value: "{{ yarn_log_dir }}" }
     - {var: "yarn.nodemanager.log.retain-seconds", value: "{{ yarn_nodemanager_log_seconds }}" }
     - {var: "yarn.nodemanager.remote-app-log-dir", value: "{{ yarn_nodemanager_remote_log_dir }}" }
     - {var: "yarn.nodemanager.remote-app-log-dir-suffix", value: "{{ yarn_nodemanager_remote_log_dir_suffix  }}" }
@@ -457,7 +506,7 @@
     copy:
       src: "{{ hadoop_conf_dir }}/mapred-site.xml.template"
       dest: "{{ hadoop_conf_dir }}/mapred-site.xml"
-      remote_source: true
+      remote_src: True
       force: false
       owner: yarn
       group: hadoop
@@ -480,7 +529,140 @@
     - {var: "mapreduce.jobhistory.webapp.address", value: "{{ groups['resourcemanager'][0].split('.')[0]}}:{{ mapreduce_jobhistory_webapp_port }}" }
     - {var: "mapreduce.jobhistory.intermediate-done-dir", value: "{{ mapreduce_jobhistory_intermediate_done_dir  }}" }
     - {var: "mapreduce.jobhistory.done-dir", value: "{{ mapreduce_jobhistory_done_dir  }}" }
-  environment:
-    http_proxy: "{{ proxy_host }}:{{ proxy_port }}"
-    https_proxy: "{{ proxy_host }}:{{ proxy_port }}"
-  
+- name: hdfs is up & running 
+  hosts: namenode
+  gather_facts: false
+  become: true
+  tasks:
+  - name: name node folder exists 
+    tags: hdfs_up
+    file:  
+      path: "{{ hdfs_namenode_dir }}"
+      state: directory
+      mode: 0751
+      owner: hdfs
+      group: hadoop
+  - name: name node formatted
+    tags: hdfs_up
+    command: "{{ hadoop_home }}/bin/hdfs namenode -format {{ hadoop_cluster_name}}" 
+    args:
+      chdir: "{{ hadoop_install }}"
+      creates: "{{ hdfs_namenode_dir }}/current"
+    become: true 
+    become_user: hdfs
+  - name: namenode service installed
+    tags: hdfs_up
+    template:
+      src: templates/hdfs-namenode.service.j2
+      dest: /lib/systemd/system/hdfs-namenode.service
+      owner: root
+      group: root
+    register: out
+  - name: reload systemctl if needed
+    tags: hdfs_up
+    command: systemctl daemon-reload
+    when: out.changed
+  - name: namenode is running
+    tags: hdfs_up
+    service:
+      name: hdfs-namenode
+      state: started
+- name: data nodes atre running
+  hosts: datanodes
+  gather_facts: false
+  become: true
+  tasks:
+  - name: data node folder exists 
+    tags: hdfs_up
+    file:  
+      path: "{{ hdfs_datanode_dir }}"
+      state: directory
+      mode: 0751
+      owner: hdfs
+      group: hadoop
+  - name: datanode service installed
+    tags: hdfs_up
+    template:
+      src: templates/hdfs-datanode.service.j2
+      dest: /lib/systemd/system/hdfs-datanode.service
+      owner: root
+      group: root
+    register: out
+  - name: reload systemctl if needed
+    tags: hdfs_up
+    command: systemctl daemon-reload
+    when: out.changed
+  - name: datanode is running
+    tags: hdfs_up
+    service:
+      name: hdfs-datanode
+      state: started
+- name: yarn resource manager is up & running 
+  hosts: resourcemanager
+  gather_facts: false
+  become: true
+  tasks:
+  - name: yarn resource manager service installed
+    tags: yarn_up
+    template:
+      src: templates/yarn-resourcemanager.service.j2
+      dest: /lib/systemd/system/yarn-resourcemanager.service
+      owner: root
+      group: root
+    register: out
+  - name: reload systemctl if needed
+    tags: yarn_up
+    command: systemctl daemon-reload
+    when: out.changed
+  - name: resource manager is running
+    tags: yarn_up
+    service:
+      name: yarn-resourcemanager
+      state: started
+  - name: yarn proxy service installed
+    tags: yarn_up
+    template:
+      src: templates/yarn-proxyserver.service.j2
+      dest: /lib/systemd/system/yarn-proxyserver.service
+      owner: root
+      group: root
+    register: out
+  - name: reload systemctl if needed
+    tags: yarn_up
+    command: systemctl daemon-reload
+    when: out.changed
+  - name: proxy server is running
+    tags: yarn_up
+    service:
+      name: yarn-proxyserver
+      state: started
+- name: yarn node manager is up and running
+  hosts: nodemanagers
+  gather_facts: false
+  become: true
+  tasks:
+  - name: node manager log folder exists 
+    tags: yarn_up
+    file:  
+      path: "{{ yarn_nodemanager_local_dirs }}"
+      state: directory
+      mode: 0751
+      owner: yarn 
+      group: hadoop
+  - name: yarn service installed
+    tags: yarn_up
+    template:
+      src: templates/yarn-nodemanager.service.j2
+      dest: /lib/systemd/system/yarn-nodemanager.service
+      owner: root
+      group: root
+    register: out
+  - name: reload systemctl if needed
+    tags: yarn_up
+    command: systemctl daemon-reload
+    when: out.changed
+  - name: node manager is running
+    tags: yarn_up
+    service:
+      name: yarn-nodemanager
+      state: started

@@ -9,6 +9,10 @@ protobuf_ver: 2.5.0
 hadoopusers: [hadoop, spark, hive, hdfs,yarn, mapred]
 crypted_disk: space
 
+#Spark
+spark_ver: 2.1.0
+spark_home: "{{ hadoop_install}}/spark_home"
+
 #Hadoop
 hadoop_cluster_name: "demy"
 hadoop_ver: 2.8.0

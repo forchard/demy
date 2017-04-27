@@ -1,0 +1,84 @@
+---
+- name: spark sources directory
+  tags: install_spark
+  file:
+    state: directory
+    path: "{{ item }}"
+    owner: hadoop
+    group: hadoop
+    mode: 0751
+  with_items:
+  -  "{{ hadoop_install }}/spark-{{ spark_ver }}-src"
+  -  "{{ hadoop_install }}/spark-{{ spark_ver }}"
+- name: download spark if does not exists
+  tags: install_spark
+  command: "wget -O spark-{{ spark_ver }}-src.tgz http://mirrors.ircam.fr/pub/apache/spark/spark-{{ spark_ver }}/spark-{{ spark_ver }}.tgz"
+  args:
+    chdir: "{{ hadoop_install }}"
+    creates: "{{ hadoop_install }}/spark-{{ spark_ver }}-src.tgz"
+- name: uncompress spark
+  tags: install_spark
+  unarchive:
+    src: "{{ hadoop_install }}/spark-{{ spark_ver }}-src.tgz"
+    dest: "{{ hadoop_install }}/spark-{{ spark_ver }}-src"
+    remote_src: true 
+    owner: hadoop
+    group: hadoop
+    mode: 0751
+- name: Compile spark
+  tags: install_spark
+  shell: |
+    export JAVA_HOME="{{ java_home  }}"
+    export MAVEN_OPTS="-Xmx2g -XX:ReservedCodeCacheSize=512m"
+    ./dev/make-distribution.sh --name demy_spark -Pyarn -Phadoop-2.7 -Dhadoop.version=2.7.0 -Phive -Phive-thriftserver -Psparkr -DskipTests -Dhttp.proxyHost={{ proxy_host }} -Dhttp.proxyPort={{ proxy_port }} -Dhttps.proxyHost={{ proxy_host }} -Dhttps.proxyPort={{ proxy_port }}
+  args:
+    chdir: "{{ hadoop_install }}/spark-{{ spark_ver }}-src/spark-{{ spark_ver }}/"
+    creates: "{{ hadoop_install }}/spark-{{ spark_ver }}-src/spark-{{ spark_ver }}/dist/README.md"
+- name: copy compiled version (no overwrite)
+  tags: install_spark
+  shell: "cp -R -v -n {{ hadoop_install }}/spark-{{ spark_ver }}-src/spark-{{ spark_ver }}/dist/*  {{ hadoop_install }}/spark-{{ spark_ver }} | wc -l"
+  register: out
+  changed_when: out.stdout!='0'
+- name: create link to current version
+  tags: install_spark
+  file:
+    src: "{{ hadoop_install }}/spark-{{ spark_ver }}" 
+    dest: "{{ spark_home }}"
+    owner: hadoop
+    group: hadoop
+    mode: 0751
+    state: link
+- name: "jars packaged"
+  tags: install_spark
+  archive:
+    path: "{{ spark_home }}/jars/*"
+    dest: "{{ spark_home }}/spark-jars.tgz"
+- name: "upload jar if changed"
+  tags: install_spark
+  shell: |
+    newmd5=`find {{ spark_home}}/jars/ -type f -print0 | xargs -0 md5sum | md5sum | xargs`
+    sudo -u hdfs {{ hadoop_home}}/bin/hdfs dfs -test -d /spark
+    if [ $? -ne 0 ]; then 
+      ret="CHANGED"
+      sudo -u hdfs {{ hadoop_home}}/bin/hdfs dfs -mkdir /spark 
+      sudo -u hdfs {{ hadoop_home}}/bin/hdfs dfs -chown spark:hadoop /spark 
+    fi;
+    sudo -u hdfs {{ hadoop_home}}/bin/hdfs dfs -test -e /spark/spark-jars.tgz.md5
+    if [ $? -ne 0 ]; then 
+      ret="CHANGED"
+      oldmd5="not a md5"
+    else
+      oldmd5="`sudo -u spark {{ hadoop_home}}/bin/hdfs dfs -cat /spark/spark-jars.tgz.md5`"
+    fi;
+    if [ "$newmd5" != "$oldmd5" ];then
+      ret="CHANGED"
+      echo $newmd5 | sudo -u spark {{ hadoop_home }}/bin/hdfs dfs -put -f - /spark/spark-jars.tgz.md5
+      sudo -u spark {{ hadoop_home }}/bin/hdfs dfs -put -f {{ spark_home }}/spark-jars.tgz /spark/spark-jars.tgz
+    else
+      ret="NO-CHANGE"
+    fi
+    echo $ret
+    exit 0
+  register: out
+  changed_when: not out.stdout.endswith('NO-CHANGE')
+  failed_when: out.stderr|length>0 

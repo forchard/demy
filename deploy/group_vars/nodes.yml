@@ -12,6 +12,7 @@ crypted_disk: space
 #Spark
 spark_ver: 2.1.0
 spark_home: "{{ hadoop_install}}/spark_home"
+spark_run: "{{ hadoop_install}}/spark_run"
 
 #Hadoop
 hadoop_cluster_name: "demy"
@@ -58,8 +59,8 @@ yarn_hosts: "{{ hadoop_conf_dir }}/nodemanagers"
 yarn_hosts_exclude: "{{ hadoop_conf_dir }}/nodemanagers-excluded" 
 
 #Node managers
-yarn_nodemanager_check_vmem: true
-yarn_nodemanager_check_pmem: true
+yarn_nodemanager_check_vmem: false
+yarn_nodemanager_check_pmem: false
 yarn_nodemanager_vmem_pmem_ratio: 2.1
 yarn_nodemanager_local_dirs: "{{ hadoop_run }}/yarn-nm"
 yarn_nodemanager_log_seconds: "{{ 3600 * 24 }}"

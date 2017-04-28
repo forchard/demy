@@ -34,6 +34,21 @@
   args:
     chdir: "{{ hadoop_install }}/spark-{{ spark_ver }}-src/spark-{{ spark_ver }}/"
     creates: "{{ hadoop_install }}/spark-{{ spark_ver }}-src/spark-{{ spark_ver }}/dist/README.md"
+- name: make compiled files accessible for spark
+  tags: install_spark
+  file:
+    path: "{{ hadoop_install }}/spark-{{ spark_ver }}-src/spark-{{ spark_ver }}/dist"
+    state: directory
+    group: hadoop
+    owner: hadoop
+    recurse: true
+- name: spark versionned home folder present
+  tags: install_spark
+  file:
+    path: "{{ hadoop_install }}/spark-{{ spark_ver }}" 
+    owner: hadoop
+    group: hadoop
+    state: directory
 - name: copy compiled version (no overwrite)
   tags: install_spark
   shell: "cp -R -v -n {{ hadoop_install }}/spark-{{ spark_ver }}-src/spark-{{ spark_ver }}/dist/*  {{ hadoop_install }}/spark-{{ spark_ver }} | wc -l"
@@ -48,11 +63,35 @@
     group: hadoop
     mode: 0751
     state: link
+- name: spark run exists
+  tags: install_spark
+  file:
+    path: "{{ spark_run }}" 
+    owner: spark
+    group: hadoop
+    state: directory
 - name: "jars packaged"
   tags: install_spark
   archive:
     path: "{{ spark_home }}/jars/*"
     dest: "{{ spark_home }}/spark-jars.tgz"
+- name: "create folders"
+  tags: install_spark
+  shell: |
+    sudo -u hdfs {{ hadoop_home}}/bin/hdfs dfs -test -d /tmp
+    if [ $? -ne 0 ]; then 
+      ret="CHANGED"
+      sudo -u hdfs {{ hadoop_home}}/bin/hdfs dfs -mkdir /tmp 
+      sudo -u hdfs {{ hadoop_home}}/bin/hdfs dfs -chown hadoop:hadoop /tmp 
+      sudo -u hdfs {{ hadoop_home}}/bin/hdfs dfs -chmod 0777 /tmp 
+    else
+      ret="NO-CHANGE"
+    fi
+    echo $ret
+    exit 0
+  register: out
+  changed_when: not out.stdout.endswith('NO-CHANGE')
+  failed_when: out.stderr|length>0 
 - name: "upload jar if changed"
   tags: install_spark
   shell: |
@@ -82,3 +121,52 @@
   register: out
   changed_when: not out.stdout.endswith('NO-CHANGE')
   failed_when: out.stderr|length>0 
+- name: spark environment file present
+  tags: configure_spark
+  copy:
+    content: "#!/usr/bin/env bash"
+    dest: "{{ spark_home }}/conf/spark-env.sh"
+    force: false
+    owner: "spark"
+    group: "hadoop"
+    mode: "0770"
+- name: get ip to use
+  tags: configure_spark
+  shell: "ip addr show {{ app_network  }} | grep \"inet \" | awk {'print $2'} | awk -F \"/\" {'print $1'}" 
+  register: app_ip
+  changed_when: false
+- tags: configure_spark
+  set_fact:
+    app_ip: "{{ app_ip.stdout }}"
+- name: update spark-env.sh
+  tags: configure_spark
+  lineinfile:
+    path: "{{ spark_home }}/conf/spark-env.sh" 
+    regexp: "^export {{ item.var  }}"
+    line: "export {{ item.var }}={{ item.value }}"
+  with_items:
+  - {var: "JAVA_HOME", value: "{{ java_home  }}" }
+  - {var: "HADOOP_CONF_DIR", value: "{{ hadoop_conf_dir  }}" }
+  - {var: "SPARK_LOCAL_DIRS", value: "{{ spark_run }}" }
+  - {var: "SPARK_LOCAL_IP", value: "{{ app_ip }}" }
+- name: spark defaults present 
+  tags: configure_spark
+  copy:
+    content: ""
+    dest: "{{ spark_home }}/conf/spark-defaults.conf"
+    force: false
+    owner: "spark"
+    group: "hadoop"
+    mode: "0660"
+- name: update spark-defaults.conf
+  tags: configure_spark
+  lineinfile:
+    path: "{{ spark_home }}/conf/spark-defaults.conf" 
+    regexp: "^{{ item.var  }}"
+    line: "{{ item.var }} {{ item.value }}"
+  with_items:
+  - {var: "spark.eventLog.dir", value: "hdfs:///spark/logs" }
+  - {var: "spark.yarn.archive", value: "hdfs:///spark/spark-jars.tgz" }
+  - {var: "spark.yarn.stagingDir", value: "/spark" }
+
+

@@ -27,7 +27,18 @@
     register: out
     changed_when: true 
     when: mount_output.stdout == 'NOT-MOUNTED'
-     
+  - name: IPv6 disables
+    tags: check_hosts
+    lineinfile:
+      path: "/etc/sysctl.conf" 
+      regexp: '^net.ipv6.conf.all.disable_ipv6'
+      line: "net.ipv6.conf.all.disable_ipv6 = 1"
+    notify: apply_sysctl    
+  handlers:
+  - name: apply sysctl changes
+    listen: apply_sysctl
+    command: "sysctl -p /etc/sysctl.conf"
+
 - name: Users on head node & register worker hosts
   hosts: namenode 
   gather_facts: false
@@ -134,29 +145,39 @@
   - hadoop_commons 
   become: true
   tasks:
+  - name: installation folder
+    file:
+      path: "{{ hadoop_install }}"
+      state: directory
+      mode: 0751
+      owner: hadoop
+      group: hadoop
   - name: jessie backports is activated
     apt_repository:
       repo: deb http://ftp.fr.debian.org/debian jessie-backports main
-  - name: ensure java open jdk 8 is installed 
+  - name: ensure java open jdk is installed 
     tags: java
     apt:
       name: "{{ java_package }}"
       default_release: jessie-backports
       update_cache: true
-      cache_valid_time: 300
+    with_items: ["{{ java_package }}", "{{ java_package_spark }}"]
+    notify: set_java_default
   - name: set java home
     tags: java
     lineinfile:
       path: "/etc/environment" 
       regexp: '^JAVA_HOME='
       line: "JAVA_HOME={{ java_home }}"
+    notify: set_java_default
   - name: compiler tools
     tags: packages
     apt:
       name: "{{ item }}"
       update_cache: yes
       cache_valid_time: 300
-    with_items: [maven, build-essential, g++, autoconf, automake, libtool, cmake, zlib1g-dev, pkg-config, libssl-dev, xmlstarlet, r-base]
+    with_items: [maven, build-essential, g++, autoconf, automake, libtool, cmake, zlib1g-dev, pkg-config, libssl-dev, xmlstarlet, r-base, git, npm, libfontconfig ]
+    notify: [ set_npm_proxy, set_cran_mirror ]
   - name: download google protocol buffer
     command: "wget -nc https://github.com/google/protobuf/releases/download/v{{ protobuf_ver }}/protobuf-{{ protobuf_ver }}.tar.gz"
     args:
@@ -187,13 +208,27 @@
       chdir: "/usr/local/src/protobuf-{{ protobuf_ver }}/java"
       creates: "/usr/local/src/protobuf-{{ protobuf_ver }}/java/target/protobuf-java-{{ protobuf_ver }}.jar"
     tags: protobuf
-  - name: installation folder
-    file:
-      path: "{{ hadoop_install }}"
-      state: directory
-      mode: 0751
-      owner: hadoop
-      group: hadoop
+  handlers:
+  - name: set java default
+    listen: set_java_default
+    command: "update-java-alternatives --set /usr/lib/jvm/{{ java_default }}"
+  - name: set npm proxy
+    listen: set_npm_proxy
+    shell: | 
+      npm config set proxy http://{{ proxy_host }}:{{ proxy_port }}
+      npm config set https-proxy http://{{ proxy_host }}:{{ proxy_port }}
+  - name: set CRAN_MIRROR for R
+    listen: set_cran_mirror
+    blockinfile:
+      path: /etc/R/Rprofile.site
+      marker: "# {mark} CRAN config (managed by Ansible)"
+      block: |
+        local({
+        # add MASS to the default packages, set a CRAN mirror
+        old <- getOption("defaultPackages"); r <- getOption("repos")
+        r["CRAN"] <- "{{ cran_mirror  }}"
+        options(defaultPackages = c(old, "MASS"), repos = r)
+        })
   environment:
     http_proxy: "{{ proxy_host }}:{{ proxy_port }}"
     https_proxy: "{{ proxy_host }}:{{ proxy_port }}"
@@ -206,7 +241,7 @@
   tasks:
   - name: download hadoop if does not exists
     tags: install_hadoop
-    command: "wget http://mirrors.ircam.fr/pub/apache/hadoop/common/hadoop-{{ hadoop_ver }}/hadoop-{{ hadoop_ver }}-src.tar.gz"
+    command: "wget {{ apache_mirror }}/pub/apache/hadoop/common/hadoop-{{ hadoop_ver }}/hadoop-{{ hadoop_ver }}-src.tar.gz"
     args:
       chdir: "{{ hadoop_install }}"
       creates: "{{ hadoop_install }}/hadoop-{{ hadoop_ver }}-src.tar.gz"

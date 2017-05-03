@@ -51,7 +51,7 @@
     state: directory
 - name: copy compiled version (no overwrite)
   tags: install_spark
-  shell: "cp -R -v -n {{ hadoop_install }}/spark-{{ spark_ver }}-src/spark-{{ spark_ver }}/dist/*  {{ hadoop_install }}/spark-{{ spark_ver }} | wc -l"
+  shell: "cp -R -p -v -n {{ hadoop_install }}/spark-{{ spark_ver }}-src/spark-{{ spark_ver }}/dist/*  {{ hadoop_install }}/spark-{{ spark_ver }} | wc -l"
   register: out
   changed_when: out.stdout!='0'
 - name: create link to current version
@@ -145,7 +145,7 @@
     regexp: "^export {{ item.var  }}"
     line: "export {{ item.var }}={{ item.value }}"
   with_items:
-  - {var: "JAVA_HOME", value: "{{ java_home  }}" }
+  - {var: "JAVA_HOME", value: "{{ java_home_spark  }}" }
   - {var: "HADOOP_CONF_DIR", value: "{{ hadoop_conf_dir  }}" }
   - {var: "SPARK_LOCAL_DIRS", value: "{{ spark_run }}" }
   - {var: "SPARK_LOCAL_IP", value: "{{ app_ip }}" }
@@ -168,5 +168,47 @@
   - {var: "spark.eventLog.dir", value: "hdfs:///spark/logs" }
   - {var: "spark.yarn.archive", value: "hdfs:///spark/spark-jars.tgz" }
   - {var: "spark.yarn.stagingDir", value: "/spark" }
-
+- name: getting zeppelin
+  tags: install_zeppelin
+  become_user: hadoop
+  git:
+    repo: https://github.com/apache/zeppelin.git
+    dest: "{{ hadoop_install }}/zepellin-{{ zeppelin_version }}-src"
+    version: "{{ zeppelin_version }}"
+- name: copy sources (no overwrite)
+  tags: install_zeppelin
+  become_user: hadoop
+  shell: "cp -R -p -v -n {{ hadoop_install }}/zepellin-{{ zeppelin_version }}-src {{ hadoop_install }}/zepellin-{{ zeppelin_version }} | wc -l"
+  register: out
+  changed_when: out.stdout!='0'
+- name: ensure bower has a proper proxy 
+  tags: install_zeppelin
+  copy:
+    content: |
+      {
+      "proxy":"http://{{ proxy_host }}:{{ proxy_port }}",
+      "https-proxy":"http://{{ proxy_host }}:{{ proxy_port }}"
+      }
+    dest: /home/hadoop/.bowerrc    
+- name: install R dependencies for zeppelin
+  tags: install_zeppelin
+  shell: |
+    export http_proxy=http://{{ proxy_host }}:{{ proxy_port }}
+    export https_proxy=http://{{ proxy_host }}:{{ proxy_port }}
+    export ftp_proxy={{ proxy_host }}:{{ proxy_port }}
+    R -e "list.of.packages <- c(\"evaluate\"); new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,\"Package\"])]; if(length(new.packages)) install.packages(new.packages)"
+  register: out
+  failed_when: out.stderr.find("WARNING")>1
+  changed_when: out.stderr|length > 0
+- name: build zeppelin 
+  tags: install_zeppelin
+  become_user: hadoop
+  shell: | 
+    export HTTP_PROXY=http://{{ proxy_host }}:{{ proxy_port }}
+    export HTTPS_PROXY=http://{{ proxy_host }}:{{ proxy_port }}
+    dev/change_scala_version.sh 2.11
+    mvn clean package -DskipTests -Pspark-{{ spark_ver[:3]}} -Phadoop-2.7 -Pyarn -Ppyspark -Psparkr -Pr -Pscala-2.11 -Dhttp.proxyHost={{ proxy_host }} -Dhttp.proxyPort={{ proxy_port }} -Dhttps.proxyHost={{ proxy_host }} -Dhttps.proxyPort={{ proxy_port }}
+  args:
+    chdir: "{{ hadoop_install }}/zepellin-{{ zeppelin_version }}"
+    creates: "{{ hadoop_install }}/zepellin-{{ zeppelin_version }}/target"
 

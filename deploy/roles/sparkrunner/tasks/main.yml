@@ -42,7 +42,7 @@
     group: hadoop
     owner: hadoop
     recurse: true
-- name: spark versionned home folder present
+- name: spark versioned home folder present
   tags: install_spark
   file:
     path: "{{ hadoop_install }}/spark-{{ spark_ver }}" 
@@ -75,7 +75,7 @@
   archive:
     path: "{{ spark_home }}/jars/*"
     dest: "{{ spark_home }}/spark-jars.tgz"
-- name: "create folders"
+- name: "create HDFS folders"
   tags: install_spark
   shell: |
     sudo -u hdfs {{ hadoop_home}}/bin/hdfs dfs -test -d /tmp
@@ -173,12 +173,12 @@
   become_user: hadoop
   git:
     repo: https://github.com/apache/zeppelin.git
-    dest: "{{ hadoop_install }}/zepellin-{{ zeppelin_version }}-src"
+    dest: "{{ hadoop_install }}/zeppelin-{{ zeppelin_version }}-src"
     version: "{{ zeppelin_version }}"
 - name: copy sources (no overwrite)
   tags: install_zeppelin
   become_user: hadoop
-  shell: "cp -R -p -v -n {{ hadoop_install }}/zepellin-{{ zeppelin_version }}-src {{ hadoop_install }}/zepellin-{{ zeppelin_version }} | wc -l"
+  shell: "cp -R -p -v -n {{ hadoop_install }}/zeppelin-{{ zeppelin_version }}-src {{ hadoop_install }}/zeppelin-{{ zeppelin_version }} | wc -l"
   register: out
   changed_when: out.stdout!='0'
 - name: ensure bower has a proper proxy 
@@ -196,10 +196,11 @@
     export http_proxy=http://{{ proxy_host }}:{{ proxy_port }}
     export https_proxy=http://{{ proxy_host }}:{{ proxy_port }}
     export ftp_proxy={{ proxy_host }}:{{ proxy_port }}
-    R -e "list.of.packages <- c(\"evaluate\"); new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,\"Package\"])]; if(length(new.packages)) install.packages(new.packages)"
+    R -e "list.of.packages <- c(\"evaluate\", \"knitr\"); new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,\"Package\"])]; if(length(new.packages)) install.packages(new.packages)"
   register: out
   failed_when: out.stderr.find("WARNING")>1
   changed_when: out.stderr|length > 0
+  notify: restart zeppelin
 - name: build zeppelin 
   tags: install_zeppelin
   become_user: hadoop
@@ -209,6 +210,105 @@
     dev/change_scala_version.sh 2.11
     mvn clean package -DskipTests -Pspark-{{ spark_ver[:3]}} -Phadoop-2.7 -Pyarn -Ppyspark -Psparkr -Pr -Pscala-2.11 -Dhttp.proxyHost={{ proxy_host }} -Dhttp.proxyPort={{ proxy_port }} -Dhttps.proxyHost={{ proxy_host }} -Dhttps.proxyPort={{ proxy_port }}
   args:
-    chdir: "{{ hadoop_install }}/zepellin-{{ zeppelin_version }}"
-    creates: "{{ hadoop_install }}/zepellin-{{ zeppelin_version }}/target"
+    chdir: "{{ hadoop_install }}/zeppelin-{{ zeppelin_version }}"
+    creates: "{{ hadoop_install }}/zeppelin-{{ zeppelin_version }}/target"
+- name: create link to current version
+  tags: install_zeppelin
+  file:
+    src: "{{ hadoop_install }}/zeppelin-{{ zeppelin_version }}" 
+    dest: "{{ zeppelin_home }}"
+    owner: hadoop
+    group: hadoop
+    mode: 0751
+    state: link
+- name: zeppelin run exists
+  tags: install_zeppelin
+  file:
+    path: "{{ zeppelin_run }}" 
+    owner: spark
+    group: hadoop
+    state: directory
+- name: zeppelin configuration file present
+  tags: install_zeppelin
+  copy:
+    content: |
+      <?xml version="1.0"?>
+      <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+      <configuration>
+      </configuration>
+    dest: "{{ zeppelin_home }}/conf/zeppelin-site.xml"
+    force: false
+    owner: "hadoop"
+    group: "hadoop"
+    mode: "0770"
+- name: zeppelin configuration dir writable by hadoop group
+  tags: install_zeppelin
+  file:
+    path: "{{ zeppelin_home }}/conf"
+    state: directory
+    owner: "hadoop"
+    group: "hadoop"
+    mode: "0751"
+- name: update zeppelin-site.xml
+  tags: install_zeppelin
+  command: "/tmp/xmlpresent.sh --container-xpath \"/configuration\" --node \"property\" --property-node name --property-text \"{{ item.var  }}\" --value-node value --value \"{{ item.value  }}\" --file {{ zeppelin_home }}/conf/zeppelin-site.xml"
+  register: out
+  changed_when: not out.stdout.startswith('NO-CHANGE')
+  with_items:
+  - {var: "zeppelin.server.addr", value: "0.0.0.0" }
+  - {var: "zeppelin.server.port", value: "{{ zeppelin_port  }}" }
+  - {var: "zeppelin.war.tempdir", value: "{{ zeppelin_run }}/wartemp" }
+  - {var: "zeppelin.notebook.dir", value: "{{ zeppelin_run }}/notebooks" }
+  - {var: "zeppelin.interpreter.connect.timeout", value: "{{ 30 * 1000 }}" }
+  - {var: "zeppelin.anonymous.allowed", value: "true" }
+  - {var: "zeppelin.interpreter.localRepo", value: "{{ zeppelin_run }}/local-repo" }
+  - {var: "zeppelin.dep.localrepo", value: "{{ zeppelin_run }}/local-repo" }
+  notify: restart zeppelin
+- name: zeppelin environment file present
+  tags: install_zeppelin
+  copy:
+    content: |
+      #!/bin/bash
+    dest: "{{ zeppelin_home }}/conf/zeppelin-env.sh"
+    force: false
+    owner: "spark"
+    group: "hadoop"
+    mode: "0770"
+- name: update zeppelin-env.sh
+  tags: install_zeppelin
+  lineinfile:
+    path: "{{ zeppelin_home }}/conf/zeppelin-env.sh"
+    regexp: "^export {{ item.var  }}"
+    line: "export {{ item.var }}={{ item.value }}"
+  with_items:
+  - {var: "JAVA_HOME", value: "{{ java_home_spark }}" }
+  - {var: "MASTER", value: "yarn-client" }
+  - {var: "ZEPPELIN_LOG_DIR", value: "{{ zeppelin_run }}/logs" }
+  - {var: "ZEPPELIN_PID_DIR", value: "{{ zeppelin_run }}/PID" }
+  - {var: "SPARK_HOME", value: "{{ spark_home}}" }
+  - {var: "SPARK_APP_NAME", value: "zeppelin_app" }
+  - {var: "HADOOP_CONF_DIR", value: "{{ hadoop_conf_dir }}" }
+  - {var: "ZEPPELIN_SPARK_USEHIVECONTEXT", value: "false" }
+  - {var: "ZEPPELIN_SPARK_CONCURRENTSQL", value: "false" }
+  - {var: "ZEPPELIN_SPARK_IMPORTIMPLICIT", value: "true" }
+  - {var: "ZEPPELIN_SPARK_MAXRESULT", value: "1500" }
+  notify: restart zeppelin
+- name: zeppelin service installed
+  tags: install_zeppelin
+  template:
+    src: templates/zeppelin.service.j2
+    dest: /lib/systemd/system/zeppelin.service
+    owner: root
+    group: root
+  register: out
+- name: reload systemctl if needed
+  tags: install_zeppelin
+  command: systemctl daemon-reload
+  when: out.changed
+- name: zeppelin is running
+  tags: install_zeppelin
+  service:
+    name: zeppelin
+    state: started
+
 

@@ -38,7 +38,6 @@
   - name: apply sysctl changes
     listen: apply_sysctl
     command: "sysctl -p /etc/sysctl.conf"
-
 - name: Users on head node & register worker hosts
   hosts: namenode 
   gather_facts: false
@@ -315,6 +314,7 @@
     - {var: "HADOOP_LOG_DIR", value: "{{ hadoop_log_dir }}" }
     - {var: "HADOOP_CONF_DIR", value: "{{ hadoop_conf_dir  }}" }
     - {var: "HADOOP_PID_DIR", value: "{{ hadoop_pid_dir  }}" }
+    notify: [restart_hdfs, restart_yarn]
   - name: copy script to update hadoop xml files
     tags: configure_hadoop
     copy:
@@ -643,7 +643,7 @@
     service:
       name: hdfs-namenode
       state: started
-- name: data nodes atre running
+- name: data nodes are running
   hosts: datanodes
   gather_facts: false
   become: true

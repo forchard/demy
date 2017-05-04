@@ -1,0 +1,15 @@
+[Unit]
+Description=Zeppelin service
+After=network.target
+ConditionPathExists={{ zeppelin_home }}/bin/zeppelin-daemon.sh
+
+[Service]
+Type=forking
+User=spark
+ExecStart={{ zeppelin_home }}/bin/zeppelin-daemon.sh start
+ExecStop={{ zeppelin_home }}/bin/zeppelin-daemon.sh stop
+Restart=on-failure
+PIDFile={{ zeppelin_run }}/PID/zeppelin-spark-{{ inventory_hostname.split('.')[0] }}.pid
+
+[Install]
+WantedBy=multi-user.target

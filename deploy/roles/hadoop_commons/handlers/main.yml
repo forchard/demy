@@ -49,4 +49,15 @@
       state: restarted
     when: ynm_status.stat.exists
     listen: restart yarn
+  - name: zeppelin service exists 
+    stat: path=/lib/systemd/system/zeppzlin.service
+    register: zeppelin_status
+    listen: restart zeppelin
+  - name: restart zeppelin
+    service: 
+      name: zeppelin
+      state: restarted
+    when: zeppelin_status.stat.exists
+    listen: restart zeppelin
+
 

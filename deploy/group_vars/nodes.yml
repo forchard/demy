@@ -31,7 +31,12 @@ hdfs_file_buffer_bytes: "{{ 128*1024 }}"
 spark_ver: 2.1.0
 spark_home: "{{ hadoop_install }}/spark_home"
 spark_run: "{{ hadoop_install }}/spark_run"
+
+#Zeppelin
 zeppelin_version: "v0.7.1"
+zeppelin_home: "{{ hadoop_install }}/zeppelin_home"
+zeppelin_run: "{{ hadoop_install }}/zeppelin_run"
+zeppelin_port: "8080"
 
 #Head Node
 host_keys_to_insert: []

@@ -27,6 +27,7 @@ hadoop_pid_dir: "{{ hadoop_run }}/PID"
 hdfs_port: 8020
 hdfs_file_buffer_bytes: "{{ 128*1024 }}"
 
+
 #Spark
 spark_ver: 2.1.0
 spark_home: "{{ hadoop_install }}/spark_home"
@@ -49,6 +50,11 @@ hdfs_default_replication: 2
 
 #Data node
 hdfs_datanode_dir: "{{ hadoop_run}}/data"
+
+#Httpsfs node
+hdfs_http_port: 8081
+hdfs_http_admin_port: 8082
+
 
 #yarn
 yarn_log_dir: "{{ hadoop_run }}/logs/yarn"

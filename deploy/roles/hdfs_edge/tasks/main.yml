@@ -1,0 +1,27 @@
+---
+- name: httpfs environment file present
+  tags: install_httpfs
+  copy:
+    content: "#!/usr/bin/env bash"
+    dest: "{{ hadoop_conf_dir }}/httpfs-env.sh"
+    force: false
+    owner: "hadoop"
+    group: "hadoop"
+    mode: "0770"
+- name: update httpfs-env.sh
+  tags: install_httpfs
+  lineinfile:
+    path: "{{ hadoop_conf_dir }}/httpfs-env.sh" 
+    regexp: "^export {{ item.var  }}"
+    line: "export {{ item.var }}={{ item.value }}"
+  with_items:
+  - {var: "HTTPFS_HTTP_PORT", value: "{{ hdfs_http_port }}" }
+  - {var: "HTTPFS_ADMIN_PORT", value: "{{ hdfs_http_admin_port }}" }
+  - {var: "HADOOP_LOG_DIR", value: "{{ hadoop_log_dir }}" }
+  - {var: "HTTPFS_LOG", value: "{{ hadoop_log_dir }}" }
+  - {var: "HTTPFS_TEMP", value: "{{ hadoop_run }}/httpfs_tmp" }
+    
+    
+    
+ 
+

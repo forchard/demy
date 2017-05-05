@@ -6,6 +6,7 @@ ConditionPathExists={{ zeppelin_home }}/bin/zeppelin-daemon.sh
 [Service]
 Type=forking
 User=spark
+WorkingDirectory={{ zeppelin_run }}
 ExecStart={{ zeppelin_home }}/bin/zeppelin-daemon.sh start
 ExecStop={{ zeppelin_home }}/bin/zeppelin-daemon.sh stop
 Restart=on-failure

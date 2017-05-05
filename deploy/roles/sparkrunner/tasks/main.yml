@@ -127,7 +127,7 @@
     content: "#!/usr/bin/env bash"
     dest: "{{ spark_home }}/conf/spark-env.sh"
     force: false
-    owner: "spark"
+    owner: "hadoop"
     group: "hadoop"
     mode: "0770"
 - name: get ip to use
@@ -263,6 +263,7 @@
   - {var: "zeppelin.anonymous.allowed", value: "true" }
   - {var: "zeppelin.interpreter.localRepo", value: "{{ zeppelin_run }}/local-repo" }
   - {var: "zeppelin.dep.localrepo", value: "{{ zeppelin_run }}/local-repo" }
+  - {var: "zeppelin.interpreter.dir", value: "{{ zeppelin_home }}/interpreter"} 
   notify: restart zeppelin
 - name: zeppelin environment file present
   tags: install_zeppelin
@@ -301,6 +302,7 @@
     owner: root
     group: root
   register: out
+  notify: restart zeppelin
 - name: reload systemctl if needed
   tags: install_zeppelin
   command: systemctl daemon-reload

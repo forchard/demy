@@ -6,6 +6,7 @@ ConditionPathExists={{ yarn_nodemanager_local_dirs }}
 [Service]
 Type=forking
 User=yarn
+WorkingDirectory={{ hadoop_run }}
 ExecStart={{ hadoop_home }}/sbin/yarn-daemon.sh --config {{ hadoop_conf_dir }} start nodemanager 
 ExecStop={{ hadoop_home }}/sbin/yarn-daemon.sh --config {{ hadoop_conf_dir }} stop nodemanager
 Restart=on-failure

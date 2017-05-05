@@ -331,7 +331,9 @@
     with_items:
     - {var: "fs.defaultFS", value: "hdfs://{{ groups['namenode'][0].split('.')[0] }}-{{ hadoop_cluster_name }}:{{ hdfs_port }}" }
     - {var: "io.file.buffer.size", value: "{{ hdfs_file_buffer_bytes }}" }
-    notify: restart hdfs
+    - {var: "hadoop.proxyuser.spark.hosts", value: "{{ groups['hdfs_edge'][0].split('.')[0] }}" }
+    - {var: "hadoop.proxyuser.super.groups", value: "*" }
+    notify: [restart hdfs, restart yarn]
   environment:
     http_proxy: "{{ proxy_host }}:{{ proxy_port }}"
     https_proxy: "{{ proxy_host }}:{{ proxy_port }}"
@@ -753,6 +755,14 @@
   gather_facts: false
   become: true
   roles: [sparkrunner]
+  environment:
+    http_proxy: "{{ proxy_host }}:{{ proxy_port }}"
+    https_proxy: "{{ proxy_host }}:{{ proxy_port }}"
+- name: install httpfs (gateway node)
+  hosts: hdfs_edge
+  gather_facts: false
+  become: true
+  roles: [hdfs_edge]
   environment:
     http_proxy: "{{ proxy_host }}:{{ proxy_port }}"
     https_proxy: "{{ proxy_host }}:{{ proxy_port }}"

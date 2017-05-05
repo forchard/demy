@@ -6,6 +6,7 @@ ConditionPathExists={{ hdfs_namenode_dir }}/current
 [Service]
 Type=forking
 User=hdfs
+WorkingDirectory={{ hadoop_run }}
 ExecStart={{ hadoop_home }}/sbin/hadoop-daemon.sh --config {{ hadoop_conf_dir }} --script hdfs start namenode
 ExecStop={{ hadoop_home }}/sbin/hadoop-daemon.sh --config {{ hadoop_conf_dir }} --script hdfs stop namenode
 Restart=on-failure

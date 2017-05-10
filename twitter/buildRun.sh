@@ -1,0 +1,2 @@
+sbt package
+./run.sh

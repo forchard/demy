@@ -3,3 +3,6 @@ deploy/ansible.cfg
 deploy/test.yml
 *.retry
 *.swp
+twitter/project
+twitter/target
+twitter/*.jar

@@ -168,6 +168,8 @@
   - {var: "spark.eventLog.dir", value: "hdfs:///spark/logs" }
   - {var: "spark.yarn.archive", value: "hdfs:///spark/spark-jars.tgz" }
   - {var: "spark.yarn.stagingDir", value: "/spark" }
+  - {var: "spark.executorEnv.JAVA_HOME", value: "{{ java_home_spark }}" }
+  - {var: "spark.yarn.appMasterEnv.JAVA_HOME", value: "{{ java_home_spark }}" }
 - name: getting zeppelin
   tags: install_zeppelin
   become_user: hadoop

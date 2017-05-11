@@ -78,7 +78,7 @@ yarn_hosts_exclude: "{{ hadoop_conf_dir }}/nodemanagers-excluded"
 #Node managers
 yarn_nodemanager_check_vmem: true
 yarn_nodemanager_check_pmem: true
-yarn_nodemanager_vmem_pmem_ratio: 2.1
+yarn_nodemanager_vmem_pmem_ratio: 4.1
 yarn_nodemanager_local_dirs: "{{ hadoop_run }}/yarn-nm"
 yarn_nodemanager_log_seconds: "{{ 3600 * 24 }}"
 yarn_nodemanager_remote_log_dir: "/logs/yarn" 

@@ -3,27 +3,14 @@ import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SQLContext
-import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
-/*import java.io.File
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import org.apache.http.HttpHost;
-import org.apache.http.client.config.RequestConfig;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
-import org.apache.http.entity.StringEntity;
-*/
 import twitter4j._
 import twitemy._
 
 object Execute {
   def main(args: Array[String]) {
-
     val conf = new SparkConf().setAppName("Twitemy")
     val sc = new SparkContext(conf)
     val sql = new SQLContext(sc)
@@ -35,8 +22,9 @@ object Execute {
     val accessTokenSecret = sc.textFile("hdfs:///spark/twitter/AccessTokenSecret").collect()(0)
     val proxyHost = sc.textFile("hdfs:///spark/twitter/ProxyHost").collect()(0)
     val proxyPort = sc.textFile("hdfs:///spark/twitter/ProxyPort").collect()(0).toInt
-    val track = sc.textFile("hdfs:///spark/twitter/track").collect()
-    val buffer = Array.fill[String](10000)("")  
+    val track = sc.textFile("hdfs:///spark/twitter/Track").collect()
+    val langs = sc.textFile("hdfs:///spark/twitter/Language").collect()
+    val buffer = Array.fill[String](3000)("")  
     val blength = buffer.length
     val minChunk = 1000
     var readStart = 0
@@ -69,6 +57,7 @@ object Execute {
           buffer(insertEnd) = tweet;
           insertEnd = (insertEnd + 1) % blength;
           println(s"$readStart >> $insertEnd")
+
         }
       }
     }
@@ -77,6 +66,7 @@ object Execute {
     twitterStream.addListener(Util.simpleStatusListener)
     val filter = new FilterQuery();
     filter.track(track:_*);
+    filter.language(langs:_*);
     twitterStream.filter(filter)
     while(true) {
       val start = readStart
@@ -93,7 +83,7 @@ object Execute {
         readStart = (start + minChunk) % blength
         println(s"$readStart >> $insertEnd")
         val rdd = sc.parallelize(toWrite, 1)
-        var time = LocalDate.now;    
+        var time = LocalDateTime.now;    
         val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH");
         val fileName = s"diabetes-twitter-${time.format(formatter)}";
         rdd.toDF.write.mode("append").format("text").option("compression", "gzip").save(s"hdfs:///data/twitter/diabetes/$fileName")
@@ -108,39 +98,4 @@ object Execute {
   }
 }
 
-/*    val httpclient = HttpClients.createDefault();
-    val authorizationString = s"Bearer $accessToken";
-    try {
-        val target = new HttpHost("stream.twitter.com", 443, "https");
-        val proxy = new HttpHost("proxy.admin2.oxa.tld", 3128, "http");
-
-        val config = RequestConfig.custom()
-                .setProxy(proxy)
-                .build();
-
-        val request  = new HttpPost("/1.1/statuses/filter.json");
-        val postEntity = new StringEntity("track=diabetes","UTF-8");
-        postEntity.setContentType("application/x-www-form-urlencoded")
-        request.setEntity(postEntity)
-        request.addHeader("Authorization", authorizationString);
-        request.setConfig(config);
-
-        println("Executing request " + request.getRequestLine() + " to " + target + " via " + proxy);
-        //http://stackoverflow.com/questions/9906003/incrementally-handling-twitters-streaming-api-using-apache-httpclient
-        val response = httpclient.execute(target, request);
-        try {
-            println("----------------------------------------");
-            println(response.getStatusLine());
-            val reader = new BufferedReader(new InputStreamReader(response.getEntity().getContent()))
-            var line:java.lang.String=null;
-            while( {line = reader.readLine();  line!= null} ){
-               println(s"Line : $line")
-            }
-        } finally {
-            response.close();
-        }
-    } finally {
-        httpclient.close();
-    }
-    */
 

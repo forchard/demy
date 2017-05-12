@@ -524,6 +524,14 @@
     - {var: "yarn.resourcemanager.nodes.exclude-path", value: "{{ yarn_hosts_exclude }}" }
     - {var: "yarn.resourcemanager.bind-host", value: "{{ groups['resourcemanager'][0].split('.')[0] }}-{{ hadoop_cluster_name }}" }
     notify: restart yarn
+  - name: configure queues
+    tags: configure_yarn
+    command: "/tmp/xmlpresent.sh --container-xpath \"/configuration\" --node \"property\" --property-node name --property-text \"{{ item.var  }}\" --value-node value --value \"{{ item.value  }}\" --file {{ hadoop_conf_dir }}/capacity-scheduler.xml"
+    register: out
+    changed_when: not out.stdout.startswith('NO-CHANGE')
+    with_items:
+    - {var: "yarn.scheduler.capacity.maximum-am-resource-percent", value: "{{ yarn_applicationmanager_max_percent }}" }
+    notify: apply queues
 - name: configure yarn (node manager)
   hosts: nodemanagers
   gather_facts: false

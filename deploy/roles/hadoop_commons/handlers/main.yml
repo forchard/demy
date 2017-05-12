@@ -59,5 +59,9 @@
       state: restarted
     when: zeppelin_status.stat.exists
     listen: restart zeppelin
-
+  - name: apply queue configuration
+    become_user: yarn
+    command: |
+      {{ hadoop_home }}/bin/yarn rmadmin -refreshQueues 
+    listen: apply queues
 

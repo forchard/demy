@@ -74,6 +74,7 @@ yarn_container_max_mb: 4096
 yarn_container_max_cores: 4
 yarn_hosts: "{{ hadoop_conf_dir }}/nodemanagers"
 yarn_hosts_exclude: "{{ hadoop_conf_dir }}/nodemanagers-excluded" 
+yarn_applicationmanager_max_percent: "0.3"
 
 #Node managers
 yarn_nodemanager_check_vmem: true
@@ -84,8 +85,8 @@ yarn_nodemanager_log_seconds: "{{ 3600 * 24 }}"
 yarn_nodemanager_remote_log_dir: "/logs/yarn" 
 yarn_nodemanager_remote_log_dir_suffix: "logs" 
 yarn_nodemanager_detect_hardware: true
-yarn_nodemanager_memory_mb: "-1"
-yarn_nodemanager_system_reserved_memory_mb: "-1"
+yarn_nodemanager_memory_mb: "2048"
+yarn_nodemanager_system_reserved_memory_mb: "1024"
 yarn_nodemanager_resource_vcores: "-1"
 yarn_nodemanager_logical_procs_as_cores: true
 yarn_nodemanager_resource_pcores_multiplier: 1

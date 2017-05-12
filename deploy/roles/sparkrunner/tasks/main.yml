@@ -251,6 +251,29 @@
     owner: "hadoop"
     group: "hadoop"
     mode: "0751"
+- name: zeppelin custom start present
+  tags: install_zeppelin
+  copy:
+    content: |
+      #!/bin/sh
+      sudo -u spark {{ zeppelin_home }}/bin/zeppelin-daemon.sh start
+    dest: "{{ zeppelin_home }}/bin/zeppelin-start-demy.sh"
+    owner: "hadoop"
+    group: "hadoop"
+    mode: "0770"
+  notify: restart zeppelin
+- name: zeppelin custom stop present
+  tags: install_zeppelin
+  copy:
+    content: |
+      #!/bin/sh
+      sudo -u yarn {{ hadoop_home }}/bin/yarn application -list | grep zeppelin_app | grep -o "application\w*" | while read -r line; do {{ hadoop_home }}/bin/yarn application -kill "$line"; done
+      sudo -u spark {{ zeppelin_home }}/bin/zeppelin-daemon.sh stop
+    dest: "{{ zeppelin_home }}/bin/zeppelin-stop-demy.sh"
+    owner: "hadoop"
+    group: "hadoop"
+    mode: "0770"
+  notify: restart zeppelin
 - name: update zeppelin-site.xml
   tags: install_zeppelin
   command: "/tmp/xmlpresent.sh --container-xpath \"/configuration\" --node \"property\" --property-node name --property-text \"{{ item.var  }}\" --value-node value --value \"{{ item.value  }}\" --file {{ zeppelin_home }}/conf/zeppelin-site.xml"
@@ -309,6 +332,8 @@
   tags: install_zeppelin
   command: systemctl daemon-reload
   when: out.changed
+- meta: flush_handlers
+  tags: install_zeppelin
 - name: zeppelin is running
   tags: install_zeppelin
   service:

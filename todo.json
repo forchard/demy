@@ -1,0 +1,15 @@
+[
+ "HDFS Backup Strategy"
+ ,"Add multi user and security"
+ ,"Add multi tenancy with queues"
+ ,"HDFS web access"
+ ,"Dynamic ressource allocation for spark containers"
+ ,"Gracefully decomissionate HDFS nodes"
+ ,"Log aggregation"
+ ,"Add Hive support"
+ ,"Migrate to Spark 2.1.1"
+ ,"Make twitter import a service"
+ ,"Make twitter import reset connection each 24 hours for updating tags"
+ ,"Pilot twitter import with ansible"
+ ,"Receive alerts when twitter is not collecting"
+]

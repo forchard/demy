@@ -1,0 +1,23 @@
+---
+- name: admin tasks for monitoring
+  hosts: nodes
+  gather_facts: false
+  become: true
+  roles: 
+  - hadoop_commons 
+  tasks:
+  - name: get processes using more memory
+    tags: check_memory
+    shell: |
+      ps -aux --sort -%mem | awk '{ vr=$5/1024 ; rs=$6/1024 ; proc=$1; $1=$2=$3=$4=$5=$6=$7=$8=$9=$10="";print proc, "#",int(vr), "#" ,int(rs), "#",$0}' | head | column -t -s "#"| less -S
+    register: out
+    changed_when: false
+  - name: output memory
+    tags: check_memory
+    delegate_to: localhost
+    become: false
+    copy: 
+      content: | 
+        {{ inventory_hostname }}:
+        {{ out.stdout }} 
+      dest: "./monitor.out.{{ inventory_hostname }}"

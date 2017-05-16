@@ -289,6 +289,11 @@
   - {var: "zeppelin.interpreter.localRepo", value: "{{ zeppelin_run }}/local-repo" }
   - {var: "zeppelin.dep.localrepo", value: "{{ zeppelin_run }}/local-repo" }
   - {var: "zeppelin.interpreter.dir", value: "{{ zeppelin_home }}/interpreter"} 
+  - {var: "spark.yarn.am.memory", value: "{{ zeppelin_driver_memory_mb }}m" }
+  - {var: "spark.yarn.am.cores", value: "{{ zeppelin_driver_cores }}" }
+  - {var: "spark.executor.instances", value: "{{ zeppelin_executors }}" }
+  - {var: "spark.executor.memory", value: "{{ zeppelin_executor_memory_mb }}m" }
+
   notify: restart zeppelin
 - name: zeppelin environment file present
   tags: install_zeppelin

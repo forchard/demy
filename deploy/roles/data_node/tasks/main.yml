@@ -1,0 +1,36 @@
+---
+- name: update hdfs-site.xml on data node
+  tags: configure_hdfs
+  command: "/tmp/xmlpresent.sh --container-xpath \"/configuration\" --node \"property\" --property-node name --property-text \"{{ item.var  }}\" --value-node value --value \"{{ item.value  }}\" --file {{ hadoop_conf_dir }}/hdfs-site.xml"
+  register: out
+  changed_when: not out.stdout.startswith('NO-CHANGE')
+  with_items:
+  - {var: "dfs.datanode.data.dir", value: "{{ hdfs_datanode_dir }}" }
+  - {var: "dfs.client.local.interfaces", value: "{{ app_network }}" }
+  - {var: "dfs.datanode.hostname", value: "{{ inventory_hostname.split('.')[0] }}-{{ hadoop_cluster_name }}"}
+  notify: restart hdfs
+- name: data node folder exists 
+  tags: hdfs_up
+  file:  
+    path: "{{ hdfs_datanode_dir }}"
+    state: directory
+    mode: 0751
+    owner: hdfs
+    group: hadoop
+- name: datanode service installed
+  tags: hdfs_up
+  template:
+    src: templates/hdfs-datanode.service.j2
+    dest: /lib/systemd/system/hdfs-datanode.service
+    owner: root
+    group: root
+  register: out
+- name: reload systemctl if needed
+  tags: hdfs_up
+  command: systemctl daemon-reload
+  when: out.changed
+- name: datanode is running
+  tags: hdfs_up
+  service:
+    name: hdfs-datanode
+    state: started

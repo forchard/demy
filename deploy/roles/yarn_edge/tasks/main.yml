@@ -1,0 +1,18 @@
+---
+- name: yarn proxy service installed
+  tags: yarn_up
+  template:
+    src: templates/yarn-proxyserver.service.j2
+    dest: /lib/systemd/system/yarn-proxyserver.service
+    owner: root
+    group: root
+  register: out
+- name: reload systemctl if needed
+  tags: yarn_up
+  command: systemctl daemon-reload
+  when: out.changed
+- name: proxy server is running
+  tags: yarn_up
+  service:
+    name: yarn-proxyserver
+    state: started

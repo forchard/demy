@@ -12,4 +12,10 @@
  ,"Make twitter import reset connection each 24 hours for updating tags"
  ,"Pilot twitter import with ansible"
  ,"Receive alerts when twitter is not collecting"
+ 
+ ,"Tweets par mot clé et estimation annuelle"
+ ,"Heat map de nb des tweets (sans lieu de l'utilisateur)"
+ ,"Algo de classification par sentiment"
+ ,"Algo de mot clés associés au diabètes"
+ ,""
 ]

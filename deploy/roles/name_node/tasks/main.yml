@@ -1,0 +1,98 @@
+---
+- name: produce expected hosts
+  tags: configure_hdfs
+  set_fact:
+    datanodes_list: "{% for i in groups['datanodes'] %}{{ i.split('.')[0]+'-'+hadoop_cluster_name+'\n' }}{%endfor%}" 
+- name: produce excluded hosts
+  tags: configure_hdfs
+  set_fact:
+    datanodes_excluded_list: "{% for i in groups['datanodes_excluded'] %}{{ i.split('.')[0]+'-'+hadoop_cluster_name+'\n' }}{%endfor%}" 
+- name: allowed/excluded hosts present
+  tags: configure_hdfs
+  copy:
+    content: ""
+    dest: "{{ item }}"
+    force: false
+    owner: "hadoop"
+    group: "hadoop"
+    mode: "0660"
+  with_items:
+  - "{{ hdfs_hosts }}"
+  - "{{ hdfs_hosts_exclude }}"
+- name: allowed hosts file
+  tags: configure_hdfs
+  blockinfile:
+    path: "{{ hdfs_hosts }}"
+    block: "{{ datanodes_list }}"
+    marker: "#{mark} list of hosts managed by ansible"
+- name: excluded hosts file
+  tags: configure_hdfs
+  blockinfile:
+    path: "{{ hdfs_hosts_exclude }}"
+    block: "{{ datanodes_excluded_list }}"
+    marker: "#{mark} list of excluded hosts managed by ansible"
+- name: copy script to update hadoop xml files
+  tags: configure_hdfs
+  copy:
+    src: "./xmlpresent.sh"
+    dest: "/tmp/xmlpresent.sh"
+    owner: hadoop
+    group: hadoop
+    mode: 0770
+- name: get ip to use
+  tags: configure_hdfs
+  shell: "ip addr show {{ app_network  }} | grep \"inet \" | awk {'print $2'} | awk -F \"/\" {'print $1'}" 
+  register: app_ip
+  changed_when: false
+- tags: configure_hdfs
+  set_fact:
+    app_ip: "{{ app_ip.stdout }}"
+- name: update hdfs-site.xml on head node
+  tags: configure_hdfs
+  command: "/tmp/xmlpresent.sh --container-xpath \"/configuration\" --node \"property\" --property-node name --property-text \"{{ item.var  }}\" --value-node value --value \"{{ item.value  }}\" --file {{ hadoop_conf_dir }}/hdfs-site.xml"
+  register: out
+  changed_when: not out.stdout.startswith('NO-CHANGE')
+  with_items:
+  - {var: "dfs.client.local.interfaces", value: "{{ app_network }}" }
+  - {var: "dfs.namenode.name.dir", value: "file://{{ hdfs_namenode_dir }}" }
+  - {var: "dfs.hosts", value: "{{ hdfs_hosts }}" }
+  - {var: "dfs.hosts.exclude", value: "{{ hdfs_hosts_exclude }}" }
+  - {var: "dfs.blocksize", value: "{{ hdfs_blocksize_bytes }}" }
+  - {var: "dfs.namenode.handler.count", value: "{{ hdfs_namenode_thread_count }}" }
+  - {var: "dfs.replication", value: "{{ hdfs_default_replication }}" }
+  - {var: "dfs.namenode.rpc-bind-host", value: "{{ groups['namenode'][0].split('.')[0] }}-{{ hadoop_cluster_name }}" }
+  - {var: "dfs.namenode.servicerpc-bind-host", value: "{{ groups['namenode'][0].split('.')[0] }}-{{ hadoop_cluster_name }}" }
+  notify: restart hdfs
+- name: name node folder exists 
+  tags: hdfs_up
+  file:  
+    path: "{{ hdfs_namenode_dir }}"
+    state: directory
+    mode: 0751
+    owner: hdfs
+    group: hadoop
+- name: name node formatted
+  tags: hdfs_up
+  command: "{{ hadoop_home }}/bin/hdfs namenode -format {{ hadoop_cluster_name }}" 
+  args:
+    chdir: "{{ hadoop_install }}"
+    creates: "{{ hdfs_namenode_dir }}/current"
+  become: true 
+  become_user: hdfs
+- name: namenode service installed
+  tags: hdfs_up
+  template:
+    src: templates/hdfs-namenode.service.j2
+    dest: /lib/systemd/system/hdfs-namenode.service
+    owner: root
+    group: root
+  register: out
+- name: reload systemctl if needed
+  tags: hdfs_up
+  command: systemctl daemon-reload
+  when: out.changed
+- name: namenode is running
+  tags: hdfs_up
+  service:
+    name: hdfs-namenode
+    state: started

@@ -1,0 +1,18 @@
+---
+- name: yarn resource manager service installed
+  tags: yarn_up
+  template:
+    src: templates/yarn-resourcemanager.service.j2
+    dest: /lib/systemd/system/yarn-resourcemanager.service
+    owner: root
+    group: root
+  register: out
+- name: reload systemctl if needed
+  tags: yarn_up
+  command: systemctl daemon-reload
+  when: out.changed
+- name: resource manager is running
+  tags: yarn_up
+  service:
+    name: yarn-resourcemanager
+    state: started

@@ -6,7 +6,7 @@
   changed_when: not out.stdout.startswith('NO-CHANGE')
   with_items:
   - {var: "dfs.datanode.data.dir", value: "{{ hdfs_datanode_dir }}" }
-  - {var: "dfs.client.local.interfaces", value: "{{ app_network }}" }
+  - {var: "dfs.client.local.interfaces", value: "{{ back_network }}" }
   - {var: "dfs.datanode.hostname", value: "{{ inventory_hostname.split('.')[0] }}-{{ hadoop_cluster_name }}"}
   notify: restart hdfs
 - name: data node folder exists 

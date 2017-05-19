@@ -1,4 +1,8 @@
 ---
+- name: hadoop group present workers
+  group:
+    name: hadoop
+  tags : create_users
 - name: users present 
   tags : create_users 
   user: 

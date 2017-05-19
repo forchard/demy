@@ -132,7 +132,7 @@
     mode: "0770"
 - name: get ip to use
   tags: configure_spark
-  shell: "ip addr show {{ app_network  }} | grep \"inet \" | awk {'print $2'} | awk -F \"/\" {'print $1'}" 
+  shell: "ip addr show {{ front_network  }} | grep \"inet \" | awk {'print $2'} | awk -F \"/\" {'print $1'}" 
   register: app_ip
   changed_when: false
 - tags: configure_spark
@@ -250,7 +250,7 @@
     state: directory
     owner: "hadoop"
     group: "hadoop"
-    mode: "0751"
+    mode: "0771"
 - name: zeppelin custom start present
   tags: install_zeppelin
   copy:

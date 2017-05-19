@@ -28,7 +28,7 @@
     line: "net.ipv6.conf.all.disable_ipv6 = 1"
   notify: apply_sysctl    
 - name: get ip to use
-  shell: "ip addr show {{ app_network  }} | grep \"inet \" | awk {'print $2'} | awk -F \"/\" {'print $1'}" 
+  shell: "ip addr list | grep \"{{ front_network  }}\\|{{ back_network  }}\" | grep \"inet \" | awk {'print $2'} | awk -F \"/\" {'print $1'}" 
   register: app_ip
   changed_when: false
   tags: etc_hosts
@@ -53,13 +53,14 @@
 - name: jessie backports is activated
   apt_repository:
     repo: deb http://ftp.fr.debian.org/debian jessie-backports main
-- name: ensure java open jdk is installed 
+- name: ensure java open jdk is installed and we got a new maven version
   tags: java
   apt:
-    name: "{{ java_package }}"
+    name: "{{ item }}"
     default_release: jessie-backports
     update_cache: true
-  with_items: ["{{ java_package }}", "{{ java_package_spark }}"]
+    state: latest
+  with_items: ["{{ java_package }}", "{{ java_package_spark }}", "maven" ]
   notify: set_java_default
 - name: set java home
   tags: java
@@ -74,7 +75,7 @@
     name: "{{ item }}"
     update_cache: yes
     cache_valid_time: 300
-  with_items: [maven, build-essential, g++, autoconf, automake, libtool, cmake, zlib1g-dev, pkg-config, libssl-dev, xmlstarlet, r-base, git, npm, libfontconfig ]
+  with_items: [build-essential, g++, autoconf, automake, libtool, cmake, zlib1g-dev, pkg-config, libssl-dev, xmlstarlet, r-base, git, npm, libfontconfig ]
   notify: [ set_npm_proxy, set_cran_mirror ]
 - name: download google protocol buffer
   command: "wget -nc https://github.com/google/protobuf/releases/download/v{{ protobuf_ver }}/protobuf-{{ protobuf_ver }}.tar.gz"
@@ -177,7 +178,7 @@
   lineinfile:
     path: "{{ hadoop_conf_dir }}/hadoop-env.sh" 
     regexp: "^export {{ item.var  }}"
-    line: "export {{ item.var }}={{ item.value }}"
+    line: "export {{ item.var }}=\"{{ item.value }}\""
   with_items:
   - {var: "JAVA_HOME", value: "{{ java_home  }}" }
   - {var: "HADOOP_LOG_DIR", value: "{{ hadoop_log_dir }}" }
@@ -187,8 +188,8 @@
   - {var: "HADOOP_DATANODE_OPTS", value: "-Xmx{{ hdfs_datanode_daemon_memory_mb }}m" }
   - {var: "YARN_RESOURCEMANAGER_OPTS", value: "-Xmx{{ yarn_resourcemanager_daemon_memory_mb }}m" }
   - {var: "YARN_NODEMANAGER_OPTS", value: "-Xmx{{ yarn_nodemanager_daemon_memory_mb }}m" }
-  - {var: "YARN_PROXYSERVER_OPTS ", value: "-Xmx{{ yarn_webproxy_daemon_memory_mb  }}m" }
-  - {var: "HADOOP_JOB_HISTORYSERVER_OPTS", value: "{{ mapreduce_jobhistory_memory_mb }}m" }
+  - {var: "YARN_PROXYSERVER_OPTS", value: "-Xmx{{ yarn_webproxy_daemon_memory_mb  }}m" }
+  - {var: "HADOOP_JOB_HISTORYSERVER_OPTS", value: "-Xmx{{ mapreduce_jobhistory_memory_mb }}m" }
   notify: [restart hdfs, restart yarn]
 - name: copy script to update hadoop xml files
   tags: configure_hadoop
@@ -258,14 +259,6 @@
   - {var: "yarn.resourcemanager.bind-host", value: "{{ groups['resourcemanager'][0].split('.')[0] }}-{{ hadoop_cluster_name }}" }
   - {var: "yarn.web-proxy.address", value: "{{ groups['yarn_edge'][0].split('.')[0] }}-{{ hadoop_cluster_name }}:{{ yarn_webproxy_port }}" }
   notify: restart yarn
-- name: configure queues
-  tags: configure_yarn
-  command: "/tmp/xmlpresent.sh --container-xpath \"/configuration\" --node \"property\" --property-node name --property-text \"{{ item.var  }}\" --value-node value --value \"{{ item.value  }}\" --file {{ hadoop_conf_dir }}/capacity-scheduler.xml"
-  register: out
-  changed_when: not out.stdout.startswith('NO-CHANGE')
-  with_items:
-  - {var: "yarn.scheduler.capacity.maximum-am-resource-percent", value: "{{ yarn_applicationmanager_max_percent }}" }
-  notify: apply queues
 - name: update yarn-site.xml on node managers
   tags: configure_yarn
   command: "/tmp/xmlpresent.sh --container-xpath \"/configuration\" --node \"property\" --property-node name --property-text \"{{ item.var  }}\" --value-node value --value \"{{ item.value  }}\" --file {{ hadoop_conf_dir }}/yarn-site.xml"

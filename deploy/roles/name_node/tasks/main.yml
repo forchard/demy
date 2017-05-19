@@ -41,7 +41,7 @@
     mode: 0770
 - name: get ip to use
   tags: configure_hdfs
-  shell: "ip addr show {{ app_network  }} | grep \"inet \" | awk {'print $2'} | awk -F \"/\" {'print $1'}" 
+  shell: "ip addr show {{ back_network  }} | grep \"inet \" | awk {'print $2'} | awk -F \"/\" {'print $1'}" 
   register: app_ip
   changed_when: false
 - tags: configure_hdfs
@@ -53,7 +53,7 @@
   register: out
   changed_when: not out.stdout.startswith('NO-CHANGE')
   with_items:
-  - {var: "dfs.client.local.interfaces", value: "{{ app_network }}" }
+  - {var: "dfs.client.local.interfaces", value: "{{ back_network }}" }
   - {var: "dfs.namenode.name.dir", value: "file://{{ hdfs_namenode_dir }}" }
   - {var: "dfs.hosts", value: "{{ hdfs_hosts }}" }
   - {var: "dfs.hosts.exclude", value: "{{ hdfs_hosts_exclude }}" }

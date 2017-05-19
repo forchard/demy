@@ -4,7 +4,8 @@ proxy_host: proxy.admin2.oxa.tld
 proxy_port: 3128 
 cran_mirror: http://cran.irsn.fr
 apache_mirror: http://mirrors.ircam.fr
-app_network: prostore
+back_network: prostore
+front_network: proback
 java_home: /usr/lib/jvm/java-7-openjdk-amd64
 java_home_spark: /usr/lib/jvm/java-8-openjdk-amd64
 java_package: openjdk-7-jdk
@@ -29,7 +30,7 @@ hdfs_file_buffer_bytes: "{{ 128*1024 }}"
 
 
 #Spark
-spark_ver: 2.1.0
+spark_ver: 2.1.1
 spark_home: "{{ hadoop_install }}/spark_home"
 spark_run: "{{ hadoop_install }}/spark_run"
 

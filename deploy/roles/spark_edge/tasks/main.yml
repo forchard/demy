@@ -149,6 +149,10 @@
   - {var: "HADOOP_CONF_DIR", value: "{{ hadoop_conf_dir  }}" }
   - {var: "SPARK_LOCAL_DIRS", value: "{{ spark_run }}" }
   - {var: "SPARK_LOCAL_IP", value: "{{ app_ip }}" }
+  - {var: "SPARK_LOG_DIR", value: "{{ spark_run }}/logs"}
+  - {var: "SPARK_PID_DIR", value: "{{ spark_run }}/PID" }
+  - {var: "HIVE_SERVER2_THRIFT_PORT", value: "{{ spark_odbc_port }}" }
+  - {var: "SPARK_MASTER", value: "yarn"} 
 - name: spark defaults present 
   tags: configure_spark
   copy:
@@ -283,6 +287,16 @@
   - {var: "zeppelin.server.addr", value: "0.0.0.0" }
   - {var: "zeppelin.server.port", value: "{{ zeppelin_port  }}" }
   - {var: "zeppelin.war.tempdir", value: "{{ zeppelin_run }}/wartemp" }
+  - {var: "zeppelin.server.ssl.port", value: "{{ zeppelin_https_port  }}" }
+  - {var: "zeppelin.ssl", value: "{{ zeppelin_https_enabled }}" }
+  - {var: "zeppelin.ssl.keystore.path", value: "key_store.jks" }
+  - {var: "zeppelin.ssl.keystore.type", value: "JKS" }
+  - {var: "zeppelin.ssl.keystore.password", value: "{{ zeppelin_keystore_pass }}" }
+  - {var: "zeppelin.ssl.key.manager.password", value: "{{ zeppelin_keystore_pass }}" }
+  - {var: "zeppelin.ssl.client.auth", value: "{{ zeppelin_https_cert_auth_enabled }}" }
+  - {var: "zeppelin.ssl.truststore.path", value: "key_store.jks" }
+  - {var: "zeppelin.ssl.truststore.type", value: "JKS" }
+  - {var: "zeppelin.ssl.truststore.password", value: "{{ zeppelin_keystore_pass }}" }
   - {var: "zeppelin.notebook.dir", value: "{{ zeppelin_run }}/notebooks" }
   - {var: "zeppelin.interpreter.connect.timeout", value: "{{ 30 * 1000 }}" }
   - {var: "zeppelin.anonymous.allowed", value: "true" }
@@ -293,7 +307,6 @@
   - {var: "spark.yarn.am.cores", value: "{{ zeppelin_driver_cores }}" }
   - {var: "spark.executor.instances", value: "{{ zeppelin_executors }}" }
   - {var: "spark.executor.memory", value: "{{ zeppelin_executor_memory_mb }}m" }
-
   notify: restart zeppelin
 - name: zeppelin environment file present
   tags: install_zeppelin
@@ -337,6 +350,16 @@
   tags: install_zeppelin
   command: systemctl daemon-reload
   when: out.changed
+- name: tls keystore exists
+  tags: install_zeppelin
+  become_user: spark
+  shell: |
+    keytool -import -v -trustcacerts -alias demy -file "{{ zeppelin_https_bundle_cert }}" -keystore "{{ zeppelin_home  }}/conf/key_store.jks" -keypass "{{ zeppelin_keystore_pass }}" -storepass "{{ zeppelin_keystore_pass }}"
+    openssl pkcs12 -inkey "{{ zeppelin_https_private_key }}" -in "{{ zeppelin_https_bundle_cert }}" -export -out "{{ zeppelin_home}}/conf/bundle-with-key.pkcs12" -password "pass:{{ zeppelin_keystore_pass }}"
+    keytool -importkeystore -srckeystore "{{ zeppelin_home}}/conf/bundle-with-key.pkcs12" -srcstoretype PKCS12 -destkeystore "{{ zeppelin_home  }}/conf/key_store.jks" -srcstorepass "{{ zeppelin_keystore_pass }}" -deststorepass "{{ zeppelin_keystore_pass }}"
+  args:
+    creates: "{{ zeppelin_home }}/conf/key_store.jks" 
+  notify: restart zeppelin
 - meta: flush_handlers
   tags: install_zeppelin
 - name: zeppelin is running

@@ -1,3 +1,4 @@
+#general
 ansible_become_pass: "{{lookup('keyring', 'epi-servers bgdta')}}"
 decrypt_disk_pass: "{{lookup('keyring', 'epi-servers disks')}}"
 proxy_host: proxy.admin2.oxa.tld
@@ -25,6 +26,7 @@ hadoop_log_dir: "{{ hadoop_run }}/logs/hadoop"
 hadoop_conf_dir: "{{ hadoop_home }}/etc/hadoop"
 hadoop_pid_dir: "{{ hadoop_run }}/PID"
 
+#hdfs
 hdfs_port: 8020
 hdfs_file_buffer_bytes: "{{ 128*1024 }}"
 
@@ -33,12 +35,19 @@ hdfs_file_buffer_bytes: "{{ 128*1024 }}"
 spark_ver: 2.1.1
 spark_home: "{{ hadoop_install }}/spark_home"
 spark_run: "{{ hadoop_install }}/spark_run"
+spark_odbc_port: "10000"
 
 #Zeppelin
 zeppelin_version: "v0.7.1"
 zeppelin_home: "{{ hadoop_install }}/zeppelin_home"
 zeppelin_run: "{{ hadoop_install }}/zeppelin_run"
 zeppelin_port: "8080"
+zeppelin_https_enabled: "true"
+zeppelin_https_cert_auth_enabled: "false"
+zeppelin_https_port: "8443"
+zeppelin_https_bundle_cert: "/space/etc/ssl/wildcard.voozanoo.net.bundle.crt"
+zeppelin_https_private_key: "/space/etc/ssl/wildcard.voozanoo.net.key"
+zeppelin_keystore_pass: "{{lookup('keyring', 'epi-servers zeppelin_keystore_pass')}}"
 zeppelin_driver_memory_mb: "512m"
 zeppelin_driver_cores: "1"
 zeppelin_executors: "3"

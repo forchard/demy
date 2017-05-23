@@ -174,6 +174,23 @@
   - {var: "spark.yarn.stagingDir", value: "/spark" }
   - {var: "spark.executorEnv.JAVA_HOME", value: "{{ java_home_spark }}" }
   - {var: "spark.yarn.appMasterEnv.JAVA_HOME", value: "{{ java_home_spark }}" }
+- name: thrift  service installed
+  tags: configure_spark
+  template:
+    src: templates/thrift-server.service.j2
+    dest: /lib/systemd/system/spark-thrift.service
+    owner: root
+    group: root
+  register: out
+  notify: restart spark-thrift
+- name: reload systemctl if needed
+  tags: configure_spark
+  command: systemctl daemon-reload
+  when: out.changed
+- name: thirft is running
+  tags: configure_spark
+  service:
+    name: spark-thrift
 - name: getting zeppelin
   tags: install_zeppelin
   become_user: hadoop
@@ -299,7 +316,7 @@
   - {var: "zeppelin.ssl.truststore.password", value: "{{ zeppelin_keystore_pass }}" }
   - {var: "zeppelin.notebook.dir", value: "{{ zeppelin_run }}/notebooks" }
   - {var: "zeppelin.interpreter.connect.timeout", value: "{{ 30 * 1000 }}" }
-  - {var: "zeppelin.anonymous.allowed", value: "true" }
+  - {var: "zeppelin.anonymous.allowed", value: "{{ zeppelin_anonymous_enabled }}" }
   - {var: "zeppelin.interpreter.localRepo", value: "{{ zeppelin_run }}/local-repo" }
   - {var: "zeppelin.dep.localrepo", value: "{{ zeppelin_run }}/local-repo" }
   - {var: "zeppelin.interpreter.dir", value: "{{ zeppelin_home }}/interpreter"} 
@@ -360,12 +377,33 @@
   args:
     creates: "{{ zeppelin_home }}/conf/key_store.jks" 
   notify: restart zeppelin
+- name: shiro config file
+  tags: install_zeppelin
+  copy:
+    content: |
+      [users]
+      [main]
+      [roles]
+      [urls]
+    dest: "{{ zeppelin_home }}/conf/shiro.ini"
+    force: false
+    owner: "hadoop"
+    group: "hadoop"
+    mode: "0640"
+- name: updating shiro config
+  tags: install_zeppelin
+  lineinfile: 
+    path: "{{ zeppelin_home }}/conf/shiro.ini"
+    insertafter: "^\\[{{ item[0] }}\\]"
+    regexp: "^{{ item[1] }}"
+    line: "{{ item[2] }}"
+  with_list: "{{ zeppelin_shiro_config }}"
+  notify: restart zeppelin
 - meta: flush_handlers
   tags: install_zeppelin
 - name: zeppelin is running
   tags: install_zeppelin
   service:
     name: zeppelin
-    state: started
 
 

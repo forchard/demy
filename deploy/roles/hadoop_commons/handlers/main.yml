@@ -59,6 +59,16 @@
       state: restarted
     when: zeppelin_status.stat.exists
     listen: restart zeppelin
+  - name: spark thrift service exists
+    stat: path=/lib/systemd/system/spark-thrift.service
+    register: thrift_status
+    listen: restart spark-thrift
+  - name: restart zeppelin
+    service:
+      name: zeppelin
+      state: restarted
+    when: thrift_status.stat.exists
+    listen: restart spark-thrift
   - name: apply queue configuration
     become_user: yarn
     command: |

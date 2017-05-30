@@ -36,6 +36,7 @@ spark_ver: 2.1.1
 spark_home: "{{ hadoop_install }}/spark_home"
 spark_run: "{{ hadoop_install }}/spark_run"
 spark_odbc_port: "10000"
+spark_r_packages: ["classInt", "colorRamps", "devtools", "jsonlite", "Rcpp", "dplyr", "tidyr", "forecast", "ISOweek", "lubridate", "data.table", "plyr", "fBasics", "Hmisc", "ggplot2", "RColorBrewer", "colorRamps", "gridExtra", "scales", "lattice", "xtable", "mapproj", "maptools", "MASS", "sp", "rgdal", "rgeos", "raster", "surveillance", "epiR", "timeSeries", "stringr", "timeDate", "msm", "tseries", "xts", "rJava", "xlsx", "base64enc", "grDevices", "acepack", "bitops", "caTools", "curl", "Formula", "graphicsQC", "Hmisc", "httr", "latticeExtra", "magrittr", "memoise", "pixmap", "whisker", "withr", "XML", "blockrand", "randomizeR", "GADMTools", "sparklyr"]
 
 #Zeppelin
 zeppelin_version: "v0.7.1"
@@ -56,6 +57,7 @@ zeppelin_anonymous_enabled: false
 zeppelin_shiro_config:
 - [users,"fod=","fod={{lookup('keyring', 'epi-servers zeppelin_fod_pass')}},admin"]
 - [users,"stage=","stage={{lookup('keyring', 'epi-servers zeppelin_stage_pass')}},contributor"]
+- [users,"jp=","jp={{lookup('keyring', 'epi-servers zeppelin_jp_pass')}},contributor"]
 - [main,"shiro.loginUrl =", "shiro.loginUrl = /api/login"]
 - [main,"securityManager.sessionManager.globalSessionTimeout =", "securityManager.sessionManager.globalSessionTimeout = {{ 1000 * 3600 * 24 }}"]
 - [main,"securityManager.sessionManager =", "securityManager.sessionManager = $sessionManager"]

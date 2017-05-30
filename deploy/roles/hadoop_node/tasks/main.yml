@@ -53,14 +53,14 @@
 - name: jessie backports is activated
   apt_repository:
     repo: deb http://ftp.fr.debian.org/debian jessie-backports main
-- name: ensure java open jdk is installed and we got a new maven version
-  tags: java
+- name: intall jessie backports packages
+  tags: packages
   apt:
     name: "{{ item }}"
     default_release: jessie-backports
     update_cache: true
     state: latest
-  with_items: ["{{ java_package }}", "{{ java_package_spark }}", "maven" ]
+  with_items: ["{{ java_package }}", "{{ java_package_spark }}", "maven", "r-base"  ]
   notify: set_java_default
 - name: set java home
   tags: java
@@ -75,8 +75,22 @@
     name: "{{ item }}"
     update_cache: yes
     cache_valid_time: 300
-  with_items: [build-essential, g++, autoconf, automake, libtool, cmake, zlib1g-dev, pkg-config, libssl-dev, xmlstarlet, r-base, git, npm, libfontconfig ]
+  with_items: [build-essential, g++, autoconf, automake, libtool, cmake, zlib1g-dev, pkg-config, libssl-dev, xmlstarlet, git, npm, libfontconfig,pandoc, libgdal-dev, libgeos-dev, libproj-dev, proj-data, locales, curl ]
   notify: [ set_npm_proxy, set_cran_mirror ]
+- name: install R packages for Spark
+  tags: packages
+  shell: |
+    export http_proxy=http://{{ proxy_host }}:{{ proxy_port }}
+    export https_proxy=http://{{ proxy_host }}:{{ proxy_port }}
+    export ftp_proxy={{ proxy_host }}:{{ proxy_port }}
+    R -e "list.of.packages <- c(\"{{ spark_r_packages | join('\", \"') }}\"); new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,\"Package\"])]; if(length(new.packages)) install.packages(new.packages)"
+  register: out
+  failed_when: out.stderr.find("WARNING")>1
+  changed_when: out.stderr|length > 0
+  notify: restart zeppelin
+- tags: packages
+  debug:
+    msg: "{{ out }}"
 - name: download google protocol buffer
   command: "wget -nc https://github.com/google/protobuf/releases/download/v{{ protobuf_ver }}/protobuf-{{ protobuf_ver }}.tar.gz"
   args:

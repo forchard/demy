@@ -15,11 +15,43 @@
     regexp: "^export {{ item.var  }}"
     line: "export {{ item.var }}={{ item.value }}"
   with_items:
+  - {var: "HTTPFS_HTTP_HOSTNAME", value: "{{ groups['hdfs_edge'][0].split('.')[0] }}-{{ hadoop_cluster_name }}" }
   - {var: "HTTPFS_HTTP_PORT", value: "{{ hdfs_http_port }}" }
   - {var: "HTTPFS_ADMIN_PORT", value: "{{ hdfs_http_admin_port }}" }
   - {var: "HADOOP_LOG_DIR", value: "{{ hadoop_log_dir }}" }
   - {var: "HTTPFS_LOG", value: "{{ hadoop_log_dir }}" }
   - {var: "HTTPFS_TEMP", value: "{{ hadoop_run }}/httpfs_tmp" }
+- name: changing tomcat ownership 
+  tags: install_httpfs
+  file:
+    path: "{{ hadoop_home }}/share/hadoop/httpfs/"
+    owner: hdfs
+    group: hadoop
+    state: directory
+    recurse: true
+#- name: hdfs over ftp exists
+# tags: install_ftp
+# file:
+#   path: "{{ hadoop_install }}/hdfs_over_ftp-src" 
+#   owner: hdfs
+#   group: hadoop
+#   state: directory
+# name: getting ftp over hdfs
+# tags: install_ftp
+# become_user: hdfs
+# git:
+#   repo: https://github.com/hanzac/hdfs-over-ftp
+#   dest: "{{ hadoop_install }}/hdfs_over_ftp-src"
+# name: build ftp server 
+# tags: install_ftp
+# become_user: hdfs
+# shell: | 
+#   export HTTP_PROXY=http://{{ proxy_host }}:{{ proxy_port }}
+#   export HTTPS_PROXY=http://{{ proxy_host }}:{{ proxy_port }}
+#   mvn clean package -Dhttp.proxyHost={{ proxy_host }} -Dhttp.proxyPort={{ proxy_port }} -Dhttps.proxyHost={{ proxy_host }} -Dhttps.proxyPort={{ proxy_port }}
+# args:
+#   chdir: "{{ hadoop_install }}/hdfs_over_ftp-src"
+#   creates: "{{ hadoop_install }}/hdfs_over_ftp-src/target"
     
     
     

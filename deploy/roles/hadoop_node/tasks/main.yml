@@ -221,8 +221,10 @@
   with_items:
   - {var: "fs.defaultFS", value: "hdfs://{{ groups['namenode'][0].split('.')[0] }}-{{ hadoop_cluster_name }}:{{ hdfs_port }}" }
   - {var: "io.file.buffer.size", value: "{{ hdfs_file_buffer_bytes }}" }
-  - {var: "hadoop.proxyuser.spark.hosts", value: "{{ groups['hdfs_edge'][0].split('.')[0] }}" }
-  - {var: "hadoop.proxyuser.super.groups", value: "*" }
+  - {var: "hadoop.proxyuser.root.hosts", value: "{{ groups['hdfs_edge'][0].split('.')[0] }}-{{ hadoop_cluster_name }}" }
+  - {var: "hadoop.proxyuser.root.groups", value: "*" }
+  - {var: "hadoop.proxyuser.Spark.hosts", value: "{{ groups['hdfs_edge'][0].split('.')[0] }}-{{ hadoop_cluster_name }}" }
+  - {var: "hadoop.proxyuser.spark.groups", value: "*" }
   notify: [restart hdfs, restart yarn]
 - name: yarn log folder exist 
   tags: configure_yarn

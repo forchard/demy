@@ -58,6 +58,7 @@ zeppelin_shiro_config:
 - [users,"fod=","fod={{lookup('keyring', 'epi-servers zeppelin_fod_pass')}},admin"]
 - [users,"stage=","stage={{lookup('keyring', 'epi-servers zeppelin_stage_pass')}},contributor"]
 - [users,"jp=","jp={{lookup('keyring', 'epi-servers zeppelin_jp_pass')}},contributor"]
+- [users,"thomas=","thomas={{lookup('keyring', 'epi-servers zeppelin_thomas_pass')}},contributor"]
 - [main,"shiro.loginUrl =", "shiro.loginUrl = /api/login"]
 - [main,"securityManager.sessionManager.globalSessionTimeout =", "securityManager.sessionManager.globalSessionTimeout = {{ 1000 * 3600 * 24 }}"]
 - [main,"securityManager.sessionManager =", "securityManager.sessionManager = $sessionManager"]

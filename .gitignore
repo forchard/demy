@@ -12,4 +12,7 @@ vue/maps/shapefile/world*
 net2demy/project
 net2demy/target
 net2demy/*.jar
+geo/project
+geo/target
+geo/*.jar
 

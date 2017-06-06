@@ -22,6 +22,10 @@ import java.io.InputStream;
 import java.util.Enumeration;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+import org.apache.commons.compress.archivers.sevenz.SevenZFile
+import org.apache.commons.compress.archivers.sevenz.SevenZArchiveEntry;
+import java.nio.channels.Channels
+import org.apache.commons.compress.compressors.CompressorStreamFactory
 
 import org.apache.http.HttpHost;
 import org.apache.http.client.config.RequestConfig;
@@ -32,7 +36,6 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 import org.apache.http.entity.StringEntity;
-import org.apache.commons.compress.compressors.CompressorStreamFactory
 
 
 import net2demy._
@@ -198,8 +201,76 @@ object Execute {
         val file  = response.getEntity()
         if (file != null) {
           var instream = file.getContent();
+          //if fil us a 7zip file that should be decompressed we will do it on a directory, passing trhough a local copy
+          if(filepath.contains(".7z") && !dest.contains(".7z")) {
+            val uhome = System.getProperty("user.home")
+            val temp_f =  File.createTempFile(".7z-demy", "tmp", new File(uhome))
+            val tempout = new FileOutputStream(temp_f)
+            var totalRead:Long = 0
+            var megas = 0
+            try {
+               val buffer = new Array[Byte](1024*512);
+               var bytesRead = -1;
+               while ({bytesRead = instream.read(buffer);bytesRead != -1})
+               {  
+                  tempout.write(buffer, 0, bytesRead);
+                  totalRead = totalRead + bytesRead
+                  if(totalRead / (1024*1024) > megas + 10 ) {
+                    megas = (totalRead / (1024*1024)).toInt
+                    println(s"$megas mb written")
+                  }
+               }
+            } finally {
+              tempout.close()
+              instream.close();
+            }
+            println(s"File written to temporary storage, start deflating")
+  
+            val path = new Path(s"hdfs://$dest") 
+            //We delete the destination directory if exists
+            if(fs.exists(path)) {
+              fs.delete(path, true)
+            }
+            //Creating an empty directory
+            fs.mkdirs(path)
+            val sevenZFile = new SevenZFile(temp_f);
+            try {
+              var entry:SevenZArchiveEntry=null;
+              totalRead = 0
+               megas = 0
+              // while there are entries I process them
+              while ({entry = sevenZFile.getNextEntry(); entry != null}) {
+                val entryname = entry.getName();
+                val zname = entry.getName().replaceAll("/","-");
+                if(!entryname.endsWith("/")) {
+                  println(s"Found file $zname")
+                  val zpath = new Path(s"hdfs://$dest/$zname") 
+                  val out = fs.create(zpath, true)
+                  try {
+                    val buffer = new Array[Byte](1024*512);
+                    var bytesRead = -1;
+                    while ({bytesRead = sevenZFile.read(buffer);bytesRead != -1})
+                    {
+                       out.write(buffer, 0, bytesRead);
+                       totalRead = totalRead + bytesRead
+                       if(totalRead / (1024*1024) > megas + 10 ) {
+                         megas = (totalRead / (1024*1024)).toInt
+                         println(s"$megas uncompressed and written 2 hdfs")
+                       }
+                    }
+                  } finally {
+                    out.close()
+                  }
+
+                }
+              }
+            } finally {
+              sevenZFile.close();
+              temp_f.delete()
+            }
+          }
           //if fil us a zip file that should be decompressed we will do it on a directory
-          if(filepath.contains(".zip") && !dest.contains(".zip")) {
+          else if(filepath.contains(".zip") && !dest.contains(".zip")) {
             val path = new Path(s"hdfs://$dest") 
             //We delete the destination directory if exists
             if(fs.exists(path)) {

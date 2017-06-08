@@ -3,6 +3,7 @@ lazy val root = (project in file(".")).
     name := "Geograpgic processing",
     scalaVersion := "2.11.8",
     version := "1.0",
+    isSnapshot := true,
     libraryDependencies += "org.apache.spark" %% "spark-core" % "2.1.0",
     libraryDependencies += "org.apache.spark" %% "spark-sql" % "2.1.0",
     libraryDependencies += "org.apache.hadoop" % "hadoop-common" % "2.8.0",

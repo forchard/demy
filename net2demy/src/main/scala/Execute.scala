@@ -1,4 +1,4 @@
-package net2demy
+package demy.webReader
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import org.apache.spark.SparkConf
@@ -37,8 +37,6 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 import org.apache.http.entity.StringEntity;
 
-
-import net2demy._
 
 object Execute {
   def main(args: Array[String]) {
@@ -98,6 +96,9 @@ object Execute {
              val csv = spark.read.schema(schema).option("header", "true").option("header", "true").option("sep",";").csv(s"$dest/BAN_licence_gratuite_repartage_*.csv")
              csv.write.mode("Overwrite").parquet(s"$dest.parquet")
 
+          }
+          else if(post == "processGeo") {
+            
           }
           setCacheFootprint(dest, remoteFootprint, hadoopConf ) 
         } else {

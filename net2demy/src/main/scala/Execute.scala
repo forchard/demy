@@ -4,7 +4,7 @@ import org.apache.spark.SparkContext._
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 
-import org.apache.hadoop.fs.{FileSystem, FileUtil, Path}
+import org.apache.hadoop.fs.{FileSystem, FileUtil, Path, GlobFilter}
 
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -37,6 +37,7 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 import org.apache.http.entity.StringEntity;
 
+import demy.geo.GeoManager
 
 object Execute {
   def main(args: Array[String]) {
@@ -73,7 +74,7 @@ object Execute {
             json.write.mode("Overwrite").parquet(s"$dest.parquet")
           }
           else if(post == "processBAN") {
-
+            println("Writing BAN to parquet")
             val schema = StructType (
               StructField("id", StringType, true) ::
               StructField("nom_voie", StringType, true) ::
@@ -95,10 +96,21 @@ object Execute {
 
              val csv = spark.read.schema(schema).option("header", "true").option("header", "true").option("sep",";").csv(s"$dest/BAN_licence_gratuite_repartage_*.csv")
              csv.write.mode("Overwrite").parquet(s"$dest.parquet")
-
+             println(s"Parquet BAN succesfully written on $dest.parquet")
           }
-          else if(post == "processGeo") {
-            
+          else if(post == "processContours") {
+            val fs = FileSystem.get(hadoopConf)
+            val shapes_p = new Path(dest)
+            val parquet_p = new Path(s"$dest.parquet")
+            val filter = new GlobFilter("*.shp")
+
+            //Deleting pqraiet file if exists already
+            if(fs.exists(parquet_p))
+              fs.delete(parquet_p, true)
+            //Transforming downloaded shape files to a single parquet directory
+            fs.listStatus(shapes_p, filter).foreach(f => {
+              new GeoManager(f.getPath, spark).write2parquet(parquet_p, true)
+            }) 
           }
           setCacheFootprint(dest, remoteFootprint, hadoopConf ) 
         } else {

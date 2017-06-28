@@ -70,6 +70,13 @@
     owner: spark
     group: hadoop
     state: directory
+- name: "getting mysql jar"
+  tags: install_spark
+  get_url:
+    url: "http://central.maven.org/maven2/mysql/mysql-connector-java/5.1.39/mysql-connector-java-{{ spark_mysql_jdbc_version }}.jar"
+    dest: "{{ spark_home }}/jars"
+    owner: hadoop
+    group: hadoop
 - name: "jars packaged"
   tags: install_spark
   archive:
@@ -219,7 +226,7 @@
     export http_proxy=http://{{ proxy_host }}:{{ proxy_port }}
     export https_proxy=http://{{ proxy_host }}:{{ proxy_port }}
     export ftp_proxy={{ proxy_host }}:{{ proxy_port }}
-    R -e "list.of.packages <- c(\"evaluate\", \"knitr\"); new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,\"Package\"])]; if(length(new.packages)) install.packages(new.packages)"
+    R -e "list.of.packages <- c(\"evaluate\", \"knitr\"); new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,\"Package\"])]; if(length(new.packages)) install.packages(new.packages, repos=c('https://cran.univ-paris1.fr','https://ftp.igh.cnrs.fr/pub/CRAN/','http://cran.irsn.fr/'))"
   register: out
   failed_when: out.stderr.find("WARNING")>1
   changed_when: out.stderr|length > 0
@@ -322,8 +329,6 @@
   - {var: "zeppelin.interpreter.dir", value: "{{ zeppelin_home }}/interpreter"} 
   - {var: "spark.yarn.am.memory", value: "{{ zeppelin_driver_memory_mb }}m" }
   - {var: "spark.yarn.am.cores", value: "{{ zeppelin_driver_cores }}" }
-  - {var: "spark.executor.instances", value: "{{ zeppelin_executors }}" }
-  - {var: "spark.executor.memory", value: "{{ zeppelin_executor_memory_mb }}m" }
   notify: restart zeppelin
 - name: zeppelin environment file present
   tags: install_zeppelin
@@ -353,6 +358,7 @@
   - {var: "ZEPPELIN_SPARK_CONCURRENTSQL", value: "false" }
   - {var: "ZEPPELIN_SPARK_IMPORTIMPLICIT", value: "true" }
   - {var: "ZEPPELIN_SPARK_MAXRESULT", value: "1500" }
+  - {var: "SPARK_SUBMIT_OPTIONS", value: "\"--executor-cores {{ zeppelin_executor_cores }} --num-executors {{ zeppelin_executors }} --executor-memory {{ zeppelin_executor_memory_mb }}m\"" }
   notify: restart zeppelin
 - name: zeppelin service installed
   tags: install_zeppelin

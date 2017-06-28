@@ -83,7 +83,7 @@
     export http_proxy=http://{{ proxy_host }}:{{ proxy_port }}
     export https_proxy=http://{{ proxy_host }}:{{ proxy_port }}
     export ftp_proxy={{ proxy_host }}:{{ proxy_port }}
-    R -e "list.of.packages <- c(\"{{ spark_r_packages | join('\", \"') }}\"); new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,\"Package\"])]; if(length(new.packages)) install.packages(new.packages)"
+    R -e "list.of.packages <- c(\"{{ spark_r_packages | join('\", \"') }}\"); new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,\"Package\"])]; if(length(new.packages)) install.packages(new.packages, repos=c('https://cran.univ-paris1.fr','https://ftp.igh.cnrs.fr/pub/CRAN/','http://cran.irsn.fr/'))"
   register: out
   failed_when: out.stderr.find("WARNING")>1
   changed_when: out.stderr|length > 0
@@ -274,6 +274,14 @@
   - {var: "yarn.resourcemanager.nodes.exclude-path", value: "{{ yarn_hosts_exclude }}" }
   - {var: "yarn.resourcemanager.bind-host", value: "{{ groups['resourcemanager'][0].split('.')[0] }}-{{ hadoop_cluster_name }}" }
   - {var: "yarn.web-proxy.address", value: "{{ groups['yarn_edge'][0].split('.')[0] }}-{{ hadoop_cluster_name }}:{{ yarn_webproxy_port }}" }
+  notify: restart yarn
+- name: update capacity-scheduler.xml for resouerce manager
+  tags: configure_yarn
+  command: "/tmp/xmlpresent.sh --container-xpath \"/configuration\" --node \"property\" --property-node name --property-text \"{{ item.var  }}\" --value-node value --value \"{{ item.value  }}\" --file {{ hadoop_conf_dir }}/capacity-scheduler.xml"
+  register: out
+  changed_when: not out.stdout.startswith('NO-CHANGE')
+  with_items:
+  - {var: "yarn.scheduler.capacity.resource-calculator", value: "{{ yarn_scheduler_capacity_calculator }}" }
   notify: restart yarn
 - name: update yarn-site.xml on node managers
   tags: configure_yarn

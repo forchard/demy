@@ -53,7 +53,7 @@ zeppelin_keystore_pass: "{{lookup('keyring', 'epi-servers zeppelin_keystore_pass
 zeppelin_driver_memory_mb: "512"
 zeppelin_driver_cores: "1"
 zeppelin_executors: "3"
-zeppelin_executor_memory_mb: "2048"
+zeppelin_executor_memory_mb: "1536"
 zeppelin_executor_cores: "3"
 zeppelin_anonymous_enabled: false
 zeppelin_shiro_config:

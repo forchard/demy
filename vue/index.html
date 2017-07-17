@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="us">
+<head>
+  <meta charset="utf-8">
+  <title>D3+JQuery(UI) Test</title>
+  <link href="visuals/visuals.css" rel="stylesheet">
+  <link href="css/jquery-ui.css" rel="stylesheet">
+  <link href="css/base.css" rel="stylesheet">
+  <script src="js/jquery.js"></script>
+  <script src="js/jquery-ui.js"></script>
+  <script src="js/d3.js"></script>
+  <script src="data/data.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/setup.js"></script>
+  <script src="visuals/visuals.js"></script>
+</head>
+<body>
+  <div id="console"></div>
+  <div class="main-window">
+    <div class="fields"></div>
+    <div class="pane-resizer">&nbsp;</div>
+    <div class="canvas-container">
+      <div class="grid"></div>
+      <div class="canvas"></div>
+    </div>
+  </div>
+<div class="dragField" id="dragField"></div>
+<div class="options" id="options">
+  <div class="options-title">Visualisation Type</div>
+  <div class="pick-render"></div>
+  <div class="options-title">Options</div>
+  <div class="options-details"></div>
+</div>
+<div class="pick-function" id="pick-function">
+  <div class="options-title">Function to Apply</div>
+  <div class="options-details"></div>
+</div>
+<!--To Package: https://electron.atom.io/ -->
+</body>

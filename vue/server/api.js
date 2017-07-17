@@ -29,7 +29,8 @@ exports.server = () => {
       res.statusCode = 200;
       res.write("[");
       for(var i=0; i<files.length;i++) {
-        res.write(`"${files[i]}"`)
+        if(i>0) res.write(",");
+        res.write(`"${files[i]}"`);
       }
       return res.end("]");
       });

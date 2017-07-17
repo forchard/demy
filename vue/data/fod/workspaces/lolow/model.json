@@ -1,5 +1,5 @@
-var model = {
-/*  "sources":
+{
+  "sources":
   [{"name":"myDb"}
   ]
   ,"tables":
@@ -38,51 +38,4 @@ var model = {
       {"fromTable":"Visite", "fromColumn":"IdPatient", "toTable":"Patient", "toColumn":"IdPatient", "primary":true, "direction":">"}
       ,{"fromTable":"Visite", "fromColumn":"Code Pays", "toTable":"Pays", "toColumn":"Code Pays", "primary":true, "direction":">"}
     ]
-*/};
-
-var cellCount=100;
-var cells = [];
-for(var i=0;i<cellCount;i++) {cells.push(i); }
-var visuals = [];
-
-var visualGallery = [
-  {"name":"Bars", "icon":"barChart.png", "alt":"Bar Chart"
-    ,"fields":[
-      {"name":"Title", "type":"string", "arity":"1", "group":"data"}
-      ,{"name":"Category", "type":"axis", "arity":"*", "group":"data"}
-      ,{"name":"Legend", "type":"axis", "arity":"1", "group":"data"}
-      ,{"name":"Measure", "type":"measure","arity":"*", "group":"data"}
-    ]}
-  ,{"name":"Lines", "icon":"lineChart.png", "alt":"Line Chart"
-    ,"fields":[
-      {"name":"Title", "type":"string", "arity":"1", "group":"data"}
-      ,{"name":"Category", "type":"axis", "arity":"*", "group":"data"}
-      ,{"name":"Legend", "type":"axis","arity":"1", "group":"data"}
-      ,{"name":"Measure", "type":"measure", "arity":"*", "group":"data"}
-    ]}
-  ,{"name":"Scatter", "icon":"scatterChart.png", "alt":"Scatter Plot"
-    ,"fields":[
-      {"name":"Title", "type":"string", "arity":"1", "group":"data"}
-      ,{"name":"X-Axis", "type":"measure","arity":"1", "group":"data"}
-      ,{"name":"Y-Axis", "type":"measure", "arity":"1", "group":"data"}
-      ,{"name":"Category", "type":"axis", "arity":"1", "group":"data"}
-      ,{"name":"Legend", "type":"axis", "arity":"1", "group":"data"}
-    ]}
-  ,{"name":"Filter", "icon":"filter.png", "alt":"Filter"
-    ,"fields":[
-      {"name":"Field", "type":"axis", "arity":"1", "group":"data"}
-    ]}
-]
-
-var measureFunctions = [
-  {"name":"Sum", "types":["int", "numeric"]}
-  ,{"name":"Count", "types":[]}
-  ,{"name":"Distinct Count", "types":[]}
-  ,{"name":"Average", "types":["int", "numeric", "Date"]}
-  ,{"name":"Other", "types":[], "isOther":true}
-]
-
-var transformationFunctions = [
-  {"name":"Other", "types":[], "isOther":true}
-] 
-
+};

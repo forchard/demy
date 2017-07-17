@@ -2,10 +2,14 @@
   "sources":
   [{"name":"myDb"}
   ]
+  ,"groups":[
+    "Varsets", "Data Queries", "Plans d'exécution"
+  ]
   ,"tables":
-    [{"name":"Patient", "order":1, "visible":true, "Source":"myDb"
-      ,"fields": 
-        [{"name":"IdPatient","type":"column", "dataType":"string", "formule":"IdPatient","format":null, "visible":false, "order":0, "level":1, "table":"Patient"}
+    [
+     {"name":"Patient", "order":1, "visible":true, "Source":"myDb", "group":"Varsets", "collapsed":"true"
+      ,"fields": [
+         {"name":"IdPatient","type":"column", "dataType":"string", "formule":"IdPatient","format":null, "visible":false, "order":0, "level":1, "table":"Patient"}
         ,{"name":"Nom","type":"column", "dataType":"string", "formule":"Nom","format":null, "visible":true, "order":1, "level":1, "table":"Patient"}
         ,{"name":"Prenom","type":"column", "dataType":"string", "formule":"Prenom","format":null, "visible":true, "order":2, "level":1, "table":"Patient"}
         ,{"name":"Date Naissance","type":"column", "dataType":"date", "formule":"BirthDate","format":null,"visible":true, "order":3, "level":1, "table":"Patient"}
@@ -14,17 +18,17 @@
         ,{"name":"Date Naissance.Jour","type":"column", "dataType":"int", "formule":"GetDay(BirthDate)","format":null,"visible":true, "order":6, "level":2,"table":"Patient"}
         ]
      }
-    ,{"name":"Pays", "order":2, "visible":true, "Source":"myDb"
-      ,"fields": 
-        [{"name":"Code Pays","type":"column", "dataType":"string", "formule":"Code Pays","format":null, "visible":true, "order":1, "level":1, "table":"Pays"}
+    ,{"name":"Pays", "order":2, "visible":true, "Source":"myDb", "group":"Varsets", "collapsed":"true"
+      ,"fields": [
+         {"name":"Code Pays","type":"column", "dataType":"string", "formule":"Code Pays","format":null, "visible":true, "order":1, "level":1, "table":"Pays"}
         ,{"name":"Pays","type":"column", "dataType":"string", "formule":"Pays","format":null, "visible":true, "order":2, "level":1, "table":"Pays"}
         ,{"name":"Region","type":"column", "dataType":"string", "formule":"Region","format":null, "visible":true, "order":3, "level":1, "table":"Pays"}
         ]
      }
-    ,{"name":"Visite", "order":3, "visible":true, "Source":"myDb"
-      ,"fields": 
-        [{"name":"IdPatient","type":"column", "dataType":"string", "formule":"IdPatient","format":null, "visible":false, "order":0, "level":1, "table":"Visite"}
-        ,{"name":"Age Patient","type":"column", "dataType":"date", "formule":"DateDiff(Date, Now(), 'yyyy')","format":null,"visible":true, "order":1, "level":1, "table":"Visite"}
+    ,{"name":"Visite", "order":3, "visible":true, "Source":"myDb", "group":"Varsets", "collapsed":"true"
+      ,"fields": [
+         {"name":"IdPatient","type":"column", "dataType":"string", "formule":"IdPatient","format":null, "visible":false, "order":0, "level":1, "table":"Visite"}
+        ,{"name":"Age Patient","type":"column", "dataType":"int","formule":"DateDiff(Date, Now(), 'yyyy')","format":null,"visible":true, "order":1, "level":1, "table":"Visite"}
         ,{"name":"Date","type":"column", "dataType":"date", "formule":"Date","format":null,"visible":true, "order":2, "level":1, "table":"Visite"}
         ,{"name":"Date.Année","type":"column", "dataType":"int", "formule":"GetYear(Date)","format":null,"visible":true, "order":3, "level":2, "table":"Visite"}
         ,{"name":"Date.Mois","type":"column","dataType":"string","formule":"Format(Date, 'yyyyMMM')","format":null,"visible":true,"order":4,"level":2,"orderby":"Format(Date, 'yyyyMM')", "table":"Visite"}
@@ -33,9 +37,46 @@
         ,{"name":"Code Postale","type":"column", "dataType":"string", "formule":"Code Postale","format":null, "visible":true, "order":6, "level":1, "table":"Visite"}
         ]
     }
+    ,{"name":"Maladies rares", "order":1, "visible":true, "Source":"myDb", "group":"Data Queries", "collapsed":"true"
+      ,"fields": [
+         {"name":"IdPatient","type":"column", "dataType":"string", "formule":"IdPatient","format":null, "visible":false, "order":0, "level":1, "table":"Visite"}
+        ,{"name":"Age Patient","type":"column","dataType":"int", "formule":"DateDiff(Date, Now(), 'yyyy')","format":null,"visible":true, "order":1, "level":1, "table":"Visite"}
+        ,{"name":"Date","type":"column", "dataType":"date", "formule":"Date","format":null,"visible":true, "order":2, "level":1, "table":"Visite"}
+        ,{"name":"Date.Année","type":"column", "dataType":"int", "formule":"GetYear(Date)","format":null,"visible":true, "order":3, "level":2, "table":"Visite"}
+        ,{"name":"Date.Mois","type":"column","dataType":"string","formule":"Format(Date, 'yyyyMMM')","format":null,"visible":true,"order":4,"level":2,"orderby":"Format(Date, 'yyyyMM')", "table":"Visite"}
+        ,{"name":"Date.Jour","type":"column", "dataType":"int", "formule":"GetDay(Date)","format":null,"visible":true, "order":4, "level":2, "table":"Visite"}
+        ,{"name":"Code Pays","type":"column", "dataType":"string", "formule":"Code Pays","format":null, "visible":false, "order":5, "level":1, "table":"Visite"}
+        ,{"name":"Code Postale","type":"column", "dataType":"string", "formule":"Code Postale","format":null, "visible":true, "order":6, "level":1, "table":"Visite"}
+        ]
+    }
+    ,{"name":"Alertes par code Postal", "order":5, "visible":true, "Source":"myDb", "group":"Data Queries", "collapsed":"true"
+      ,"fields":[ 
+        {"name":"Code Pays","type":"column", "dataType":"string", "formule":"Code Pays","format":null, "visible":false, "order":5, "level":1, "table":"Visite"}
+        ,{"name":"Code Postale","type":"column", "dataType":"string", "formule":"Code Postale","format":null, "visible":true, "order":6, "level":1, "table":"Visite"}
+        ,{"name":"Date","type":"column", "dataType":"date", "formule":"Date","format":null,"visible":true, "order":2, "level":1, "table":"Visite"}
+        ,{"name":"Date.Année","type":"column", "dataType":"int", "formule":"GetYear(Date)","format":null,"visible":true, "order":3, "level":2, "table":"Visite"}
+        ,{"name":"Date.Mois","type":"column","dataType":"string","formule":"Format(Date, 'yyyyMMM')","format":null,"visible":true,"order":4,"level":2,"orderby":"Format(Date, 'yyyyMM')", "table":"Visite"}
+        ,{"name":"Nb de cas","type":"column", "dataType":"int", "formule":"GetDay(Date)","format":null,"visible":true, "order":4, "level":2, "table":"Visite"}
+        ]
+    }
+    ,{"name":"Patients par mois", "order":6, "visible":true, "Source":"myDb", "group":"Data Queries", "collapsed":"true"
+      ,"fields": [
+        {"name":"Mois","type":"column","dataType":"int", "formule":"","format":null,"visible":true, "order":1, "level":1, "table":"Visite"}
+        ,{"name":"Année","type":"column","dataType":"int", "formule":"","format":null,"visible":true, "order":1, "level":1, "table":"Visite"}
+        ,{"name":"Pays","type":"column", "dataType":"string", "formule":"","format":null, "visible":false, "order":5, "level":1, "table":"Visite"}
+        ,{"name":"Nb Patients","type":"column", "dataType":"int", "formule":"","format":null, "visible":true, "order":6, "level":1, "table":"Visite"}
+        ]
+    }
+    ,{"name":"Time Series Malaria", "order":1, "visible":true, "Source":"myDb", "group":"Models", "collapsed":"true"
+      ,"fields": [
+         {"name":"IdPatient","type":"column", "dataType":"string", "formule":"IdPatient","format":null, "visible":false, "order":0, "level":1, "table":"Visite"}
+        ,{"name":"Age Patient","type":"column", "dataType":"int", "formule":"DateDiff(Date, Now(), 'yyyy')","format":null,"visible":true, "order":1, "level":1, "table":"Visite"}
+        ,{"name":"Date","type":"column", "dataType":"date", "formule":"Date","format":null,"visible":true, "order":2, "level":1, "table":"Visite"}
+        ]
+    }
   ]
   ,"relationships":[
       {"fromTable":"Visite", "fromColumn":"IdPatient", "toTable":"Patient", "toColumn":"IdPatient", "primary":true, "direction":">"}
       ,{"fromTable":"Visite", "fromColumn":"Code Pays", "toTable":"Pays", "toColumn":"Code Pays", "primary":true, "direction":">"}
     ]
-};
+}

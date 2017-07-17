@@ -16,11 +16,20 @@ div.main-window{
   display:table;
   height:100%;
 }
+div.left-pane{
+  vertical-align:top;
+  display: table-cell;
+  width:200px;
+  background-color:#222222;
+}
 div.fields{
   vertical-align:top;
   display: table-cell;
   width:200px;
   background-color:#222222;
+}
+div.fields-collapsed {
+  display:none;  
 }
 div.pane-resizer{
   width:3px;
@@ -56,6 +65,16 @@ div.table{
   padding-left:4px;
   padding-top:1px;
   padding-bottom:1px;
+  font-size:12px;
+  color:#DDDDDD;
+}
+div.table-group{
+  margin:2px;
+  padding-left:1px;
+  padding-top:2px;
+  padding-bottom:4px;
+  font-size:13px;
+  color:#888800;
 }
 div.field {
   margin-left:2px;

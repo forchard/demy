@@ -1,6 +1,5 @@
 $(function(){
    setup();
-   getModels();
 });
 
 var draggingField = false;
@@ -22,30 +21,103 @@ var addingToVisualId = null;
 var keepOptionsOpen=false;
 var currentVisualOptionIndex=-1;
 
+
 function setup() {
+ storage.getWorkspaces(chooseWorkspace);
+}
+
+function chooseWorkspace(err, workspaces) {
+  if(err==null) {
+    const ws = workspaces[0];
+    storage.getWorkspace(ws, (err, data) => {
+    if(err == null);
+      applyWorkspace(data); 
+    });
+  }
+}
+
+
+function applyWorkspace(data) {
+ model = data;
  setupFields();
+ setupGrid();
+}
+
+function setupGrid() {
  d3.select("div.grid").selectAll("div").data(cells).enter()
    .append("div").attr("class", "cell")
    .on("mouseover", selectCell)
    .on("mouseout", unselectCell) 
-
  d3.select("div.pane-resizer").call(paneDraggable);
 }
 
 function setupFields() {
- d3.select("div.fields").selectAll("div").data(model.tables).enter()
-   .append("div").attr("class", "table")
+ calculateGroups();
+ var groups = d3.select("div.fields").selectAll("div.table-group").data(model.groupedTables);
+ //new groups
+ var newGroups = groups.enter().append("div")
+   .classed("table-group", true)
+   .text(function(d) {return d.name;});
+ //existing groups
+ groups.text(function(d) {return d.name;});
+ //removed groups
+ groups.exit().remove();
+
+ var tables = groups.merge(newGroups).selectAll("div.table").data(function(d) {return d.tables});
+ //New tables
+ var newTables = tables.enter().append("div")
+   .attr("class", "table")
    .text(function(d) {return d.name;})
-   .selectAll("div.field").data(function(d) {return d.fields;}).enter().filter(function(d) {return d.visible;})
+ ;
+ //Expand button on new tables
+ newTables.append("img")
+   .classed("triangle-button", true)
+   .attr("src", function(d) {if(d.collapsed) return "img/invertedTriangle.png"; else return "img/triangle.png";})
+   .on("click", function(d, i, group) {
+     var collapsed = d.collapsed;
+     d3.select(group[i])
+       .attr("src", function(d) {if(!d.collapsed) return "img/invertedTriangle.png"; else return "img/triangle.png";})
+     d3.select(group[i].parentNode).selectAll("div.field").classed("fields-collapsed", !collapsed );
+     d.collapsed = !collapsed;
+    }); 
+
+ //Existing Tables
+ tables.text(function(d) {return d.name;});
+ //Removed tables
+ tables.exit().remove();
+
+ var fields = tables.merge(newTables).selectAll("div.field").data(function(d) {return d.fields;})
+ //New fields
+ fields.enter()
    .append("div").attr("class", "field")
    .style("margin-left", function(d) {return (d.level*6)+"px";})
    .text(function(d) {return d.name;})
    .call(fieldDraggable)
    .on("mouseover", function(d, id, group){d3.select(group[id]).classed("focus", true)})
    .on("mouseout", function(d, id, group){d3.select(group[id]).classed("focus", false)})
-;
-
+   .classed("fields-collapsed", function(d, id, group) {return group[id].parentNode.__data__.collapsed})
+ ;
+ //Existing fields
+ fields.text(function(d) {return d.name;})
+ //Removed fields
+ fields.exit().remove();
 }
+
+function calculateGroups() {
+  model.groupedTables=[];
+  var groups = {};
+  for(var i = 0; i<model.tables.length; i++) {
+    const group = model.tables[i].group;
+    if(!groups[group]) {
+      model.groupedTables.push({});
+      groups[group] = model.groupedTables[model.groupedTables.length-1];
+      groups[group].name = group;
+      groups[group].tables = [];
+    }
+    groups[group].tables.push(model.tables[i]);
+  }
+}
+
 function selectCell(dat, id, group) {
   if(draggingField) {
     var visualId = visualIndexAtPoint(d3.event.clientX, d3.event.clientY, "absolute");

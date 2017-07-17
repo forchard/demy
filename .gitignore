@@ -16,3 +16,4 @@ geo/project
 geo/target
 geo/*.jar
 fulltext
+vue/server/node_modules

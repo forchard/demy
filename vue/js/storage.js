@@ -1,23 +1,32 @@
-
-function getModels() {
-  httpRequest = new XMLHttpRequest()
-  httpRequest.onreadystatechange = function() {
-    if (httpRequest.readyState === XMLHttpRequest.DONE) {
-      // everything is good, the response is received
-      if (httpRequest.status === 200) {
-        // perfect!
-        alert(httpRequest.responseText);
-      } else {
-      // there was a problem with the request,
-      // for example the response may contain a 404 (Not Found)
-      // or 500 (Internal Server Error) response code
-      }
-    } else {
-      // still not ready
-    }
+const storage = {
+  getWorkspaces: function(cb) {
+    this.jsonRequest("/workspaces", cb);
   }
-  httpRequest.open('GET', "http://localhost:3000/workspaces");
-  httpRequest.send();
-};
+
+  ,getWorkspace: function(ws, cb) {
+    this.jsonRequest(`/workspaces/${ws}/model`, cb);
+  }
+
+  ,jsonRequest: function(path, cb) { 
+    request = new XMLHttpRequest()
+    request.onreadystatechange = function() {
+      if (request.readyState === XMLHttpRequest.DONE) {
+        // everything is good, the response is received
+        if (request.status === 200) {
+          cb(null, JSON.parse(request.responseText));
+        } else {
+          cb("Error on Request", null);
+        }
+      } else {
+        // still not ready
+      }
+    }
+    request.responseType = 'text';
+    request.open('GET', path);
+    request.send();
+  }
+
+
+}
 
 

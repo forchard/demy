@@ -181,6 +181,9 @@
   - {var: "spark.yarn.stagingDir", value: "/spark" }
   - {var: "spark.executorEnv.JAVA_HOME", value: "{{ java_home_spark }}" }
   - {var: "spark.yarn.appMasterEnv.JAVA_HOME", value: "{{ java_home_spark }}" }
+  - {var: "spark.dynamicAllocation.enabled", value: "{{ spark_dynamic_allocation }}" }
+  - {var: "spark.shuffle.service.enabled", value: "{{ spark_dynamic_allocation }}" }
+  - {var: "spark.yarn.shuffle.stopOnFailure", value: "{{ spark_dynamic_allocation }}" }
 - name: thrift  service installed
   tags: configure_spark
   template:
@@ -198,6 +201,12 @@
   tags: configure_spark
   service:
     name: spark-thrift
+- name: downloading external shuffle jar
+  tags: configure_spark
+  fetch:
+    src: "{{ spark_home  }}/yarn/spark-{{ spark_ver }}-yarn-shuffle.jar"
+    dest: "/tmp/spark-{{ spark_ver }}-yarn-shuffle.jar"
+    flat: yes
 - name: getting zeppelin
   tags: install_zeppelin
   become_user: hadoop

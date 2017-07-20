@@ -59,6 +59,11 @@
   environment:
     http_proxy: "{{ proxy_host }}:{{ proxy_port }}"
     https_proxy: "{{ proxy_host }}:{{ proxy_port }}"
+- name: install spark shuffle service on yarn
+  hosts: nodemanagers
+  gather_facts: false
+  become: true
+  roles: [spark_shuffle]
 - name: install httpfs (gateway node)
   hosts: hdfs_edge
   gather_facts: false

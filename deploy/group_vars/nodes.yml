@@ -36,6 +36,7 @@ spark_ver: 2.1.1
 spark_home: "{{ hadoop_install }}/spark_home"
 spark_run: "{{ hadoop_install }}/spark_run"
 spark_odbc_port: "10000"
+spark_dynamic_allocation: true
 spark_r_packages: ["classInt", "colorRamps", "devtools", "jsonlite", "Rcpp", "dplyr", "tidyr", "forecast", "ISOweek", "lubridate", "data.table", "plyr", "fBasics", "Hmisc", "ggplot2", "RColorBrewer", "colorRamps", "gridExtra", "scales", "lattice", "xtable", "mapproj", "maptools", "MASS", "sp", "rgdal", "rgeos", "raster", "surveillance", "epiR", "timeSeries", "stringr", "timeDate", "msm", "tseries", "xts", "rJava", "xlsx", "base64enc", "grDevices", "acepack", "bitops", "caTools", "curl", "Formula", "graphicsQC", "Hmisc", "httr", "latticeExtra", "magrittr", "memoise", "pixmap", "whisker", "withr", "XML", "blockrand", "randomizeR", "GADMTools", "sparklyr"]
 spark_mysql_jdbc_version: 5.1.39
 
@@ -101,6 +102,9 @@ yarn_log_aggregation: false
 yarn_resourcemanager_port: "8032" 
 yarn_resourcescheduler_port: "8030"  
 yarn_resourcetracker_port: "8031"
+yarn_resourcemanager_recovery: true
+yarn_resourcemanager_store_class: "org.apache.hadoop.yarn.server.resourcemanager.recovery.FileSystemRMStateStore"
+yarn_resourcemanager_store_uri: "file://{{ hadoop_run }}/resource_manager/store"
 yarn_admin_port: "8033"
 yarn_webapp_port: "8090" 
 yarn_webproxy_port: "8091" 
@@ -115,8 +119,9 @@ yarn_hosts: "{{ hadoop_conf_dir }}/nodemanagers"
 yarn_hosts_exclude: "{{ hadoop_conf_dir }}/nodemanagers-excluded" 
 yarn_applicationmanager_max_percent: "0.3"
 
+
 #Node managers
-yarn_nodemanager_check_vmem: true
+yarn_nodemanager_check_vmem: false
 yarn_nodemanager_check_pmem: true
 yarn_nodemanager_vmem_pmem_ratio: 4.1
 yarn_nodemanager_local_dirs: "{{ hadoop_run }}/yarn-nm"

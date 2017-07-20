@@ -1,0 +1,16 @@
+[Unit]
+Description=YARN node manager service
+After=network.target
+ConditionPathExists={{ yarn_nodemanager_local_dirs }}
+
+[Service]
+Type=forking
+User=yarn
+WorkingDirectory={{ hadoop_run }}
+ExecStart={{ hadoop_home }}/sbin/yarn-daemon.sh --config {{ hadoop_conf_dir }} start nodemanager 
+ExecStop={{ hadoop_home }}/sbin/yarn-daemon.sh --config {{ hadoop_conf_dir }} stop nodemanager
+Restart=on-failure
+PIDFile={{ hadoop_pid_dir }}/yarn-yarn-nodemanager.pid
+
+[Install]
+WantedBy=multi-user.target

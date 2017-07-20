@@ -1,0 +1,25 @@
+---
+- name: apply sysctl changes
+  listen: apply_sysctl
+  command: "sysctl -p /etc/sysctl.conf"
+- name: set java default
+  listen: set_java_default
+  command: "update-java-alternatives --set /usr/lib/jvm/{{ java_default }}"
+- name: set npm proxy
+  listen: set_npm_proxy
+  shell: | 
+    npm config set proxy http://{{ proxy_host }}:{{ proxy_port }}
+    npm config set https-proxy http://{{ proxy_host }}:{{ proxy_port }}
+- name: set CRAN_MIRROR for R
+  listen: set_cran_mirror
+  blockinfile:
+    path: /etc/R/Rprofile.site
+    marker: "# {mark} CRAN config (managed by Ansible)"
+    block: |
+      local({
+      # add MASS to the default packages, set a CRAN mirror
+      old <- getOption("defaultPackages"); r <- getOption("repos")
+      r["CRAN"] <- "{{ cran_mirror  }}"
+      options(defaultPackages = c(old, "MASS"), repos = r)
+      })
+

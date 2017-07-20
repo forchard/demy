@@ -1,0 +1,75 @@
+---
+- name: Users on head node & register worker hosts
+  hosts: namenode 
+  gather_facts: false
+  become: true
+  roles: 
+  - ssh2nodes 
+  tasks:
+- name: worker nodes users & passwordless ssh
+  hosts: workernodes
+  gather_facts: false
+  become: true
+  roles: 
+  - ssh2me 
+- name: installing hadoop components
+  hosts: nodes
+  gather_facts: false
+  become: true
+  roles: 
+  - hadoop_node 
+  environment:
+    http_proxy: "{{ proxy_host }}:{{ proxy_port }}"
+    https_proxy: "{{ proxy_host }}:{{ proxy_port }}"
+- name: install hdfs (head node)
+  hosts: namenode
+  gather_facts: false
+  become: true
+  roles: 
+  - name_node 
+- name: install hdfs (data node)
+  hosts: datanodes
+  gather_facts: false
+  become: true
+  roles: 
+  - data_node 
+- name: yarn proxy installed 
+  hosts: yarn_edge
+  gather_facts: false
+  become: true
+  roles: 
+  - yarn_edge 
+- name: install yarn (resource manager nodes)
+  hosts: resourcemanager
+  gather_facts: false
+  become: true
+  roles: 
+  - resource_manager 
+- name: install yarn (node manager)
+  hosts: nodemanagers
+  gather_facts: false
+  become: true
+  roles: 
+  - node_manager 
+- name: install spark (gateway node)
+  hosts: spark_edge
+  gather_facts: false
+  become: true
+  roles: [spark_edge]
+  environment:
+    http_proxy: "{{ proxy_host }}:{{ proxy_port }}"
+    https_proxy: "{{ proxy_host }}:{{ proxy_port }}"
+- name: install spark shuffle service on yarn
+  hosts: nodemanagers
+  gather_facts: false
+  become: true
+  roles: [spark_shuffle]
+- name: install httpfs (gateway node)
+  hosts: hdfs_edge
+  gather_facts: false
+  become: true
+  roles: [hdfs_edge]
+  environment:
+    http_proxy: "{{ proxy_host }}:{{ proxy_port }}"
+    https_proxy: "{{ proxy_host }}:{{ proxy_port }}"
+

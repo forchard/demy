@@ -1,0 +1,16 @@
+[Unit]
+Description=Data node service
+After=network.target
+ConditionPathExists={{ hdfs_datanode_dir }}
+
+[Service]
+Type=forking
+User=hdfs
+WorkingDirectory={{ hadoop_run }}
+ExecStart={{ hadoop_home }}/sbin/hadoop-daemon.sh --config {{ hadoop_conf_dir }} --script hdfs start datanode 
+ExecStop={{ hadoop_home }}/sbin/hadoop-daemon.sh --config {{ hadoop_conf_dir }} --script hdfs stop datanode
+Restart=on-failure
+PIDFile={{ hadoop_pid_dir }}/hadoop-hdfs-datanode.pid
+
+[Install]
+WantedBy=multi-user.target

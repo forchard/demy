@@ -1,0 +1,26 @@
+---
+- name: configure queues
+  tags: configure_yarn
+  command: "/tmp/xmlpresent.sh --container-xpath \"/configuration\" --node \"property\" --property-node name --property-text \"{{ item.var  }}\" --value-node value --value \"{{ item.value  }}\" --file {{ hadoop_conf_dir }}/capacity-scheduler.xml"
+  register: out
+  changed_when: not out.stdout.startswith('NO-CHANGE')
+  with_items:
+  - {var: "yarn.scheduler.capacity.maximum-am-resource-percent", value: "{{ yarn_applicationmanager_max_percent }}" }
+  notify: apply queues
+- name: yarn resource manager service installed
+  tags: yarn_up
+  template:
+    src: templates/yarn-resourcemanager.service.j2
+    dest: /lib/systemd/system/yarn-resourcemanager.service
+    owner: root
+    group: root
+  register: out
+- name: reload systemctl if needed
+  tags: yarn_up
+  command: systemctl daemon-reload
+  when: out.changed
+- name: resource manager is running
+  tags: yarn_up
+  service:
+    name: yarn-resourcemanager
+    state: started

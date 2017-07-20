@@ -1,0 +1,16 @@
+[Unit]
+Description=Thrift Server (ODBC/JDBC)
+After=network.target
+ConditionPathExists={{ spark_home }}/sbin/start-thriftserver.sh
+
+[Service]
+Type=forking
+User=spark
+WorkingDirectory={{ spark_run }}
+ExecStart={{ spark_home }}/sbin/start-thriftserver.sh
+ExecStop={{ spark_home }}/sbin/stop-thriftserver.sh
+Restart=on-failure
+PIDFile={{ spark_run }}/PID/spark-spark-org.apache.spark.sql.hive.thriftserver.HiveThriftServer2-1.pid
+
+[Install]
+WantedBy=multi-user.target

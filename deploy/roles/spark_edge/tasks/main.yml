@@ -1,0 +1,424 @@
+---
+- name: spark sources directory
+  tags: install_spark
+  file:
+    state: directory
+    path: "{{ item }}"
+    owner: hadoop
+    group: hadoop
+    mode: 0751
+  with_items:
+  -  "{{ hadoop_install }}/spark-{{ spark_ver }}-src"
+  -  "{{ hadoop_install }}/spark-{{ spark_ver }}"
+- name: download spark if does not exists
+  tags: install_spark
+  command: "wget -O spark-{{ spark_ver }}-src.tgz http://mirrors.ircam.fr/pub/apache/spark/spark-{{ spark_ver }}/spark-{{ spark_ver }}.tgz"
+  args:
+    chdir: "{{ hadoop_install }}"
+    creates: "{{ hadoop_install }}/spark-{{ spark_ver }}-src.tgz"
+- name: uncompress spark
+  tags: install_spark
+  unarchive:
+    src: "{{ hadoop_install }}/spark-{{ spark_ver }}-src.tgz"
+    dest: "{{ hadoop_install }}/spark-{{ spark_ver }}-src"
+    remote_src: true 
+    owner: hadoop
+    group: hadoop
+    mode: 0751
+- name: Compile spark
+  tags: install_spark
+  shell: |
+    export JAVA_HOME="{{ java_home  }}"
+    export MAVEN_OPTS="-Xmx2g -XX:ReservedCodeCacheSize=512m"
+    ./dev/make-distribution.sh --name demy_spark -Pyarn -Phadoop-2.7 -Dhadoop.version=2.7.0 -Phive -Phive-thriftserver -Psparkr -DskipTests -Dhttp.proxyHost={{ proxy_host }} -Dhttp.proxyPort={{ proxy_port }} -Dhttps.proxyHost={{ proxy_host }} -Dhttps.proxyPort={{ proxy_port }}
+  args:
+    chdir: "{{ hadoop_install }}/spark-{{ spark_ver }}-src/spark-{{ spark_ver }}/"
+    creates: "{{ hadoop_install }}/spark-{{ spark_ver }}-src/spark-{{ spark_ver }}/dist/README.md"
+- name: make compiled files accessible for spark
+  tags: install_spark
+  file:
+    path: "{{ hadoop_install }}/spark-{{ spark_ver }}-src/spark-{{ spark_ver }}/dist"
+    state: directory
+    group: hadoop
+    owner: hadoop
+    recurse: true
+- name: spark versioned home folder present
+  tags: install_spark
+  file:
+    path: "{{ hadoop_install }}/spark-{{ spark_ver }}" 
+    owner: hadoop
+    group: hadoop
+    state: directory
+- name: copy compiled version (no overwrite)
+  tags: install_spark
+  shell: "cp -R -p -v -n {{ hadoop_install }}/spark-{{ spark_ver }}-src/spark-{{ spark_ver }}/dist/*  {{ hadoop_install }}/spark-{{ spark_ver }} | wc -l"
+  register: out
+  changed_when: out.stdout!='0'
+- name: create link to current version
+  tags: install_spark
+  file:
+    src: "{{ hadoop_install }}/spark-{{ spark_ver }}" 
+    dest: "{{ spark_home }}"
+    owner: hadoop
+    group: hadoop
+    mode: 0751
+    state: link
+- name: spark run exists
+  tags: install_spark
+  file:
+    path: "{{ spark_run }}" 
+    owner: spark
+    group: hadoop
+    state: directory
+- name: "getting mysql jar"
+  tags: install_spark
+  get_url:
+    url: "http://central.maven.org/maven2/mysql/mysql-connector-java/5.1.39/mysql-connector-java-{{ spark_mysql_jdbc_version }}.jar"
+    dest: "{{ spark_home }}/jars"
+    owner: hadoop
+    group: hadoop
+- name: "jars packaged"
+  tags: install_spark
+  archive:
+    path: "{{ spark_home }}/jars/*"
+    dest: "{{ spark_home }}/spark-jars.tgz"
+- name: "create HDFS folders"
+  tags: install_spark
+  shell: |
+    sudo -u hdfs {{ hadoop_home}}/bin/hdfs dfs -test -d /tmp
+    if [ $? -ne 0 ]; then 
+      ret="CHANGED"
+      sudo -u hdfs {{ hadoop_home}}/bin/hdfs dfs -mkdir /tmp 
+      sudo -u hdfs {{ hadoop_home}}/bin/hdfs dfs -chown hadoop:hadoop /tmp 
+      sudo -u hdfs {{ hadoop_home}}/bin/hdfs dfs -chmod 0777 /tmp 
+    else
+      ret="NO-CHANGE"
+    fi
+    echo $ret
+    exit 0
+  register: out
+  changed_when: not out.stdout.endswith('NO-CHANGE')
+  failed_when: out.stderr|length>0 
+- name: "upload jar if changed"
+  tags: install_spark
+  shell: |
+    newmd5=`find {{ spark_home}}/jars/ -type f -print0 | xargs -0 md5sum | md5sum | xargs`
+    sudo -u hdfs {{ hadoop_home}}/bin/hdfs dfs -test -d /spark
+    if [ $? -ne 0 ]; then 
+      ret="CHANGED"
+      sudo -u hdfs {{ hadoop_home}}/bin/hdfs dfs -mkdir /spark 
+      sudo -u hdfs {{ hadoop_home}}/bin/hdfs dfs -chown spark:hadoop /spark 
+    fi;
+    sudo -u hdfs {{ hadoop_home}}/bin/hdfs dfs -test -e /spark/spark-jars.tgz.md5
+    if [ $? -ne 0 ]; then 
+      ret="CHANGED"
+      oldmd5="not a md5"
+    else
+      oldmd5="`sudo -u spark {{ hadoop_home}}/bin/hdfs dfs -cat /spark/spark-jars.tgz.md5`"
+    fi;
+    if [ "$newmd5" != "$oldmd5" ];then
+      ret="CHANGED"
+      echo $newmd5 | sudo -u spark {{ hadoop_home }}/bin/hdfs dfs -put -f - /spark/spark-jars.tgz.md5
+      sudo -u spark {{ hadoop_home }}/bin/hdfs dfs -put -f {{ spark_home }}/spark-jars.tgz /spark/spark-jars.tgz
+    else
+      ret="NO-CHANGE"
+    fi
+    echo $ret
+    exit 0
+  register: out
+  changed_when: not out.stdout.endswith('NO-CHANGE')
+  failed_when: out.stderr|length>0 
+- name: spark environment file present
+  tags: configure_spark
+  copy:
+    content: "#!/usr/bin/env bash"
+    dest: "{{ spark_home }}/conf/spark-env.sh"
+    force: false
+    owner: "hadoop"
+    group: "hadoop"
+    mode: "0770"
+- name: get ip to use
+  tags: configure_spark
+  shell: "ip addr show {{ front_network  }} | grep \"inet \" | awk {'print $2'} | awk -F \"/\" {'print $1'}" 
+  register: app_ip
+  changed_when: false
+- tags: configure_spark
+  set_fact:
+    app_ip: "{{ app_ip.stdout }}"
+- name: update spark-env.sh
+  tags: configure_spark
+  lineinfile:
+    path: "{{ spark_home }}/conf/spark-env.sh" 
+    regexp: "^export {{ item.var  }}"
+    line: "export {{ item.var }}={{ item.value }}"
+  with_items:
+  - {var: "JAVA_HOME", value: "{{ java_home_spark  }}" }
+  - {var: "HADOOP_CONF_DIR", value: "{{ hadoop_conf_dir  }}" }
+  - {var: "SPARK_LOCAL_DIRS", value: "{{ spark_run }}" }
+  - {var: "SPARK_LOCAL_IP", value: "{{ app_ip }}" }
+  - {var: "SPARK_LOG_DIR", value: "{{ spark_run }}/logs"}
+  - {var: "SPARK_PID_DIR", value: "{{ spark_run }}/PID" }
+  - {var: "HIVE_SERVER2_THRIFT_PORT", value: "{{ spark_odbc_port }}" }
+  - {var: "SPARK_MASTER", value: "yarn"} 
+- name: spark defaults present 
+  tags: configure_spark
+  copy:
+    content: ""
+    dest: "{{ spark_home }}/conf/spark-defaults.conf"
+    force: false
+    owner: "spark"
+    group: "hadoop"
+    mode: "0660"
+- name: update spark-defaults.conf
+  tags: configure_spark
+  lineinfile:
+    path: "{{ spark_home }}/conf/spark-defaults.conf" 
+    regexp: "^{{ item.var  }}"
+    line: "{{ item.var }} {{ item.value }}"
+  with_items:
+  - {var: "spark.eventLog.dir", value: "hdfs:///spark/logs" }
+  - {var: "spark.yarn.archive", value: "hdfs:///spark/spark-jars.tgz" }
+  - {var: "spark.yarn.stagingDir", value: "/spark" }
+  - {var: "spark.executorEnv.JAVA_HOME", value: "{{ java_home_spark }}" }
+  - {var: "spark.yarn.appMasterEnv.JAVA_HOME", value: "{{ java_home_spark }}" }
+  - {var: "spark.dynamicAllocation.enabled", value: "{{ spark_dynamic_allocation }}" }
+  - {var: "spark.shuffle.service.enabled", value: "{{ spark_dynamic_allocation }}" }
+  - {var: "spark.yarn.shuffle.stopOnFailure", value: "{{ spark_dynamic_allocation }}" }
+- name: thrift  service installed
+  tags: configure_spark
+  template:
+    src: templates/thrift-server.service.j2
+    dest: /lib/systemd/system/spark-thrift.service
+    owner: root
+    group: root
+  register: out
+  notify: restart spark-thrift
+- name: reload systemctl if needed
+  tags: configure_spark
+  command: systemctl daemon-reload
+  when: out.changed
+- name: thirft is running
+  tags: configure_spark
+  service:
+    name: spark-thrift
+- name: downloading external shuffle jar
+  tags: configure_spark
+  fetch:
+    src: "{{ spark_home  }}/yarn/spark-{{ spark_ver }}-yarn-shuffle.jar"
+    dest: "/tmp/spark-{{ spark_ver }}-yarn-shuffle.jar"
+    flat: yes
+- name: getting zeppelin
+  tags: install_zeppelin
+  become_user: hadoop
+  git:
+    repo: https://github.com/apache/zeppelin.git
+    dest: "{{ hadoop_install }}/zeppelin-{{ zeppelin_version }}-src"
+    version: "{{ zeppelin_version }}"
+- name: copy sources (no overwrite)
+  tags: install_zeppelin
+  become_user: hadoop
+  shell: "cp -R -p -v -n {{ hadoop_install }}/zeppelin-{{ zeppelin_version }}-src {{ hadoop_install }}/zeppelin-{{ zeppelin_version }} | wc -l"
+  register: out
+  changed_when: out.stdout!='0'
+- name: ensure bower has a proper proxy 
+  tags: install_zeppelin
+  copy:
+    content: |
+      {
+      "proxy":"http://{{ proxy_host }}:{{ proxy_port }}",
+      "https-proxy":"http://{{ proxy_host }}:{{ proxy_port }}"
+      }
+    dest: /home/hadoop/.bowerrc    
+- name: install R dependencies for zeppelin
+  tags: install_zeppelin
+  shell: |
+    export http_proxy=http://{{ proxy_host }}:{{ proxy_port }}
+    export https_proxy=http://{{ proxy_host }}:{{ proxy_port }}
+    export ftp_proxy={{ proxy_host }}:{{ proxy_port }}
+    R -e "list.of.packages <- c(\"evaluate\", \"knitr\"); new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,\"Package\"])]; if(length(new.packages)) install.packages(new.packages, repos=c('https://cran.univ-paris1.fr','https://ftp.igh.cnrs.fr/pub/CRAN/','http://cran.irsn.fr/'))"
+  register: out
+  failed_when: out.stderr.find("WARNING")>1
+  changed_when: out.stderr|length > 0
+  notify: restart zeppelin
+- name: build zeppelin 
+  tags: install_zeppelin
+  become_user: hadoop
+  shell: | 
+    export HTTP_PROXY=http://{{ proxy_host }}:{{ proxy_port }}
+    export HTTPS_PROXY=http://{{ proxy_host }}:{{ proxy_port }}
+    dev/change_scala_version.sh 2.11
+    mvn clean package -DskipTests -Pspark-{{ spark_ver[:3]}} -Phadoop-2.7 -Pyarn -Ppyspark -Psparkr -Pr -Pscala-2.11 -Dhttp.proxyHost={{ proxy_host }} -Dhttp.proxyPort={{ proxy_port }} -Dhttps.proxyHost={{ proxy_host }} -Dhttps.proxyPort={{ proxy_port }}
+  args:
+    chdir: "{{ hadoop_install }}/zeppelin-{{ zeppelin_version }}"
+    creates: "{{ hadoop_install }}/zeppelin-{{ zeppelin_version }}/target"
+- name: create link to current version
+  tags: install_zeppelin
+  file:
+    src: "{{ hadoop_install }}/zeppelin-{{ zeppelin_version }}" 
+    dest: "{{ zeppelin_home }}"
+    owner: hadoop
+    group: hadoop
+    mode: 0751
+    state: link
+- name: zeppelin run exists
+  tags: install_zeppelin
+  file:
+    path: "{{ zeppelin_run }}" 
+    owner: spark
+    group: hadoop
+    state: directory
+- name: zeppelin configuration file present
+  tags: install_zeppelin
+  copy:
+    content: |
+      <?xml version="1.0"?>
+      <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+      <configuration>
+      </configuration>
+    dest: "{{ zeppelin_home }}/conf/zeppelin-site.xml"
+    force: false
+    owner: "hadoop"
+    group: "hadoop"
+    mode: "0770"
+- name: zeppelin configuration dir writable by hadoop group
+  tags: install_zeppelin
+  file:
+    path: "{{ zeppelin_home }}/conf"
+    state: directory
+    owner: "hadoop"
+    group: "hadoop"
+    mode: "0771"
+- name: zeppelin custom start present
+  tags: install_zeppelin
+  copy:
+    content: |
+      #!/bin/sh
+      sudo -u spark {{ zeppelin_home }}/bin/zeppelin-daemon.sh start
+    dest: "{{ zeppelin_home }}/bin/zeppelin-start-demy.sh"
+    owner: "hadoop"
+    group: "hadoop"
+    mode: "0770"
+  notify: restart zeppelin
+- name: zeppelin custom stop present
+  tags: install_zeppelin
+  copy:
+    content: |
+      #!/bin/sh
+      sudo -u yarn {{ hadoop_home }}/bin/yarn application -list | grep zeppelin_app | grep -o "application\w*" | while read -r line; do {{ hadoop_home }}/bin/yarn application -kill "$line"; done
+      sudo -u spark {{ zeppelin_home }}/bin/zeppelin-daemon.sh stop
+    dest: "{{ zeppelin_home }}/bin/zeppelin-stop-demy.sh"
+    owner: "hadoop"
+    group: "hadoop"
+    mode: "0770"
+  notify: restart zeppelin
+- name: update zeppelin-site.xml
+  tags: install_zeppelin
+  command: "/tmp/xmlpresent.sh --container-xpath \"/configuration\" --node \"property\" --property-node name --property-text \"{{ item.var  }}\" --value-node value --value \"{{ item.value  }}\" --file {{ zeppelin_home }}/conf/zeppelin-site.xml"
+  register: out
+  changed_when: not out.stdout.startswith('NO-CHANGE')
+  with_items:
+  - {var: "zeppelin.server.addr", value: "0.0.0.0" }
+  - {var: "zeppelin.server.port", value: "{{ zeppelin_port  }}" }
+  - {var: "zeppelin.war.tempdir", value: "{{ zeppelin_run }}/wartemp" }
+  - {var: "zeppelin.server.ssl.port", value: "{{ zeppelin_https_port  }}" }
+  - {var: "zeppelin.ssl", value: "{{ zeppelin_https_enabled }}" }
+  - {var: "zeppelin.ssl.keystore.path", value: "key_store.jks" }
+  - {var: "zeppelin.ssl.keystore.type", value: "JKS" }
+  - {var: "zeppelin.ssl.keystore.password", value: "{{ zeppelin_keystore_pass }}" }
+  - {var: "zeppelin.ssl.key.manager.password", value: "{{ zeppelin_keystore_pass }}" }
+  - {var: "zeppelin.ssl.client.auth", value: "{{ zeppelin_https_cert_auth_enabled }}" }
+  - {var: "zeppelin.ssl.truststore.path", value: "key_store.jks" }
+  - {var: "zeppelin.ssl.truststore.type", value: "JKS" }
+  - {var: "zeppelin.ssl.truststore.password", value: "{{ zeppelin_keystore_pass }}" }
+  - {var: "zeppelin.notebook.dir", value: "{{ zeppelin_run }}/notebooks" }
+  - {var: "zeppelin.interpreter.connect.timeout", value: "{{ 30 * 1000 }}" }
+  - {var: "zeppelin.anonymous.allowed", value: "{{ zeppelin_anonymous_enabled }}" }
+  - {var: "zeppelin.interpreter.localRepo", value: "{{ zeppelin_run }}/local-repo" }
+  - {var: "zeppelin.dep.localrepo", value: "{{ zeppelin_run }}/local-repo" }
+  - {var: "zeppelin.interpreter.dir", value: "{{ zeppelin_home }}/interpreter"} 
+  - {var: "spark.yarn.am.memory", value: "{{ zeppelin_driver_memory_mb }}m" }
+  - {var: "spark.yarn.am.cores", value: "{{ zeppelin_driver_cores }}" }
+  notify: restart zeppelin
+- name: zeppelin environment file present
+  tags: install_zeppelin
+  copy:
+    content: |
+      #!/bin/bash
+    dest: "{{ zeppelin_home }}/conf/zeppelin-env.sh"
+    force: false
+    owner: "spark"
+    group: "hadoop"
+    mode: "0770"
+- name: update zeppelin-env.sh
+  tags: install_zeppelin
+  lineinfile:
+    path: "{{ zeppelin_home }}/conf/zeppelin-env.sh"
+    regexp: "^export {{ item.var  }}"
+    line: "export {{ item.var }}={{ item.value }}"
+  with_items:
+  - {var: "JAVA_HOME", value: "{{ java_home_spark }}" }
+  - {var: "MASTER", value: "yarn-client" }
+  - {var: "ZEPPELIN_LOG_DIR", value: "{{ zeppelin_run }}/logs" }
+  - {var: "ZEPPELIN_PID_DIR", value: "{{ zeppelin_run }}/PID" }
+  - {var: "SPARK_HOME", value: "{{ spark_home}}" }
+  - {var: "SPARK_APP_NAME", value: "zeppelin_app" }
+  - {var: "HADOOP_CONF_DIR", value: "{{ hadoop_conf_dir }}" }
+  - {var: "ZEPPELIN_SPARK_USEHIVECONTEXT", value: "false" }
+  - {var: "ZEPPELIN_SPARK_CONCURRENTSQL", value: "false" }
+  - {var: "ZEPPELIN_SPARK_IMPORTIMPLICIT", value: "true" }
+  - {var: "ZEPPELIN_SPARK_MAXRESULT", value: "1500" }
+  - {var: "SPARK_SUBMIT_OPTIONS", value: "\"--executor-cores {{ zeppelin_executor_cores }} --num-executors {{ zeppelin_executors }} --executor-memory {{ zeppelin_executor_memory_mb }}m\"" }
+  notify: restart zeppelin
+- name: zeppelin service installed
+  tags: install_zeppelin
+  template:
+    src: templates/zeppelin.service.j2
+    dest: /lib/systemd/system/zeppelin.service
+    owner: root
+    group: root
+  register: out
+  notify: restart zeppelin
+- name: reload systemctl if needed
+  tags: install_zeppelin
+  command: systemctl daemon-reload
+  when: out.changed
+- name: tls keystore exists
+  tags: install_zeppelin
+  become_user: spark
+  shell: |
+    keytool -import -v -trustcacerts -alias demy -file "{{ zeppelin_https_bundle_cert }}" -keystore "{{ zeppelin_home  }}/conf/key_store.jks" -keypass "{{ zeppelin_keystore_pass }}" -storepass "{{ zeppelin_keystore_pass }}"
+    openssl pkcs12 -inkey "{{ zeppelin_https_private_key }}" -in "{{ zeppelin_https_bundle_cert }}" -export -out "{{ zeppelin_home}}/conf/bundle-with-key.pkcs12" -password "pass:{{ zeppelin_keystore_pass }}"
+    keytool -importkeystore -srckeystore "{{ zeppelin_home}}/conf/bundle-with-key.pkcs12" -srcstoretype PKCS12 -destkeystore "{{ zeppelin_home  }}/conf/key_store.jks" -srcstorepass "{{ zeppelin_keystore_pass }}" -deststorepass "{{ zeppelin_keystore_pass }}"
+  args:
+    creates: "{{ zeppelin_home }}/conf/key_store.jks" 
+  notify: restart zeppelin
+- name: shiro config file
+  tags: install_zeppelin
+  copy:
+    content: |
+      [users]
+      [main]
+      [roles]
+      [urls]
+    dest: "{{ zeppelin_home }}/conf/shiro.ini"
+    force: false
+    owner: "hadoop"
+    group: "hadoop"
+    mode: "0640"
+- name: updating shiro config
+  tags: install_zeppelin
+  lineinfile: 
+    path: "{{ zeppelin_home }}/conf/shiro.ini"
+    insertafter: "^\\[{{ item[0] }}\\]"
+    regexp: "^{{ item[1] }}"
+    line: "{{ item[2] }}"
+  with_list: "{{ zeppelin_shiro_config }}"
+  notify: restart zeppelin
+- meta: flush_handlers
+  tags: install_zeppelin
+- name: zeppelin is running
+  tags: install_zeppelin
+  service:
+    name: zeppelin
+
+

@@ -1,0 +1,46 @@
+---
+- name: restarting hadoop services
+  hosts: nodes
+  gather_facts: false
+  become: true
+  tasks:
+  - name: data node service exists 
+    stat: path=/lib/systemd/system/hdfs-datanode.service
+    register: datanode_status
+  - name: restart datanode
+    service: 
+      name: hdfs-datanode
+      state: restarted
+    when: datanode_status.stat.exists
+  - name: name node service exists 
+    stat: path=/lib/systemd/system/hdfs-namenode.service
+    register: namenode_status
+  - name: restart namenode
+    service: 
+      name: hdfs-namenode
+      state: restarted
+    when: namenode_status.stat.exists
+  - name: resource manager service exists 
+    stat: path=/lib/systemd/system/yarn-resourcemanager.service
+    register: yrm_status
+  - name: restart yarn resource manager
+    service: 
+      name: yarn-resourcemanager
+      state: restarted
+    when: yrm_status.stat.exists
+  - name: yarn proxy server service exists 
+    stat: path=/lib/systemd/system/yarn-proxyserver.service
+    register: yps_status
+  - name: restart yarn proxyserver
+    service: 
+      name: yarn-proxyserver
+      state: restarted
+    when: yps_status.stat.exists
+  - name: yarn node manager service exists 
+    stat: path=/lib/systemd/system/yarn-nodemanager.service
+    register: ynm_status
+  - name: restart node manager
+    service: 
+      name: yarn-nodemanager
+      state: restarted
+    when: ynm_status.stat.exists

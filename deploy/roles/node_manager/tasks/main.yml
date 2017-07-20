@@ -1,0 +1,26 @@
+---
+- name: node manager log folder exists 
+  tags: yarn_up
+  file:  
+    path: "{{ yarn_nodemanager_local_dirs }}"
+    state: directory
+    mode: 0751
+    owner: yarn 
+    group: hadoop
+- name: yarn service installed
+  tags: yarn_up
+  template:
+    src: templates/yarn-nodemanager.service.j2
+    dest: /lib/systemd/system/yarn-nodemanager.service
+    owner: root
+    group: root
+  register: out
+- name: reload systemctl if needed
+  tags: yarn_up
+  command: systemctl daemon-reload
+  when: out.changed
+- name: node manager is running
+  tags: yarn_up
+  service:
+    name: yarn-nodemanager
+    state: started

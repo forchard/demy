@@ -1,0 +1,23 @@
+---
+- name: hadoop group present workers
+  group:
+    name: hadoop
+  tags : create_users
+- name: users present 
+  tags : create_users 
+  user: 
+    name: "{{ item.name }}"
+    group: hadoop
+    groups: ssh
+  with_items: "{{ hostvars[groups['namenode'][0]].created_users.results }}"
+  loop_control:
+    label: "{{ item.name }}"
+- name: authorized keys present
+  tags: create_users
+  authorized_key:
+    user: "{{ item.name  }}"
+    state: present
+    key: "{{ item.ssh_public_key  }}"     
+  with_items: "{{ hostvars[groups['namenode'][0]].created_users.results }}"
+  loop_control:
+    label: "{{ item.name }}"

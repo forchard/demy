@@ -1,0 +1,202 @@
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<head>
+ <script src="js/d3.min.js"></script>
+ <style>
+  path {
+    stroke:black;
+  }
+  body {
+   font-family:Arial, Helvetica, sans-serif;
+   font-size:11px;
+  }
+  .select {
+    margin:2px;
+    position:relative;
+    cursor:pointer;
+  }
+  .select:hover {
+    background-color:#FFFF99
+  }
+  .bar-label {
+    position:absolute; 
+    z-index:2;
+    margin:3px;
+    font-weight: bold; 
+    color: #333333;
+  }
+  .filled-bar {
+    position:absolute;
+    background-color:#669966;
+    z-index:1;
+    padding-top:3px;
+    padding-bottom:3px;
+    font-weight: bold; 
+    
+  }
+  .rest-bar {
+    position:absolute;
+    text-align:right;
+    padding-top:3px;
+    padding-bottom:3px;
+    font-weight: bold; 
+    color: #333333;
+  }
+  .selected {
+    background-color:#FFFF55
+  }
+  .slicer {
+    float:left;
+  }
+  .map {
+    float:left;
+    margin-top:20px;
+    margin-left:10px;
+  }
+  h1 {
+    text-align:center;
+  }
+ </style>
+</head>
+
+<body>
+<H1>Diabetes world heat map by Twitter </H1>
+<div id="tracks" class="slicer"></div>
+<svg class="map"></svg>
+<div id="details" class="slicer"></div>
+
+</body>
+
+<script>
+  var width = 960, height = 500;
+  var proj = d3.geoMercator();
+  var path = d3.geoPath().projection(proj);
+  var slicer_width = 200;
+//  proj.translate([width / 2, height / 2]);
+//  proj.scale(5000);
+//  proj.center([105, 35]);
+
+  var x = "";
+  var tracks = {}
+  var tracks_arr = [];
+  var tweets;
+  var countries;
+
+  d3.json("shapefile/qgis.world.json.geojson", function (json) {
+    d3.csv("data/country.tweets.csv", function(csv) {
+      for(var j=0;j<csv.length;j++) {
+        csv[j].TWeets=parseInt(csv[j].TWeets);
+        tracks[csv[j].trackMatched] = (tracks[csv[j].trackMatched]||0) + csv[j].TWeets;
+      }
+      for (var item in tracks){
+        tracks_arr.push({"track":item, "tweets":tracks[item]} );
+      }
+      tracks_arr = tracks_arr.sort(function(a,b) { return b.tweets - a.tweets} );
+      var barScale = d3.scaleLinear()
+       .domain([0, tracks_arr[0].tweets])
+       .range([50, slicer_width-50]);
+
+      var select =  d3.select("#tracks").on("change", fillCountries);
+
+      var tagDiv = select.selectAll("div").data(tracks_arr).enter().append("div")
+      tagDiv.classed("select", true)
+            .style("width", slicer_width)
+            .style("height", 20)
+            .on("click", fillCountries)
+
+      var label= tagDiv.append("div")
+                       .classed("bar-label", true)
+                       .text(function(d) { return d.track; })
+                       .style("left", 0)
+      var tagFilled= tagDiv.append("div")
+                       .classed("filled-bar", true)
+                       .text("\u00A0")
+                       .style("width", function(d) {return barScale(d.tweets);})
+                       .style("left", 0)
+      var tagUnfilled= tagDiv.append("div")
+                       .classed("rest-bar", true)
+                       .text(function(d) { return d.tweets; })
+                       .style("width", function(d) {return slicer_width-barScale(d.tweets);})
+                       .style("left", function(d) {return barScale(d.tweets);})
+      tagDiv.append("br")
+
+      countries = json;
+      tweets = csv
+
+      fillCountries();
+    })
+  });
+
+function fillCountries(d, i, g) {
+  var track;
+  if(d) {
+    track = d.track;
+  }
+  else { 
+    track = tracks_arr[0].track;
+  }
+  selectItem(track);
+  var f_tweets = tweets.filter(function(e) {return e.trackMatched === track});
+
+  for(var i=0;i<countries.features.length;i++) {
+    countries.features[i].tweets=0;
+    for(var j=0;j<f_tweets.length;j++) {
+      if(countries.features[i].properties.iso_a2 === f_tweets[j].estimated_country_code)
+        countries.features[i].tweets = f_tweets[j].TWeets
+    }
+  }
+
+  var greenScale = d3.scaleLinear()
+    .domain([1, Math.log(d3.max(countries.features, function(d) { return d.tweets; }))])
+    .range([255, 0]);
+
+  //filling country map
+  var svg = d3.select("svg.map")
+    .attr("width", width)
+    .attr("height", height)
+    .selectAll("path").data(countries.features , function(d) {d.properties.iso_a2})
+  svg.enter().append("path").attr("d", path);
+
+  d3.select("svg.map").selectAll("path").style("fill", function(d) { return d3.rgb(greenScale(Math.log(d.tweets))/2, greenScale(Math.log(d.tweets)), greenScale(Math.log(d.tweets))/2) });
+
+  //filling country details
+  var data_det =  countries.features.sort(function(a,b) { return b.tweets - a.tweets} ).filter(function(d) {return d.tweets>0}); 
+  var barScale = d3.scaleLinear()
+   .domain([0, data_det[0].tweets])
+   .range([50, slicer_width-50]);
+  var details = d3.select("#details");
+  var detailsSelect = details.selectAll("div.select").data(data_det);
+  var detailsEnter = detailsSelect.enter().append("div")
+        .classed("select", true)
+        .style("width", slicer_width)
+        .style("height", 20);
+  detailsSelect.exit().remove();
+  detailsEnter.append("div")
+         .classed("bar-label", true)
+  detailsEnter.append("div")
+         .classed("filled-bar", true)
+  detailsEnter.append("div")
+         .classed("rest-bar", true)
+  detailsEnter.append("br")
+
+  var detailsUpdate = details.selectAll("div.select").order();
+  detailsUpdate.select(".bar-label")
+                   .text(function(d) { return d.properties.abbrev; })
+                   .style("left", 0);
+  detailsUpdate.select(".filled-bar")
+         .text("\u00A0")
+         .style("width", function(d) {return barScale(d.tweets);})
+         .style("left", 0);
+  detailsUpdate.select(".rest-bar")
+         .text(function(d) { return d.tweets; })
+         .style("width", function(d) {return slicer_width-barScale(d.tweets);})
+         .style("left", function(d) {return barScale(d.tweets);});
+}
+
+function selectItem(track) {
+  d3.selectAll(".selected").classed("selected", false);
+  d3.selectAll("div.select").filter(function(d) {return d.track === track;}).classed("selected", true);
+}
+</script>  
+
+</html>

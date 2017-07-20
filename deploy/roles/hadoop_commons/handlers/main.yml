@@ -1,0 +1,77 @@
+---
+  - name: data node service exists 
+    stat: path=/lib/systemd/system/hdfs-datanode.service
+    register: datanode_status
+    listen: restart hdfs
+  - name: restart datanode
+    service: 
+      name: hdfs-datanode
+      state: restarted
+    when: datanode_status.stat.exists
+    listen: restart hdfs
+  - name: name node service exists 
+    stat: path=/lib/systemd/system/hdfs-namenode.service
+    register: namenode_status
+    listen: restart hdfs
+  - name: restart namenode
+    service: 
+      name: hdfs-namenode
+      state: restarted
+    when: namenode_status.stat.exists
+    listen: restart hdfs
+  - name: resource manager service exists 
+    stat: path=/lib/systemd/system/yarn-resourcemanager.service
+    register: yrm_status
+    listen: restart yarn
+  - name: restart yarn resource manager
+    service: 
+      name: yarn-resourcemanager
+      state: restarted
+    when: yrm_status.stat.exists
+    listen: restart yarn
+  - name: yarn proxy server service exists 
+    stat: path=/lib/systemd/system/yarn-proxyserver.service
+    register: yps_status
+    listen: restart yarn
+  - name: restart yarn proxyserver
+    service: 
+      name: yarn-proxyserver
+      state: restarted
+    when: yps_status.stat.exists
+    listen: restart yarn
+  - name: yarn node manager service exists 
+    stat: path=/lib/systemd/system/yarn-nodemanager.service
+    register: ynm_status
+    listen: restart yarn
+  - name: restart node manager
+    service: 
+      name: yarn-nodemanager
+      state: restarted
+    when: ynm_status.stat.exists
+    listen: restart yarn
+  - name: zeppelin service exists 
+    stat: path=/lib/systemd/system/zeppelin.service
+    register: zeppelin_status
+    listen: restart zeppelin
+  - name: restart zeppelin
+    service: 
+      name: zeppelin
+      state: restarted
+    when: zeppelin_status.stat.exists
+    listen: restart zeppelin
+  - name: spark thrift service exists
+    stat: path=/lib/systemd/system/spark-thrift.service
+    register: thrift_status
+    listen: restart spark-thrift
+  - name: restart zeppelin
+    service:
+      name: zeppelin
+      state: restarted
+    when: thrift_status.stat.exists
+    listen: restart spark-thrift
+  - name: apply queue configuration
+    become_user: yarn
+    command: |
+      {{ hadoop_home }}/bin/yarn rmadmin -refreshQueues 
+    listen: apply queues
+

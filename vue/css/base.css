@@ -6,27 +6,41 @@ body{
   height:100%;
   margin:0;
   font-size:12px;
-  color:#DDDDDD;
+  color:#333333;
+  background:linear-gradient(to bottom, #95C1D6 0%,#CAE0EA 100%)
 }
 #console {
   background-color:black;
 }
 div.main-window{
-  width: 100%;
-  display:table;
+  width: calc(100% - 30px);
   height:100%;
+  margin:10px;
+  border-radius:5px;
+  padding:5px;
+  background:#FFFFFF;
+}
+img.logo {
+  margin-left:20px;
+}
+div.header {
+  margin: 10px;
+}
+div.content {
+  display:table;
+  width:100%;
 }
 div.left-pane{
   vertical-align:top;
   display: table-cell;
   width:200px;
-  background-color:#222222;
+  /*background-color:#222222;*/
 }
 div.fields{
   vertical-align:top;
   display: table-cell;
   width:200px;
-  background-color:#222222;
+  /*background-color:#222222;*/
 }
 div.fields-collapsed {
   display:none;  
@@ -37,7 +51,7 @@ div.pane-resizer{
   cursor:ew-resize;
 }
 div.grid {
-  background-color:#AAAAAA;
+  /*background-color:#AAAAAA;*/
   display:flex;
   flex-direction:row;
   flex-wrap:wrap; 
@@ -66,7 +80,7 @@ div.table{
   padding-top:1px;
   padding-bottom:1px;
   font-size:12px;
-  color:#DDDDDD;
+  color:#333333;
 }
 div.table-group{
   margin:2px;
@@ -88,13 +102,13 @@ div.field {
   font-size:11px;
 }
 .focus {
-  background-color:#555555
+  background-color:#BBBBBB
 }
 .focus2 {
   background-color:#777777
 }
 div.dragField {
-  background-color:#222222;
+  background-color:#BBBBBB;
   margin:2px;
   position:absolute;
   display:none;
@@ -103,7 +117,7 @@ div.dragField {
 div.cell {
   width:100px;
   height:100px;
-  background-color:#EEEEEE;
+  background-color:#DDDDDD;
   margin:1px; 
 }
 div.selected-cell{
@@ -114,18 +128,19 @@ div.dropped-cell {
 }
 div.visual-container {
   position:absolute;
-  background-color:#DDDDDD;
+  background-color:#FFFFFF;
 }
 div.resize {
   position:absolute;
   z-index:3;
 }
 div.options {
-  background-color:#222222;
+  background-color:#FFFFFF;
   position:absolute;
   display:none;
   flex-direction:column;
   z-index:5;
+  border-top:#BBBBBB solid 1px;
 }
 div.pick-render {
   display:flex;
@@ -161,6 +176,7 @@ div.value-placeholder {
   border-width:1px;
   width:70%;
   padding-bottom:5px;
+  background-color:#EEEEEE;
 }
 div.close-button {
   float:right;
@@ -178,7 +194,7 @@ img.triangle-button {
   margin-top:3px;
 }
 div.accept-field {
-  background-color:#337733;
+  background-color:#99FF66;
   cursor:grabbing;
 }
 div.field-value {

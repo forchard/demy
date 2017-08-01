@@ -53,7 +53,7 @@
 - name: jessie backports is activated
   apt_repository:
     repo: deb http://ftp.fr.debian.org/debian jessie-backports main
-- name: intall jessie backports packages
+- name: install jessie backports packages
   tags: packages
   apt:
     name: "{{ item }}"

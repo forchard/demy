@@ -27,8 +27,10 @@
     mode: 0751
 - name: Compile spark
   tags: install_spark
+  become_user: hadoop
   shell: |
-    export JAVA_HOME="{{ java_home  }}"
+    export JAVA_HOME="{{ java_home_spark }}"
+    export PATH=$JAVA_HOME/bin:$PATH
     export MAVEN_OPTS="-Xmx2g -XX:ReservedCodeCacheSize=512m"
     ./dev/make-distribution.sh --name demy_spark -Pyarn -Phadoop-2.7 -Dhadoop.version=2.7.0 -Phive -Phive-thriftserver -Psparkr -DskipTests -Dhttp.proxyHost={{ proxy_host }} -Dhttp.proxyPort={{ proxy_port }} -Dhttps.proxyHost={{ proxy_host }} -Dhttps.proxyPort={{ proxy_port }}
   args:
@@ -84,13 +86,14 @@
     dest: "{{ spark_home }}/spark-jars.tgz"
 - name: "create HDFS folders"
   tags: install_spark
+  become_user: hdfs
   shell: |
-    sudo -u hdfs {{ hadoop_home}}/bin/hdfs dfs -test -d /tmp
+   {{ hadoop_home}}/bin/hdfs dfs -test -d /tmp
     if [ $? -ne 0 ]; then 
       ret="CHANGED"
-      sudo -u hdfs {{ hadoop_home}}/bin/hdfs dfs -mkdir /tmp 
-      sudo -u hdfs {{ hadoop_home}}/bin/hdfs dfs -chown hadoop:hadoop /tmp 
-      sudo -u hdfs {{ hadoop_home}}/bin/hdfs dfs -chmod 0777 /tmp 
+      {{ hadoop_home}}/bin/hdfs dfs -mkdir /tmp 
+      {{ hadoop_home}}/bin/hdfs dfs -chown hadoop:hadoop /tmp 
+      {{ hadoop_home}}/bin/hdfs dfs -chmod 0777 /tmp 
     else
       ret="NO-CHANGE"
     fi
@@ -158,7 +161,7 @@
   - {var: "SPARK_LOCAL_IP", value: "{{ app_ip }}" }
   - {var: "SPARK_LOG_DIR", value: "{{ spark_run }}/logs"}
   - {var: "SPARK_PID_DIR", value: "{{ spark_run }}/PID" }
-  - {var: "HIVE_SERVER2_THRIFT_PORT", value: "{{ spark_odbc_port }}" }
+  - {var: "HIVE_SERVER2_THRIFT_PORT", value: "{{ spark_thrift_port }}" }
   - {var: "SPARK_MASTER", value: "yarn"} 
 - name: spark defaults present 
   tags: configure_spark
@@ -184,6 +187,13 @@
   - {var: "spark.dynamicAllocation.enabled", value: "{{ spark_dynamic_allocation }}" }
   - {var: "spark.shuffle.service.enabled", value: "{{ spark_dynamic_allocation }}" }
   - {var: "spark.yarn.shuffle.stopOnFailure", value: "{{ spark_dynamic_allocation }}" }
+- name: thrift server run exists
+  tags: install_spark
+  file:
+    path: "{{ spark_run }}/thrift" 
+    owner: spark
+    group: hadoop
+    state: directory
 - name: thrift  service installed
   tags: configure_spark
   template:
@@ -197,23 +207,23 @@
   tags: configure_spark
   command: systemctl daemon-reload
   when: out.changed
-- name: thirft is running
+- name: thrift is running
   tags: configure_spark
   service:
     name: spark-thrift
 - name: downloading external shuffle jar
-  tags: configure_spark
+  tags: install_spark
   fetch:
     src: "{{ spark_home  }}/yarn/spark-{{ spark_ver }}-yarn-shuffle.jar"
     dest: "/tmp/spark-{{ spark_ver }}-yarn-shuffle.jar"
     flat: yes
-- name: getting zeppelin
-  tags: install_zeppelin
-  become_user: hadoop
-  git:
-    repo: https://github.com/apache/zeppelin.git
-    dest: "{{ hadoop_install }}/zeppelin-{{ zeppelin_version }}-src"
-    version: "{{ zeppelin_version }}"
+#- name: getting zeppelin
+#  tags: install_zeppelin
+#  become_user: hadoop
+#  git:
+#    repo: https://github.com/apache/zeppelin.git
+#    dest: "{{ hadoop_install }}/zeppelin-{{ zeppelin_version }}-src"
+#    version: "{{ zeppelin_version }}"
 - name: copy sources (no overwrite)
   tags: install_zeppelin
   become_user: hadoop
@@ -364,10 +374,10 @@
   - {var: "SPARK_APP_NAME", value: "zeppelin_app" }
   - {var: "HADOOP_CONF_DIR", value: "{{ hadoop_conf_dir }}" }
   - {var: "ZEPPELIN_SPARK_USEHIVECONTEXT", value: "false" }
-  - {var: "ZEPPELIN_SPARK_CONCURRENTSQL", value: "false" }
+  - {var: "ZEPPELIN_SPARK_CONCURRENTSQL", value: "true" }
   - {var: "ZEPPELIN_SPARK_IMPORTIMPLICIT", value: "true" }
   - {var: "ZEPPELIN_SPARK_MAXRESULT", value: "1500" }
-  - {var: "SPARK_SUBMIT_OPTIONS", value: "\"--executor-cores {{ zeppelin_executor_cores }} --num-executors {{ zeppelin_executors }} --executor-memory {{ zeppelin_executor_memory_mb }}m\"" }
+  - {var: "SPARK_SUBMIT_OPTIONS", value: "\"--executor-cores {{ zeppelin_executor_cores }} --num-executors 0 --executor-memory {{ zeppelin_executor_memory_mb }}m\"" }
   notify: restart zeppelin
 - name: zeppelin service installed
   tags: install_zeppelin

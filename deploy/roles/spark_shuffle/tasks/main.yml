@@ -1,6 +1,22 @@
 ---
+- name: Delete previous versions of shuffle service if any
+  tags: install_spark
+  become_user: hadoop
+  shell: |
+    toDelete=`find {{ hadoop_home  }}/share/hadoop/yarn/lib -type f -name 'spark-*-yarn-shuffle.jar' -not -name 'spark-{{ spark_ver }}-yarn-shuffle.jar' | wc -l`
+    if [ $toDelete -gt 0 ]; then 
+      ret="CHANGED"
+      find {{ hadoop_home  }}/share/hadoop/yarn/lib -type f -name 'spark-*-yarn-shuffle.jar' -not -name 'spark-{{ spark_ver }}-yarn-shuffle.jar' -print0 | xargs -0 rm --
+    else
+      ret="NO-CHANGE"
+    fi
+    echo $ret
+    exit 0
+  register: out
+  changed_when: not out.stdout.endswith('NO-CHANGE')
+  failed_when: out.stderr|length>0 
 - name: push spark suffle jar to nodes
-  tags: configure_spark
+  tags: install_spark
   copy:
     src: "/tmp/spark-{{ spark_ver }}-yarn-shuffle.jar"
     dest: "{{ hadoop_home }}/share/hadoop/yarn/lib/"
@@ -8,4 +24,3 @@
     owner: "hadoop"
     group: "hadoop"
     mode: "0770"
-

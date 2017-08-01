@@ -6,8 +6,8 @@ ConditionPathExists={{ spark_home }}/sbin/start-thriftserver.sh
 [Service]
 Type=forking
 User=spark
-WorkingDirectory={{ spark_run }}
-ExecStart={{ spark_home }}/sbin/start-thriftserver.sh
+WorkingDirectory={{ spark_run }}/thrift"
+ExecStart={{ spark_home }}/sbin/start-thriftserver.sh --master yarn --executor-cores {{ spark_thrift_executor_cores }} --driver-cores {{ spark_thrift_driver_cores }} --num-executors 0 --name "Spark JDBC/ODBC Service" --driver-memory {{ spark_thrift_driver_mem_mb  }}M --executor-memory {{ spark_thrift_executor_mem_mb  }}M
 ExecStop={{ spark_home }}/sbin/stop-thriftserver.sh
 Restart=on-failure
 PIDFile={{ spark_run }}/PID/spark-spark-org.apache.spark.sql.hive.thriftserver.HiveThriftServer2-1.pid

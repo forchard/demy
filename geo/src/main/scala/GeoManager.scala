@@ -18,6 +18,8 @@ import org.geotools.referencing.CRS;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
 import org.geotools.geometry.jts.JTS;
 import org.opengis.referencing.operation.MathTransform
+import com.vividsolutions.jts.geom.Geometry
+import com.vividsolutions.jts.geom.Coordinate
 
 import java.nio.channels.FileChannel
 import scala.collection.JavaConversions._
@@ -204,7 +206,7 @@ class GeoManager(shapeHDFSfile:Path, spark:SparkSession) {
               ( 
 		//Geometry columns
                 //1. The serialized binary Object
-                serializeToByteArray(geom)
+                GeoManager.serializeToByteArray(geom)
                 //2. The array of latitude coordinates
                 :: maxlat
                 :: minlat
@@ -241,11 +243,30 @@ class GeoManager(shapeHDFSfile:Path, spark:SparkSession) {
       deleteTempCopies() 
     }
   }
+}
+object GeoManager {
   def serializeToByteArray(obj:Object):Array[Byte] = {
     val b = new ByteArrayOutputStream()
     val o = new ObjectOutputStream(b)
     o.writeObject(obj)
     return b.toByteArray()
+  }
+
+  def deserializeToGeometry(dat:Array[Byte]):Option[Geometry] = {
+     val i = new ByteArrayInputStream(dat);
+     val o = new ObjectInputStream(i);
+     return o.readObject() match {case g:Geometry => Some(g) case _ => None}
+  }
+
+  def intersectsWithPoint(dat:Array[Byte], long:Double, lat:Double):Boolean = {
+     deserializeToGeometry(dat) match {
+       case Some(g) => {
+         val coord =new Coordinate(long,lat);
+         val point= g.getFactory.createPoint(coord);
+         g.intersects(point)
+       }
+       case _ => false
+     }
   }
 
 }

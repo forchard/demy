@@ -1,0 +1,7 @@
+---
+- name: worker nodes users & passwordless ssh
+  hosts: nodes
+  gather_facts: false
+  become: true
+  roles: 
+  - all_started 

@@ -1,0 +1,58 @@
+---
+  - name: data node service exists 
+    stat: path=/lib/systemd/system/hdfs-datanode.service
+    register: datanode_status
+  - name: stop datanode
+    service: 
+      name: hdfs-datanode
+      state: stopped
+    when: datanode_status.stat.exists
+  - name: name node service exists 
+    stat: path=/lib/systemd/system/hdfs-namenode.service
+    register: namenode_status
+  - name: stop namenode
+    service: 
+      name: hdfs-namenode
+      state: stopped
+    when: namenode_status.stat.exists
+  - name: resource manager service exists 
+    stat: path=/lib/systemd/system/yarn-resourcemanager.service
+    register: yrm_status
+  - name: stop yarn resource manager
+    service: 
+      name: yarn-resourcemanager
+      state: stopped
+    when: yrm_status.stat.exists
+  - name: yarn proxy server service exists 
+    stat: path=/lib/systemd/system/yarn-proxyserver.service
+    register: yps_status
+  - name: stop yarn proxyserver
+    service: 
+      name: yarn-proxyserver
+      state: stopped
+    when: yps_status.stat.exists
+  - name: yarn node manager service exists 
+    stat: path=/lib/systemd/system/yarn-nodemanager.service
+    register: ynm_status
+  - name: stop node manager
+    service: 
+      name: yarn-nodemanager
+      state: stopped
+    when: ynm_status.stat.exists
+  - name: zeppelin service exists 
+    stat: path=/lib/systemd/system/zeppelin.service
+    register: zeppelin_status
+  - name: stop zeppelin
+    service: 
+      name: zeppelin
+      state: stopped
+    when: zeppelin_status.stat.exists
+  - name: spark thrift service exists
+    stat: path=/lib/systemd/system/spark-thrift.service
+    register: thrift_status
+  - name: stop zeppelin
+    service:
+      name: zeppelin
+      state: stopped
+    when: thrift_status.stat.exists
+

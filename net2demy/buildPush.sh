@@ -5,6 +5,7 @@ sbt package
 
 scp target/scala-2.11/scala-url-import_2.11-1.0.jar sparkrunner:~/scala-url-import_2.11-1.0.jar
 scp ~/.ivy2/local/geograpgic-processing/geograpgic-processing_2.11/1.0/jars/geograpgic-processing_2.11.jar sparkrunner:~/geograpgic-processing_2.11.jar
+scp ~/.ivy2/cache/commons-io/commons-io/jars/commons-io-2.4.jar sparkrunner:~/commons-io-2.4.jar
 scp ~/.ivy2/cache/org.apache.commons/commons-compress/jars/commons-compress-1.14.jar sparkrunner:~/commons-compress-1.14.jar 
 scp ~/.ivy2/cache/org.tukaani/xz/jars/xz-1.6.jar sparkrunner:~/xz-1.6.jar
 scp ~/.ivy2/cache/org.geotools/gt-main/jars/gt-main-17.1.jar sparkrunner:~/gt-main-17.1.jar

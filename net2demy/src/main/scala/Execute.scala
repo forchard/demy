@@ -112,6 +112,29 @@ object Execute {
               new GeoManager(f.getPath, spark).write2parquet(parquet_p, true)
             }) 
           }
+          else if(post != null && post.startsWith("excludeLines:")) {
+            val command = post.replace("excludeLines:", "")
+            val contentExclude = if(command.contains(">>") ) command.substring(0, command.lastIndexOf(">>")) else command
+            val fileFilter = if(command.contains(">>") ) command.substring(command.lastIndexOf(">>")+2) else ".*"
+
+            val fs = FileSystem.get(hadoopConf)
+            val destPath = new Path(dest)
+            val filter = new GlobFilter(fileFilter)
+            fs.listStatus(destPath, filter).foreach(f => {
+              if(f.isFile) {
+		val in = new BufferedReader(new InputStreamReader(fs.open(f.getPath),"UTF-8"));
+                val out = new BufferedWriter(new OutputStreamWriter(fs.create(f.getPath.suffix(".tmp"), true), "UTF-8"))
+                println(s"Excluding:->${contentExclude}<--")
+                Iterator.continually(in.readLine()).takeWhile(_ != null)
+		  .filter(s => !s.matches(contentExclude)) 
+		  .foreach(s => {out.write(s"$s\n")}) 
+                out.close()
+                in.close()
+                fs.delete(f.getPath)
+                fs.rename(f.getPath.suffix(".tmp"), f.getPath)
+              }
+            })
+          }
           setCacheFootprint(dest, remoteFootprint, hadoopConf ) 
         } else {
           println("Cache is the same skipping download")

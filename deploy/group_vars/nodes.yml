@@ -7,11 +7,11 @@ cran_mirror: http://cran.irsn.fr
 apache_mirror: http://mirrors.ircam.fr
 back_network: prostore
 front_network: proback
-java_home: /usr/lib/jvm/java-7-openjdk-amd64
+java_home: /usr/lib/jvm/java-8-openjdk-amd64
 java_home_spark: /usr/lib/jvm/java-8-openjdk-amd64
-java_package: openjdk-7-jdk
+java_package: openjdk-8-jdk
 java_package_spark: openjdk-8-jdk
-java_default: java-1.7.0-openjdk-amd64
+java_default: java-1.8.0-openjdk-amd64
 protobuf_ver: 2.5.0
 hadoopusers: [hadoop, spark, hive, hdfs,yarn, mapred]
 crypted_disk: space

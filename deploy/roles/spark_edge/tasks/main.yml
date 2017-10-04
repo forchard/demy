@@ -430,5 +430,6 @@
   tags: install_zeppelin
   service:
     name: zeppelin
+    state: started
 
 

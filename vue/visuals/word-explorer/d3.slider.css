@@ -1,0 +1,20 @@
+.d3-slider-container {
+  display:inline
+}
+
+.d3-slider {
+    position: relative;
+    font-family: Verdana,Arial,sans-serif;
+    font-size: 1.1em;
+    z-index: 2;
+}
+
+.d3-slider-horizontal {
+    height: 2em;
+}  
+
+.d3-slider-cursor {
+    fill:#888888;
+    stroke:black;
+    stroke-width:1;
+}

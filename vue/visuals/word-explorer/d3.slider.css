@@ -1,20 +1,50 @@
 .d3-slider-container {
-  display:inline
+/*  display:inline*/
 }
 
 .d3-slider {
-    position: relative;
+/*    position: relative;*/
     font-family: Verdana,Arial,sans-serif;
     font-size: 1.1em;
-    z-index: 2;
 }
 
-.d3-slider-horizontal {
-    height: 2em;
+.d3-slider-axis {
+   opacity:0.5
 }  
 
-.d3-slider-cursor {
-    fill:#888888;
+.d3-slider-cursor-from {
+    fill:#666699;
+    stroke:black;
+    stroke-width:1;
+    cursor:col-resize;
+}
+.d3-slider-cursor-to {
+    fill:#666699;
+    stroke:black;
+    stroke-width:1;
+    cursor:col-resize;
+}
+.d3-slider-slide-left {
+    fill:#DDDDDD;
     stroke:black;
     stroke-width:1;
 }
+
+.d3-slider-slide-middle {
+    fill:#8888CC;
+    stroke:black;
+    stroke-width:1;
+}
+.d3-slider-slide-right {
+    fill:#DDDDDD;
+    stroke:black;
+    stroke-width:1;
+}
+.d3-slider-label {
+    font-family: Verdana,Arial,sans-serif;
+    font-size: 0.8em;
+    stroke:none;
+    fill:#000;
+    text-anchor:middle;
+}
+

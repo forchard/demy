@@ -1,12 +1,6 @@
 function epislider(selection, data) {
   this.selection = selection;
   this.data = data?[].concat(data):[];
-/*  this.from = 30;
-  this.to = 80;
-  this.width = 300;
-  this.height = 25;
-  this.cursorSize = 20;
-  this.padding = 15;*/
 
   this.usedWidth = function(d) {return d.width - 2*d.padding};
   this.setScale = function(d) {d.scale = d.scale?d.scale:d3.scaleLinear().domain([d.min, d.max]).range([d.padding, d.width - d.padding]);return this};
@@ -39,7 +33,7 @@ function epislider(selection, data) {
        d3.select(this).selectAll("slider-canvas").data(d);
     });
     //Base canvas selection
-    var canvas = this.selection.selectAll("g.slider-canvas");
+    var canvas = this.selection.selectAll("g.slider-canvas").data(this.data);
     //Adding axis to selection
     var axisUpdate = canvas.selectAll("g.d3-slider-axis").data(this.data);
     var axisEnter = axisUpdate.enter().append("g")
@@ -56,30 +50,36 @@ function epislider(selection, data) {
       .attr("x",d => d.padding)
       .attr("y", d => d.height - d.axisHeight - d.cursorHeight*0.6)
       .attr("rx", 2).attr("ry", 2)
-      .attr("width", d => d.scale(d.from)-d.padding).attr("height", d => d.cursorHeight*0.6)
+    slideLeftUpdate.merge(slideLeftEnter) 
+     .attr("width", d => d.scale(d.from)-d.padding).attr("height", d => d.cursorHeight*0.6)
 
     //Adding middle slider bar
     var slideMiddleUpdate = canvas.selectAll("rect.d3-slider-slide-middle").data(this.data);
     var slideMiddleEnter = slideMiddleUpdate.enter().append("rect")
       .classed("d3-slider-slide-middle", true)
-      .attr("x",d => d.scale(d.from))
       .attr("y", d => d.height - d.axisHeight - d.cursorHeight*0.6)
-      .attr("width", d => d.scale(d.to)-d.scale(d.from)).attr("height", d => d.cursorHeight*0.6)
+      .attr("height", d => d.cursorHeight*0.6)
+    slideMiddleUpdate.merge(slideMiddleEnter) 
+      .attr("width", d => d.scale(d.to)-d.scale(d.from))
+      .attr("x",d => d.scale(d.from))
 
     //Adding right slider bar
     var slideRightUpdate = canvas.selectAll("rect.d3-slider-slide-right").data(this.data);
     var slideRightEnter = slideRightUpdate.enter().append("rect")
       .classed("d3-slider-slide-right", true)
-      .attr("x",d => d.scale(d.to))
       .attr("y", d => d.height - d.axisHeight - d.cursorHeight*0.6)
       .attr("rx", 2).attr("ry", 2)
-      .attr("width", d => d.scale(d.max)-d.scale(d.to)).attr("height", d => d.cursorHeight*0.6)
+      .attr("height", d => d.cursorHeight*0.6)
+    slideRightUpdate.merge(slideRightEnter) 
+      .attr("width", d => d.scale(d.max)-d.scale(d.to))
+      .attr("x",d => d.scale(d.to))
 
     //Adding from cursor & label
     var cursorFromUpdate = canvas.selectAll("g.d3-slider-cursor-from").data(this.data);
     var cursorFromEnter = cursorFromUpdate.enter().append("g")
       .classed("d3-slider-cursor-from", true)
     cursorFromEnter.append("rect")
+      .classed("d3-slider-cursor", true)
       .attr("y", d => d.height - d.axisHeight - d.cursorHeight*0.8).attr("x", d => -d.cursorWidth/2.0)
       .attr("rx", 6).attr("ry", 2)
       .attr("width", d => d.cursorWidth).attr("height", d => d.cursorHeight)
@@ -90,17 +90,21 @@ function epislider(selection, data) {
     cursorFromEnter.append("text")
       .classed("d3-slider-label", true)
       .attr("y", d => d.height)
-      .text(d => d.from)
-      
+    cursorFromUpdate.selectAll("rect.d3-slider-cursor").data(this.data)
+    cursorFromUpdate.selectAll("text.d3-slider-label").data(this.data)
 
     cursorFromUpdate.merge(cursorFromEnter)
-      .attr("transform", d => `translate(${d.scale(d.from)},0)`);
+      .attr("transform", d => `translate(${d.scale(d.from)},0)`)
+      .selectAll("text.d3-slider-label")
+        .text(d => d.from) 
+    ;
 
     //Adding to cursor & label
     var cursorToUpdate = canvas.selectAll("g.d3-slider-cursor-to").data(this.data);
     var cursorToEnter = cursorToUpdate.enter().append("g")
       .classed("d3-slider-cursor-to", true)
     cursorToEnter.append("rect")
+      .classed("d3-slider-cursor", true)
       .attr("y", d => d.height - d.axisHeight - d.cursorHeight*0.8).attr("x", d => -d.cursorWidth/2.0)
       .attr("rx", 6).attr("ry", 2)
       .attr("width", d => d.cursorWidth).attr("height", d => d.cursorHeight)
@@ -112,10 +116,14 @@ function epislider(selection, data) {
       .classed("d3-slider-label", true)
       .attr("y", d => d.height)
       .text(d => d.to)
+    cursorToUpdate.selectAll("rect.d3-slider-cursor").data(this.data)
+    cursorToUpdate.selectAll("text.d3-slider-label").data(this.data)
 
     cursorToUpdate.merge(cursorToEnter)
-      .attr("transform", d => `translate(${d.scale(d.to)},0)`);
-    
+      .attr("transform", d => `translate(${d.scale(d.to)},0)`)
+      .selectAll("text.d3-slider-label")
+        .text(d => d.to) 
+    ;
   };
   this.dragCursorStarted = function(d) {
     d3.select(this).style("cursor", "grabbing");

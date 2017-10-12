@@ -41,6 +41,7 @@ div.filter {
 <link rel="stylesheet" type="text/css" href="d3.slider.css">
 <script src="d3.v4.js"></script>
 <script src="d3.slider.js"></script>
+<script src="wordTree.js"></script>
 
 
 <form onsubmit="load();return false;">
@@ -69,9 +70,7 @@ var pack = d3.pack()
 
 var node = null;
 var circle = null;
-function load() {
-  d3.json("data.json", function(error, root) {
-    if (error) throw error;
+function load(root) {
     var filtre = d3.select("#filtre").property("value")
     if(filtre.length>0) 
 	root = filterNodes(root, filtre)
@@ -125,7 +124,6 @@ function load() {
         .on("click", function() { zoom(root); });
 
     zoomTo([root.x, root.y, root.r * 2 + margin]);
-  });
 }
 
   function zoom(d) {
@@ -172,6 +170,17 @@ function load() {
     return null; 
   }
 
-load();
+var hierarchy;
+var raw = new WordTree().fromPath("phrase_clusters.json", function(tree) {
+  tree.removeNotFrequent(tree.root,tree.root, true);
+  tree.removeNotFrequentOnAncestor(tree.root,tree.root, true);
+  tree.removeEmpty(tree.root);
+  tree.popUpSingleWordLeaf(tree.root);
+  tree.removeLeafsBiggerThan(tree.root, 5);
+  hierarchy = tree.toHierarchy(tree.root)
+  load(hierarchy);
+});
+
+
 </script>
 

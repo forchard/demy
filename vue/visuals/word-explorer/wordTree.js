@@ -1,5 +1,5 @@
 Array.prototype.flatMap = function(lambda) { 
-    return Array.prototype.concat.apply([], this.map(lambda)); 
+  return Array.prototype.concat.apply([], this.map(lambda)); 
 };
 
 function WordTree() {
@@ -84,4 +84,41 @@ function WordTree() {
     }
     return ret;
   };
+  this.keepIfDescendantContains = function(node, filter) {
+    node.children = node.children.map(c => this.keepIfDescendantContains(c, filter)).filter(c => c)
+    
+    if(node.children.length==0 && node.words.map(w => w.word).filter(w => w.match(filter)).length == 0)
+      return null;
+    return node;
+  };
+
+  this.keepFirstWordIfNotContains = function(node, filter) {
+    if(node.words.map(w => w.word).filter(w => w.match(filter)).length == 0)
+      node.words = node.words.slice(0,1)
+    node.children.forEach(c => this.keepFirstWordIfNotContains(c, filter));
+  };
+  this.keepWordsOnSize = function(node, min, max) {
+    node.words = node.words.filter(w => w.count>=min && (!max || w.count<=max))
+    node.children.forEach(c => this.keepWordsOnSize(c, min, max));
+  }
+    /*/If text matches one of node words we retain all the words except for 
+    if(data.name.match(filtre)) 
+      return data;
+    //If a child matches the search then we return the matching child and single leaf brothers
+    if(data.children && data.children.filter(c => c.name.match(filtre)).length>0) {
+      data.children = data.children.filter(c => c.name.match(filtre) || !c.children)
+      return data;
+    }
+    if(data.children) {
+      var filtChildren = data.children.map(c => filterNodes(c, filtre)).filter(c => c);
+      if(filtChildren.length > 0) {
+        if(filtChildren.filter(c => !c.children).length == 0)
+          filtChildren = filtChildren.concat(data.children.filter(c => !c.children).slice(0,1))
+        data.children = filtChildren
+        return data;
+      }
+    }
+    return null; 
+  }*/
+
 }

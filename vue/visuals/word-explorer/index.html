@@ -1,57 +1,22 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
-<style>
-body {
-  font-family:"Helvetica Neue", Helvetica, Arial, sans-serif;
-}
-
-div.filter {
-  float:left;
-  height:35px;
-  vertical-align:middle;
-  line-height: 35px
-}
-
-.node {
-  cursor: pointer;
-}
-
-.node:hover {
-  stroke: #000;
-  stroke-width: 1.5px;
-}
-
-.node--leaf {
-  fill: white;
-}
-
-.label {
-  font: 11px "Helvetica Neue", Helvetica, Arial, sans-serif;
-  text-anchor: middle;
-  text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff, 0 -1px 0 #fff;
-}
-
-.label,
-.node--root,
-.node--leaf {
-  pointer-events: none;
-}
-
-</style>
 <link rel="stylesheet" type="text/css" href="d3.slider.css">
+<link rel="stylesheet" type="text/css" href="index.css">
 <script src="d3.v4.js"></script>
 <script src="d3.slider.js"></script>
 <script src="wordTree.js"></script>
 
 
-<form onsubmit="load();return false;">
+<form onsubmit="render();return false;">
 <div>
-	<div class="filter"><span>Limit Words</span><input type="text" value="" id="filtre"/><input type="submit" value="filtrer" ></div>
-	<div class ="filter"><div class="filter"><span style="margin-left:30px">Word Size:</span></div><div id="slider-div" class="filter"></div></div>
+	<div class="filter"><span>Limit Words</span><input type="text" value="" id="filtre"/></div>
+	<div class="filter"><div class="filter"><span style="margin-left:30px">Word Size:</span></div><div id="slider-div" class="filter"></div>
+        <div class="filter"><input style="margin-left:30px" type="submit" value="Go!" ></div>
 </div>
 </form>
 
 <svg width="1100" height="1100"></svg>
+
 <script>
 
 var svg = d3.select("svg"),
@@ -70,15 +35,11 @@ var pack = d3.pack()
 
 var node = null;
 var circle = null;
-function load(root) {
-    var filtre = d3.select("#filtre").property("value")
-    if(filtre.length>0) 
-	root = filterNodes(root, filtre)
+
+function renderTree(root) {
     root = d3.hierarchy(root)
         .sum(function(d) { return d.size; })
         .sort(function(a, b) { return b.value - a.value; });
-
-    d3.select("#slider-div").call(epislider);
  
     var focus = root,
         nodes = pack(root).descendants(),
@@ -126,61 +87,88 @@ function load(root) {
     zoomTo([root.x, root.y, root.r * 2 + margin]);
 }
 
-  function zoom(d) {
-    var focus0 = focus; focus = d;
+function zoom(d) {
+  var focus0 = focus; focus = d;
 
-    var transition = d3.transition()
-        .duration(d3.event.altKey ? 7500 : 750)
-        .tween("zoom", function(d) {
-          var i = d3.interpolateZoom(view, [focus.x, focus.y, focus.r * 2 + margin]);
-          return function(t) { zoomTo(i(t)); };
-        });
+  var transition = d3.transition()
+      .duration(d3.event.altKey ? 7500 : 750)
+      .tween("zoom", function(d) {
+        var i = d3.interpolateZoom(view, [focus.x, focus.y, focus.r * 2 + margin]);
+        return function(t) { zoomTo(i(t)); };
+      });
 
-    transition.selectAll("text")
-      .filter(function(d) { return d.parent && ((d.parent === focus && !d.children) || d.parent.parent === focus || this.style.display === "inline"); })
-        .style("fill-opacity", function(d) { return (d.parent === focus &&  !d.children) || d.parent.parent === focus? 1 : 0; })
-        .on("start", function(d) { if ((d.parent === focus &&  !d.children) || d.parent.parent === focus) this.style.display = "inline"; })
-        .on("end", function(d) { if ((d.parent !== focus ||  d.children) && d.parent.parent!==focus) this.style.display = "none"; });
-  
-  }
+  transition.selectAll("text")
+    .filter(function(d) { return d.parent && ((d.parent === focus && !d.children) || d.parent.parent === focus || this.style.display === "inline"); })
+      .style("fill-opacity", function(d) { return (d.parent === focus &&  !d.children) || d.parent.parent === focus? 1 : 0; })
+      .on("start", function(d) { if ((d.parent === focus &&  !d.children) || d.parent.parent === focus) this.style.display = "inline"; })
+      .on("end", function(d) { if ((d.parent !== focus ||  d.children) && d.parent.parent!==focus) this.style.display = "none"; });
 
-  function zoomTo(v) {
-    var k = diameter / v[2]; view = v;
-    node.attr("transform", function(d) { return "translate(" + (d.x - v[0]) * k + "," + (d.y - v[1]) * k + ")"; });
-    circle.attr("r", function(d) { return d.r * k; });
-  }
-  function filterNodes(data, filtre) {
-    //If text in node matches the search then we return it
-    if(data.name.match(filtre)) 
-      return data;
-    //If a child matches the search then we return the matching child and single leaf brothers
-    if(data.children && data.children.filter(c => c.name.match(filtre)).length>0) {
-      data.children = data.children.filter(c => c.name.match(filtre) || !c.children)
-      return data;
-    }
-    if(data.children) {
-      var filtChildren = data.children.map(c => filterNodes(c, filtre)).filter(c => c);
-      if(filtChildren.length > 0) {
-        if(filtChildren.filter(c => !c.children).length == 0)
-          filtChildren = filtChildren.concat(data.children.filter(c => !c.children).slice(0,1))
-        data.children = filtChildren
-        return data;
+}
+
+function zoomTo(v) {
+  var k = diameter / v[2]; view = v;
+  node.attr("transform", function(d) { return "translate(" + (d.x - v[0]) * k + "," + (d.y - v[1]) * k + ")"; });
+  circle.attr("r", function(d) { return d.r * k; });
+}
+
+function render() {
+  var firstLoad = !hierarchy
+  var sliderChanged = firstLoad || d3.select("#slider-div").datum().from|0 != sizeFrom || d3.select("#slider-div").datum().to|0 != sizeTo 
+  var filterChanged = d3.select("#filtre").property("value")!=filterValue
+  if(firstLoad || sliderChanged || filterChanged) {
+    sizeFrom = firstLoad?5:d3.select("#slider-div").datum().from|0;
+    sizeTo = firstLoad?null:d3.select("#slider-div").datum().to|0;
+    filterValue = d3.select("#filtre").property("value");
+
+    raw = new WordTree().fromPath("phrase_clusters.json", function(tree) {
+      //Removing words out of size boundary
+      tree.keepWordsOnSize(tree.root, sizeFrom, sizeTo);
+
+      //Assigning words to child cluster if more likely too
+      tree.removeNotFrequent(tree.root,tree.root, true);
+      tree.removeNotFrequentOnAncestor(tree.root,tree.root, true);
+
+      //Applying filter
+      if(filterValue) {
+        tree.keepIfDescendantContains(tree.root, filterValue);
+        tree.keepFirstWordIfNotContains(tree.root, filterValue);
       }
-    }
-    return null; 
+
+      //Compacting empty nodes
+      tree.removeEmpty(tree.root);
+      tree.popUpSingleWordLeaf(tree.root);
+
+      //Reducing to 1 word nodes unrelated with filter
+
+      //tree.removeLeafsBiggerThan(tree.root, 5);
+      hierarchy = tree.toHierarchy(tree.root)
+      
+      //Drawing filters
+      if(firstLoad) {
+        sizeMin = 1;
+        sizeMax = raw.getHeadWord(raw.root).count;
+        sizeTo = sizeMax
+        sliderData = {"min":sizeMin, "max":sizeMax, "from":sizeFrom, "to":sizeTo
+             , "width":300, "height":35, "padding":15, "cursorHeight":20, "cursorWidth":7, "axisHeight":17}
+      }
+      else {
+        sliderData.from = sizeFrom;
+        sliderData.to = sizeTo;
+      }
+      d3.select("#slider-div").call(epislider, [sliderData]);
+      renderTree(hierarchy);
+    });
   }
+}
 
 var hierarchy;
-var raw = new WordTree().fromPath("phrase_clusters.json", function(tree) {
-  tree.removeNotFrequent(tree.root,tree.root, true);
-  tree.removeNotFrequentOnAncestor(tree.root,tree.root, true);
-  tree.removeEmpty(tree.root);
-  tree.popUpSingleWordLeaf(tree.root);
-  tree.removeLeafsBiggerThan(tree.root, 5);
-  hierarchy = tree.toHierarchy(tree.root)
-  load(hierarchy);
-});
-
-
+var raw;
+var filterValue;
+var sizeFrom;
+var sizeTo;
+var sizeMin;
+var sizeMax;
+var sliderData;
+render();
 </script>
 

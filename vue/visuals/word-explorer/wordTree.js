@@ -1,6 +1,9 @@
 Array.prototype.flatMap = function(lambda) { 
   return Array.prototype.concat.apply([], this.map(lambda)); 
 };
+Array.prototype.distinct = function() { 
+  return Array.from(new Set(this))
+};
 
 function WordTree() {
   this.root = null;
@@ -100,6 +103,79 @@ function WordTree() {
   this.keepWordsOnSize = function(node, min, max) {
     node.words = node.words.filter(w => w.count>=min && (!max || w.count<=max))
     node.children.forEach(c => this.keepWordsOnSize(c, min, max));
+  };
+
+  this.popupWords = function(node, ascendants = []) {
+    node.childrenWords = [];
+    node.children.forEach(c => this.popupWords(c, ascendants.concat(node)))
+    var myWordsInAncestors = ascendants.flatMap(a => a.words).distinct().filter(w => node.words.includes(w));
+    //Removing words in node list if they are going to be pushed up
+    node.words = node.words.filter(w => !myWordsInAncestors.includes(w));    
+    
+    //Dealing with children words that has beeb pished to me
+    var childrenWordsToPopUp = node.childrenWords.filter(w => myWordsInAncestors.includes(w.name))
+    var childrenWordsToStay = node.childrenWords.filter(w => !myWordsInAncestors.includes(w.name))
+
+    var wordsToPopUp = myWordsInAncestors.map(w => r = {"name":w, "size":node.size, "children":[], "words":[]})
+                     .concat(childrenWordsToPopUp)
+
+    //Adding leaf childrens for children words not going to parents
+    node.children = node.children.concat(childrenWordsToStay) 
+    //Adding word to parent 
+    if(ascendants.length>0) {
+      var par = ascendants[ascendants.length-1]
+      wordsToPopUp.forEach(wpop => {
+        var same = par.childrenWords.filter(w => w.name === wpop.name)
+        if(same[0]) {
+          same.size = same.size + wpop.size;
+        }
+        else {
+          par.childrenWords.push(wpop)
+        }
+      }) 
+    }
+
+  };
+  this.toLeafOnlyHierarchy = function(node, level = 10) {
+    var ret = {}; 
+    ret.name=node.name;
+    ret.size=node.size;
+
+    if(node.children == 0)
+    	ret.children = node.words.map(w => r = {"name":w, "docCount":node.size , "size":node.size})
+    else
+        ret.children = []
+
+    ret.children = ret.children.concat(node.children.map(c => this.toLeafOnlyHierarchy(c, level - 1)))
+    ret.name = ret.name// + node.words.map(w => w).join(", ")
+    return ret;
+  };
+  this.toFullHierarchy = function(node) {
+    var ret = {}; 
+    ret.name=node.name;
+    ret.size=node.size;
+
+    ret.children = node.words.map(w => r = {"name":w, "docCount":node.size , "size":node.size})
+
+    ret.children = ret.children.concat(node.children.map(c => this.toFullHierarchy(c)))
+    return ret;
+  };
+  this.slice = function(node, hierarchy, startLevel, endLevel, minSize) {
+    var canSplit = node.children.length>1 && node.children.filter(c => c.size<minSize).length == 0
+    if(node.hierarchy.length < hierarchy.length) {
+      var child = node.children.filter(c => c.hierarchy.slice(0, node.hierarchy.length+1).join(",") === hierarchy.slice(0, node.hierarchy.length+1).join(","))[0]
+      return this.slice(child, hierarchy, startLevel, endLevel, sizeFrom);
+    }
+    else if(node.hierarchy.length==hierarchy.length && node.hierarchy.length<startLevel && canSplit)
+      return {"hierarchy":node.hierarchy, "name":node.name, "size":node.size, "words":[]
+              , "children":node.children.flatMap(c => this.slice(c, hierarchy, startLevel, endLevel))}
+    else if(node.hierarchy.length<startLevel && canSplit)
+      return node.children.flatMap(c => this.slice(c, hierarchy, startLevel, endLevel, sizeFrom))
+    else
+    {
+      return {"hierarchy":node.hierarchy, "name":node.name, "size":node.size, "words":node.words
+              , "children":node.hierarchy.length<endLevel && canSplit?node.children.map(c => this.slice(c, hierarchy, startLevel, endLevel, sizeFrom)):[]}
+    }
   }
     /*/If text matches one of node words we retain all the words except for 
     if(data.name.match(filtre)) 

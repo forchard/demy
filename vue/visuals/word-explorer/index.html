@@ -116,37 +116,41 @@ function render() {
   var sliderChanged = firstLoad || d3.select("#slider-div").datum().from|0 != sizeFrom || d3.select("#slider-div").datum().to|0 != sizeTo 
   var filterChanged = d3.select("#filtre").property("value")!=filterValue
   if(firstLoad || sliderChanged || filterChanged) {
-    sizeFrom = firstLoad?5:d3.select("#slider-div").datum().from|0;
+    sizeFrom = firstLoad?30:d3.select("#slider-div").datum().from|0;
     sizeTo = firstLoad?null:d3.select("#slider-div").datum().to|0;
     filterValue = d3.select("#filtre").property("value");
 
     raw = new WordTree().fromPath("phrase_clusters.json", function(tree) {
+      var toRender = tree.slice(tree.root, tree.root.hierarchy, 7, 10, sizeFrom); 
+      //tree.popupWords(toRender)
+      hierarchy = tree.toLeafOnlyHierarchy(toRender);
+
       //Removing words out of size boundary
-      tree.keepWordsOnSize(tree.root, sizeFrom, sizeTo);
+      //tree.keepWordsOnSize(tree.root, sizeFrom, sizeTo);
 
       //Assigning words to child cluster if more likely too
-      tree.removeNotFrequent(tree.root,tree.root, true);
-      tree.removeNotFrequentOnAncestor(tree.root,tree.root, true);
+      //tree.removeNotFrequent(tree.root,tree.root, true);
+      //tree.removeNotFrequentOnAncestor(tree.root,tree.root, true);
 
       //Applying filter
-      if(filterValue) {
-        tree.keepIfDescendantContains(tree.root, filterValue);
-        tree.keepFirstWordIfNotContains(tree.root, filterValue);
-      }
+      //if(filterValue) {
+      //  tree.keepIfDescendantContains(tree.root, filterValue);
+      //  tree.keepFirstWordIfNotContains(tree.root, filterValue);
+      //}
 
       //Compacting empty nodes
-      tree.removeEmpty(tree.root);
-      tree.popUpSingleWordLeaf(tree.root);
+      //tree.removeEmpty(tree.root);
+      //tree.popUpSingleWordLeaf(tree.root);
 
       //Reducing to 1 word nodes unrelated with filter
 
       //tree.removeLeafsBiggerThan(tree.root, 5);
-      hierarchy = tree.toHierarchy(tree.root)
+      //hierarchy = tree.toHierarchy(tree.root)
       
       //Drawing filters
       if(firstLoad) {
         sizeMin = 1;
-        sizeMax = raw.getHeadWord(raw.root).count;
+        sizeMax = raw.root.size;
         sizeTo = sizeMax
         sliderData = {"min":sizeMin, "max":sizeMax, "from":sizeFrom, "to":sizeTo
              , "width":300, "height":35, "padding":15, "cursorHeight":20, "cursorWidth":7, "axisHeight":17}

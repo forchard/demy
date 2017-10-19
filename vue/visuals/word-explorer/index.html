@@ -6,23 +6,33 @@
 <script src="d3.slider.js"></script>
 <script src="wordTree.js"></script>
 
-
-<form onsubmit="render();return false;">
-<div>
-	<div class="filter"><span>Limit Words</span><input type="text" value="" id="filtre"/></div>
-	<div class="filter"><div class="filter"><span style="margin-left:30px">Word Size:</span></div><div id="slider-div" class="filter"></div>
-        <div class="filter"><input style="margin-left:30px" type="submit" value="Go!" ></div>
+<div class="coldiv">
+  <form onsubmit="render();return false;" class="rowdiv">
+  	<div class="celldiv"><span>Limit Words</span><input type="text" value="" id="filtre"/></div>
+  	<div class="celldiv"><span style="margin-left:30px">Cluster Size:</span></div><div id="slider-size-div" class="celldiv"></div>
+  	<div class="celldiv"><span style="margin-left:30px">Cluster Density:</span></div><div id="slider-density-div" class="celldiv"></div>
+        <div class="celldiv"><input style="margin-left:30px" type="submit" value="Go!" ></div>
+  </form>
+  
+  
+  <div class="rowdiv">
+    <div style="height:900px;width:900px" class="celldiv">
+      <svg width="900" height="900"></svg>
+    </div>
+    <div style="height:1000px;width:400px" class="coldiv">
+      <div class="celldiv">Top Phrases on Selected Cluster</div>
+      <div id="phrasesContainer" class="coldiv">
+      </div>
+    </div>
+  </div>
 </div>
-</form>
-
-<svg width="1100" height="1100"></svg>
-
 <script>
 
 var svg = d3.select("svg"),
     margin = 20,
     diameter = +svg.attr("width"),
-    g = svg.append("g").attr("transform", "translate(" + diameter / 2 + "," + diameter / 2 + ")");
+    g = svg.append("g").classed("circle", true).attr("transform", "translate(" + diameter / 2 + "," + diameter / 2 + ")");
+    gText = svg.append("g").classed("text", true).attr("transform", "translate(" + diameter / 2 + "," + diameter / 2 + ")");
 
 var color = d3.scaleLinear()
     .domain([-1, 5])
@@ -33,7 +43,8 @@ var pack = d3.pack()
     .size([diameter - margin, diameter - margin])
     .padding(2);
 
-var node = null;
+var nodeCircle = null;
+var nodeText = null;
 var circle = null;
 
 function renderTree(root) {
@@ -59,7 +70,7 @@ function renderTree(root) {
         .style("display", "inline")
         .classed("in", true)
 
-    var textUpdate = g.selectAll("text").data(nodes)
+    var textUpdate = gText.selectAll("text").data(nodes)
     var textEnter = textUpdate.enter()
         .append("text")
         .attr("class", "label")
@@ -78,13 +89,15 @@ function renderTree(root) {
     text.selectAll("tspan.value").text(function(d, i, g) { return g[i].parentNode.__data__.data.size; });
    
     
-    node = g.selectAll("circle.in,text.in");
+    nodeCircle = g.selectAll("circle.in");
+    nodeText = gText.selectAll("text.in");
 
     svg
         .style("background", color(-1))
         .on("click", function() { zoom(root); });
 
     zoomTo([root.x, root.y, root.r * 2 + margin]);
+    drawPhrases(root);
 }
 
 function zoom(d) {
@@ -96,7 +109,7 @@ function zoom(d) {
         var i = d3.interpolateZoom(view, [focus.x, focus.y, focus.r * 2 + margin]);
         return function(t) { zoomTo(i(t)); };
       });
-
+  drawPhrases(d);
   transition.selectAll("text")
     .filter(function(d) { return d.parent && ((d.parent === focus && !d.children) || d.parent.parent === focus || this.style.display === "inline"); })
       .style("fill-opacity", function(d) { return (d.parent === focus &&  !d.children) || d.parent.parent === focus? 1 : 0; })
@@ -107,21 +120,38 @@ function zoom(d) {
 
 function zoomTo(v) {
   var k = diameter / v[2]; view = v;
-  node.attr("transform", function(d) { return "translate(" + (d.x - v[0]) * k + "," + (d.y - v[1]) * k + ")"; });
+  nodeCircle.attr("transform", function(d) { return "translate(" + (d.x - v[0]) * k + "," + (d.y - v[1]) * k + ")"; });
+  nodeText.attr("transform", function(d) { return "translate(" + (d.x - v[0]) * k + "," + (d.y - v[1]) * k + ")"; });
   circle.attr("r", function(d) { return d.r * k; });
+}
+
+function drawPhrases(d) {
+  var updatePhrase = d3.select("#phrasesContainer").selectAll("div.phrase").data(d.data.phrases);
+  var enterPhrase = updatePhrase.enter().append("div");
+  var exitPhrase = updatePhrase.exit();
+  enterPhrase.classed("rowdiv phrase", true).style("display","flex");
+  enterPhrase.append("div").classed("cell phrase-bullet", true).html("&nbsp;");
+  enterPhrase.append("div").classed("cell phrase-text", true);
+  enterPhrase.merge(updatePhrase)
+    .style("display", "flex").select("div.phrase-text").text(d => d+"...")
+
+  exitPhrase.style("display", "none");
 }
 
 function render() {
   var firstLoad = !hierarchy
-  var sliderChanged = firstLoad || d3.select("#slider-div").datum().from|0 != sizeFrom || d3.select("#slider-div").datum().to|0 != sizeTo 
+  var sliderChanged = firstLoad || d3.select("#slider-size-div").datum().from|0 != sizeFrom || d3.select("#slider-size-div").datum().to|0 != sizeTo 
   var filterChanged = d3.select("#filtre").property("value")!=filterValue
+  var densityChanged = firstLoad 
   if(firstLoad || sliderChanged || filterChanged) {
-    sizeFrom = firstLoad?30:d3.select("#slider-div").datum().from|0;
-    sizeTo = firstLoad?null:d3.select("#slider-div").datum().to|0;
+    sizeFrom = firstLoad?10:d3.select("#slider-size-div").datum().from|0;
+    sizeTo = firstLoad?null:d3.select("#slider-size-div").datum().to|0;
     filterValue = d3.select("#filtre").property("value");
 
+    
+
     raw = new WordTree().fromPath("phrase_clusters.json", function(tree) {
-      var toRender = tree.slice(tree.root, tree.root.hierarchy, 7, 10, sizeFrom); 
+      var toRender = tree.slice(tree.root, tree.root.hierarchy, 3, 10, sizeFrom, 50000); 
       //tree.popupWords(toRender)
       hierarchy = tree.toLeafOnlyHierarchy(toRender);
 
@@ -159,7 +189,7 @@ function render() {
         sliderData.from = sizeFrom;
         sliderData.to = sizeTo;
       }
-      d3.select("#slider-div").call(epislider, [sliderData]);
+      d3.select("#slider-size-div").call(epislider, [sliderData]);
       renderTree(hierarchy);
     });
   }
@@ -173,6 +203,11 @@ var sizeTo;
 var sizeMin;
 var sizeMax;
 var sliderData;
+var densityFrom;
+var densityTo;
+var densityMin;
+var densityMax;
+
 render();
 </script>
 

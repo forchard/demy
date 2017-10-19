@@ -34,3 +34,26 @@ div.filter {
   pointer-events: none;
 }
 
+
+.celldiv {
+  margin: 2px; 
+}
+
+.rowdiv {
+  display: -webkit-flex;
+  display: flex;
+  flex-direction:row;
+}
+
+.coldiv {
+  display: -webkit-flex;
+  display: flex;
+  flex-direction:column;
+}
+
+.phrase-bullet {
+  background-image:url("bullet_triangle_grey.png");
+  width:20px;
+  background-size: 20px 20px;
+  background-repeat:no-repeat;
+}

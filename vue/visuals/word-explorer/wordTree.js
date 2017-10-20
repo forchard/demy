@@ -22,138 +22,32 @@ function WordTree() {
   this.sameHierarchy = function(h1, h2) {
     return h1.length===h2.length && h1.every((v,i) => v === h2[i])
   };
-  this.removeNotFrequent = function(node, ancestor, goDown) {
-    if(!this.sameHierarchy(ancestor.hierarchy, node.hierarchy)) {
-      var tWords = node.words
-      tWords.forEach(tw => {
-      //If the current word exists on ancestor but frequency is less than 1.5 times or containing less than the half of occurrences than the ancestor 
-      //the word will be removed from the children
-      if(ancestor.words.filter(aw => aw.hash===tw.hash && (1.0*(tw.count/node.totalWords) / (aw.count/ancestor.totalWords)<=1 || tw.count <= aw.count/2.0)).length>0) 
-        node.words = node.words.filter(w => tw.hash!=w.hash)                
-      });
-      this.removeNotFrequent(node, ancestor.children.filter(c => this.sameHierarchy(node.hierarchy.slice(0, c.hierarchy.length), c.hierarchy))[0], false)
-    }
-    if(goDown) 
-      node.children.forEach(c => this.removeNotFrequent(c, ancestor, true));
-  };
-  this.removeNotFrequentOnAncestor = function(node, ancestor, goDown) {
-    if(!this.sameHierarchy(ancestor.hierarchy, node.hierarchy)) {
-      var tWords = node.words
-      tWords.forEach(tw => {
-      //If the current word exists on ancestor but frequency is less than 1.5 times or containing less than the half of occurrences than the ancestor 
-      //the word will be removed from the children
-      if(ancestor.words.filter(aw => aw.hash===tw.hash && (1.0*(tw.count/node.totalWords) / (aw.count/ancestor.totalWords)>1 || tw.count > aw.count/2.0)).length>0) 
-        ancestor.words = ancestor.words.filter(w => tw.hash!=w.hash)                
-      });
-      this.removeNotFrequentOnAncestor(node, ancestor.children.filter(c => this.sameHierarchy(node.hierarchy.slice(0, c.hierarchy.length), c.hierarchy))[0], false)
-    }
-    if(goDown) 
-      node.children.forEach(c => this.removeNotFrequentOnAncestor(c, ancestor, true));
-  };
-  this.removeEmpty = function(node) {
-    while(node.children.length>0 && node.children.filter(c => c.words.length===0 ).length>0) {
-        var toRemove = node.children.filter(c => c.words.length==0);
-        var toAdd = toRemove.flatMap(c => c.children).filter(gc => gc.words.length>0 || gc.children.length>0);
-        node.children = (node.children.filter(c => !toRemove.map(r => r.hierarchy.join(",")).includes(c.hierarchy.join(","))).concat(toAdd));
-    }
-    node.children.forEach(c => this.removeEmpty(c));
-  };
-  this.removeLeafsBiggerThan = function(node, limit) {
-    node.words = node.words.slice(0,limit)
-    node.children.forEach(c => this.removeLeafsBiggerThan(c, limit))
-  };
-  this.getDensityRange = function(node) {
-    return node.children.map(c =>this.getDensityRange(c))
+  this.getRatioRange = function(node) {
+    return node.children.map(c =>this.getRatioRange(c))
                     .concat({"min":node.density, "max":node.density})
                     .reduce((p1, p2)=> r = {"min":p1.min<p2.min?p1.min:p2.min, "max":p1.max>p2.max?p1.max:p2.max});
   };
-  this.getHeadWord = function(node) {
-    var h = node.words.concat(node.children.map(c =>this.getHeadWord(c))).sort((w1, w2) => w1.count < w2.count);
-    if(h.length>0)
-      return h[0]
-    return null;
-  };
-  this.popUpSingleWordLeaf = function(node) {
-    node.children = node.children.filter(c => c.children.length > 0 || c.words.length>1);
-    node.words = node.words.concat(node.children.filter(c => c.children.length == 0 && c.words.length==1).flatMap(c => c.words)).sort((w1, w2) => w1.count < w2.count);
-    node.children.forEach(c => this.popUpSingleWordLeaf(c));
-  };
-  this.toHierarchy = function(node) {
-    var head = this.getHeadWord(node) 
-    var ret = {}; 
-    ret.name=head.word;
-    ret.size=head.count;
 
-    if(node.words.length>0 || node.children.length>0)
-    {
-      ret.children = node.words.map(w => r = {"name":w.word, "size":w.count}).concat(
-        node.children.map(c => this.toHierarchy(c))
-      );
-    }
-    return ret;
-  };
-  this.keepIfDescendantContains = function(node, filter) {
-    node.children = node.children.map(c => this.keepIfDescendantContains(c, filter)).filter(c => c)
-    
-    if(node.children.length==0 && node.words.map(w => w.word).filter(w => w.match(filter)).length == 0)
-      return null;
-    return node;
-  };
-
-  this.keepFirstWordIfNotContains = function(node, filter) {
-    if(node.words.map(w => w.word).filter(w => w.match(filter)).length == 0)
-      node.words = node.words.slice(0,1)
-    node.children.forEach(c => this.keepFirstWordIfNotContains(c, filter));
-  };
-  this.keepWordsOnSize = function(node, min, max) {
-    node.words = node.words.filter(w => w.count>=min && (!max || w.count<=max))
-    node.children.forEach(c => this.keepWordsOnSize(c, min, max));
-  };
-
-  this.popupWords = function(node, ascendants = []) {
-    node.childrenWords = [];
-    node.children.forEach(c => this.popupWords(c, ascendants.concat(node)))
-    var myWordsInAncestors = ascendants.flatMap(a => a.words).distinct().filter(w => node.words.includes(w));
-    //Removing words in node list if they are going to be pushed up
-    node.words = node.words.filter(w => !myWordsInAncestors.includes(w));    
-    
-    //Dealing with children words that has beeb pished to me
-    var childrenWordsToPopUp = node.childrenWords.filter(w => myWordsInAncestors.includes(w.name))
-    var childrenWordsToStay = node.childrenWords.filter(w => !myWordsInAncestors.includes(w.name))
-
-    var wordsToPopUp = myWordsInAncestors.map(w => r = {"name":w, "size":node.size, "children":[], "words":[]})
-                     .concat(childrenWordsToPopUp)
-
-    //Adding leaf childrens for children words not going to parents
-    node.children = node.children.concat(childrenWordsToStay) 
-    //Adding word to parent 
-    if(ascendants.length>0) {
-      var par = ascendants[ascendants.length-1]
-      wordsToPopUp.forEach(wpop => {
-        var same = par.childrenWords.filter(w => w.name === wpop.name)
-        if(same[0]) {
-          same.size = same.size + wpop.size;
-        }
-        else {
-          par.childrenWords.push(wpop)
-        }
-      }) 
-    }
-
-  };
   this.toLeafOnlyHierarchy = function(node, level = 10) {
     var ret = {}; 
     ret.name=node.name;
     ret.size=node.size;
     ret.docCount=node.size;
     ret.phrases=node.phrases;
+    ret.id=node.hierarchy.join(",");
+    ret.childrenHidden=node.childrenHidden;
 
     var index = node.words.length;
     var length = node.words.length; 
     if(node.children == 0)
-    	ret.children = node.words.map(w => r = {"name":w, "docCount":node.size , "size":(node.size * ((index--)+length*0.2)/(1.2*length))|0, "phrases":node.phrases.filter(p => p.includes(w))})
+    	ret.children = node.words.map(w => r = {"name":w, "docCount":node.size , "noCount":(index<length)
+                                                , "size":(node.size * ((index--)+length*0.2)/(1.2*length))|0
+                                                , "phrases":node.phrases.filter(p => p.includes(w))
+                                                , "id":ret.id+":"+w, "drillDown":false}
+                                     )
+                                                                 
     else
-        ret.children = []
+        ret.children = [];
 
     ret.children = ret.children.concat(node.children.map(c => this.toLeafOnlyHierarchy(c, level - 1)))
     return ret;
@@ -168,47 +62,39 @@ function WordTree() {
     ret.children = ret.children.concat(node.children.map(c => this.toFullHierarchy(c)))
     return ret;
   };
-  this.slice = function(node, hierarchy, startLevel, endLevel, minSize, maxSize) {
-    var ignoreLevel = node.hierarchy.length<startLevel || node.size > maxSize
-    var canSplit = node.children.length>1 && node.children.filter(c => c.size<minSize).length == 0
+  this.slice = function(node, hierarchy, startLevel, endLevel, minSize, maxSize, minRatio, maxRatio, wordFilter, expandedNodes) {
+    var isExpanded = expandedNodes.includes(hierarchy.join(","))
+    var isParentExpanded = expandedNodes.includes(hierarchy.slice(0, hierarchy.length-1).join(","))
+    var ignoreLevel = (!isParentExpanded) && 
+                      ( node.hierarchy.length<startLevel 
+                         || node.size > maxSize 
+                         || node.density < minRatio || node.density > maxRatio 
+                         || wordFilter && node.words.filter(p => p.match(wordFilter)).length == 0
+                      )
+    var canSplit = node.children.length>1 
+                   && (node.children.filter(c => c.size<minSize).length == 0
+                       || isExpanded
+                      )
     //Looking for focus node
     if(node.hierarchy.length < hierarchy.length) {
       var child = node.children.filter(c => c.hierarchy.slice(0, node.hierarchy.length+1).join(",") === hierarchy.slice(0, node.hierarchy.length+1).join(","))[0]
-      return this.slice(child, hierarchy, startLevel, endLevel, sizeFrom);
+      return this.slice(child, hierarchy, startLevel, endLevel, minSize, maxSize, minRatio, maxRatio, wordFilter, expandedNodes);
     }
     //focus node found
-    else if(node.hierarchy.length==hierarchy.length && node.hierarchy.length<startLevel && canSplit)
+    else if(node.hierarchy.length==hierarchy.length && node.hierarchy.length<startLevel)
       return {"hierarchy":node.hierarchy, "name":node.name, "size":node.size, "words":[]
-              , "children":node.children.flatMap(c => this.slice(c, hierarchy, startLevel, endLevel))
+              , "children":node.children.flatMap(c => this.slice(c, hierarchy, startLevel, endLevel, minSize, maxSize, minRatio, maxRatio, wordFilter, expandedNodes))
               , "phrases":node.phrases}
-    //Ignoring levels higher than limits 
+    //Ignoring nodes out of limits higher than limits but giving a chance to children 
     else if(ignoreLevel && canSplit)
-      return node.children.flatMap(c => this.slice(c, hierarchy, startLevel, endLevel, sizeFrom))
-    else
+      return node.children.flatMap(c => this.slice(c, hierarchy, startLevel, endLevel, minSize, maxSize, minRatio, maxRatio, wordFilter, expandedNodes))
+    else if(!ignoreLevel)
     {
       return {"hierarchy":node.hierarchy, "name":node.name, "size":node.size, "words":node.words
-              , "children":node.hierarchy.length<endLevel && canSplit?node.children.map(c => this.slice(c, hierarchy, startLevel, endLevel, sizeFrom)):[]
-              , "phrases":node.phrases}
+              , "children":node.hierarchy.length<endLevel && canSplit?node.children.flatMap(c => [].concat(this.slice(c, hierarchy, startLevel, endLevel, minSize, maxSize, minRatio, maxRatio, wordFilter, expandedNodes))):[]
+              , "phrases":node.phrases, "childrenHidden":(node.hierarchy.length>=endLevel || !canSplit)}
     }
+    return [];
   }
-    /*/If text matches one of node words we retain all the words except for 
-    if(data.name.match(filtre)) 
-      return data;
-    //If a child matches the search then we return the matching child and single leaf brothers
-    if(data.children && data.children.filter(c => c.name.match(filtre)).length>0) {
-      data.children = data.children.filter(c => c.name.match(filtre) || !c.children)
-      return data;
-    }
-    if(data.children) {
-      var filtChildren = data.children.map(c => filterNodes(c, filtre)).filter(c => c);
-      if(filtChildren.length > 0) {
-        if(filtChildren.filter(c => !c.children).length == 0)
-          filtChildren = filtChildren.concat(data.children.filter(c => !c.children).slice(0,1))
-        data.children = filtChildren
-        return data;
-      }
-    }
-    return null; 
-  }*/
 
 }

@@ -7,19 +7,22 @@
 <script src="wordTree.js"></script>
 
 <div class="coldiv">
-  <form onsubmit="render();return false;" class="rowdiv">
- 	<div class="celldiv"><span>Limit Words</span><input type="text" value="" id="filtre"/></div>
-  	<div class="celldiv"><span style="margin-left:30px">Cluster Size:</span></div><div id="slider-size-div" class="celldiv"></div>
-  	<div class="celldiv"><span style="margin-left:30px">Cluster Density:</span></div><div id="slider-ratio-div" class="celldiv"></div>
-        <div class="celldiv"><input style="margin-left:30px" type="submit" value="Go!" ></div>
+  <form onsubmit="render();return false;" class="rowdiv-wrap">
+  	<div class="celldiv filter"><span class="filter-tittle">Cluster Size:</span><div id="slider-size-div" class="in-filter"></div></div>
+  	<div class="celldiv filter"><span class="filter-tittle">Cluster Dispersion:</span><div id="slider-ratio-div" class="in-filter"></div></div>
+  	<div class="celldiv filter"><span class="filter-tittle">Cluster Levels:</span><div id="slider-level-div" class="in-filter"></div></div>
+ 	<div class="celldiv filter"><span class="filter-tittle">Limit Words</span><span style="width:300px;display:inline-block"><input type="text" value="" id="filtre"/></span></div>
+        <div class="celldiv filter"><input style="margin-left:30px" type="submit" value="Go!" ></div>
   </form>
   
   
-  <div class="rowdiv">
-    <div style="height:900px;width:900px" class="celldiv">
-      <svg width="900" height="900"></svg>
+  <div class="rowdiv-wrap" id="path-container" >
+  </div>
+  <div class="rowdiv-wrap">
+    <div style="height:800px;width:800px" class="celldiv">
+      <svg width="800" height="800"></svg>
     </div>
-    <div style="height:1000px;width:400px" class="coldiv">
+    <div style="height:1000px;width:600px" class="coldiv">
       <div class="celldiv">Top Phrases on Selected Cluster</div>
       <div id="phrasesContainer" class="coldiv">
       </div>

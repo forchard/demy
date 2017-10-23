@@ -70,13 +70,13 @@ function WordTree() {
                       ( node.hierarchy.length<startLevel 
                          || node.size > maxSize 
                          || node.density < minRatio || node.density > maxRatio 
-                         || wordFilter && node.words.filter(p => p.match(wordFilter)).length == 0
+                         || Boolean(wordFilter) && node.words.filter(p => p.match(wordFilter)).length == 0
                       )
     var canSplit = node.children.length>1 
                    && !isCollapsed
-                   && (node.children.filter(c => c.size<minSize).length == 0
-                       || isExpanded
-                      )
+                   && ((node.children.filter(c => c.size<minSize).length == 0
+                       && node.hierarchy.length<endLevel
+                      ) || isExpanded)
     //Looking for focus node
     if(node.hierarchy.length < hierarchy.length) {
       var child = node.children.filter(c => c.hierarchy.slice(0, node.hierarchy.length+1).join(",") === hierarchy.slice(0, node.hierarchy.length+1).join(","))[0]
@@ -93,8 +93,8 @@ function WordTree() {
     else if(!ignoreLevel)
     {
       return {"hierarchy":node.hierarchy, "name":node.name, "size":node.size, "words":node.words
-              , "children":node.hierarchy.length<endLevel && canSplit?node.children.flatMap(c => [].concat(this.slice(c, hierarchy, startLevel, endLevel, minSize, maxSize, minRatio, maxRatio, wordFilter, expandedNodes, collapsedNodes))):[]
-              , "phrases":node.phrases, "childrenHidden":(node.hierarchy.length>=endLevel || !canSplit)}
+              , "children": canSplit?node.children.flatMap(c => [].concat(this.slice(c, hierarchy, startLevel, endLevel, minSize, maxSize, minRatio, maxRatio, wordFilter, expandedNodes, collapsedNodes))):[]
+              , "phrases":node.phrases, "childrenHidden":(node.children.length>0 && !canSplit)}
     }
     return [];
   }

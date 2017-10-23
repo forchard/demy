@@ -3,10 +3,17 @@ body {
 }
 
 div.filter {
-  float:left;
-  height:35px;
-  vertical-align:middle;
-  line-height: 35px
+  display:table;
+  white-space:nowrap
+}
+.filter-tittle {
+  display:table-cell;
+  padding-left:20px;
+  width:150px;
+  vertical-align: middle;
+}
+div.in-filter {
+  display:table-cell;
 }
 
 .node {
@@ -51,6 +58,12 @@ div.filter {
   flex-direction:row;
 }
 
+.rowdiv-wrap {
+  display: -webkit-flex;
+  display: flex;
+  flex-direction:row;
+  flex-wrap:wrap
+}
 .coldiv {
   display: -webkit-flex;
   display: flex;
@@ -62,4 +75,17 @@ div.filter {
   width:20px;
   background-size: 20px 20px;
   background-repeat:no-repeat;
+}
+
+
+.path-part-bullet {
+  background-image:url("next.png");
+  width:20px;
+  background-size: 15px 15px;
+  background-repeat:no-repeat;
+  display:inline-block;
+  background-position:center;
+}
+.path-part{
+  display:inline;
 }

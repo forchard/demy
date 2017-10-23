@@ -15,20 +15,25 @@ var pack = d3.pack()
     .padding(2);
 
 
-function renderTree(root) {
-    root = d3.hierarchy(root)
+function renderTree(r) {
+    root = d3.hierarchy(r)
         .sum(function(d) { return d.size; })
-        .sort(function(a, b) { return b.value - a.value; });
+        .sort(function(a, b) { return b.data.id - a.data.id; });
  
     var nodes = pack(root).descendants();
-    nodes.forEach(n => {if(oldPositions[n.data.id]) {n.from = oldPositions[n.data.id]} else {n.from = {"x":-root.x, "y":-root.y, r:10}}})
+    find
+    nodes.forEach(n => {if(oldPositions[n.data.id]) {n.from = oldPositions[n.data.id]} else {
+                                                                                              var par = visibleParentOf(n.data.id, root);
+                                                                                              if(par.from) par = par.from;
+                                                                                              n.from = {"x":par.x, "y":par.y, r:1}}})
     oldPositions = {}
     nodes.forEach(n => oldPositions[n.data.id]={"x":n.x, "y":n.y,"r":n.r}); 
 
     if(!currentFocus)
-      currentFocus = root
+      setFocus(root, raw.root);
     else {
-      currentFocus = visibleParentOf(currentFocus.data.id, root);
+      var f= visibleParentOf(currentFocus.data.id, root);
+      setFocus(f, raw.root);
     }
 
     var circUpdate = g.selectAll("circle").data(nodes, d => d.data.id);
@@ -77,13 +82,39 @@ function renderTree(root) {
 function visibleParentOf(id, node) {
   if(node.data.id === id)
    return node;
-
-  var closer = node.children.filter(c => id.startsWith(c.data.id))[0];
-  if(!node.data.childrenHidden && closer)
-    return visibleParentOf(id, closer);
+  if(node.children) {
+    var closer = node.children.filter(c => id.startsWith(c.data.id))[0];
+    if(!node.data.childrenHidden && closer)
+      return visibleParentOf(id, closer);
+    }
   return node;
 }
+function getFocus(id, node) {
+  if(node.hierarchy.join(",") === id)
+   return [node];
+  return [node].concat(node.children.filter(c => id.startsWith(c.hierarchy.join(","))).flatMap(c => getFocus(id, c)));
+}
 
+function setFocus(node, root) {
+  currentFocus = node; 
+  var path = getFocus(node.data.id, root)
+  var update = d3.select("#path-container").selectAll("div.path-part").data(path, d => d.hierarchy.join(",")); 
+  var enter = update.enter();
+  var exit = update.exit(); 
+
+  var cont = enter.append("div")
+    .classed("path-part", true)
+    .on("click", (d)=> {toggleNode(d); d3.event.stopPropagation();})
+
+  cont.append("div").classed("path-part-bullet", true).html("&nbsp;");
+  cont.append("span").classed("path-part-text", true);
+
+  exit.remove();
+  update.merge(enter)
+    .selectAll("span.path-part-text")
+    .text(d => d.name);
+    
+}
 function init(focus) {
   var transition = d3.transition("in")
       .duration(2000)
@@ -100,7 +131,7 @@ function init(focus) {
       .on("end", function(d) { if ((d.parent !== currentFocus ||  d.children) && d.parent.parent!==currentFocus) this.style.display = "none"; });
 
   d3.transition("out")
-      .duration(2000)
+      .duration(500)
       .tween("leaving", function(d) {
         var i = d3.interpolateNumber(0, 1);
         return function(t) { leave([currentFocus.x, currentFocus.y, currentFocus.r * 2 + margin], i(t)); };
@@ -155,7 +186,7 @@ function collapseNode(d) {
 
 
 function zoom(d) {
-  currentFocus = d;
+  setFocus(d, raw.root);
   var transition = d3.transition()
       .duration(d3.event.altKey ? 7500 : 750)
       .tween("zoom", function(d) {
@@ -169,7 +200,8 @@ function zoom(d) {
       .on("start", function(d) { if ((d.parent === currentFocus &&  !d.children) || d.parent.parent === currentFocus) this.style.display = "inline"; })
       .on("end", function(d) { if ((d.parent !== currentFocus ||  d.children) && d.parent.parent!==currentFocus) this.style.display = "none"; });
 
-}
+} 
+
 
 function zoomTo(v) {
   var k = diameter / v[2]; view = v;
@@ -192,10 +224,8 @@ function move(v, t, oldV) {
 function leave(v, t) {
   var k = diameter / v[2]; view = v;
   removedCircle
-      .attr("transform", function(d) { return "translate(" + d3.interpolateNumber((d.x - v[0]) * k, (2*v[0]) * k)(t) + "," + d3.interpolateNumber((d.y - v[1]) * k, (2*v[1]) * k)(t) + ")"; })
-      .attr("r", function(d) { return d3.interpolateNumber(d.r * k, 10)(t); });
+      .attr("r", function(d) { return d3.interpolateNumber(d.r * k, 1)(t); });
   removedText
-      .attr("transform", function(d) { return "translate(" + d3.interpolateNumber((d.x - v[0]) * k, (2*v[0]) * k)(t) + "," + d3.interpolateNumber((d.y - v[1]) * k, (2*v[1]) * k)(t) + ")"; })
 }
 
 
@@ -204,7 +234,7 @@ function drawPhrases(d) {
   var enterPhrase = updatePhrase.enter().append("div");
   var exitPhrase = updatePhrase.exit();
   enterPhrase.classed("rowdiv phrase", true).style("display","flex");
-  enterPhrase.append("div").classed("cell phrase-bullet", true).html("&nbsp;");
+  enterPhrase.append("div").classed("cell phrase-bullet", true).html("&nbsp;&nbsp;");
   enterPhrase.append("div").classed("cell phrase-text", true);
   enterPhrase.merge(updatePhrase)
     .style("display", "flex").select("div.phrase-text").text(d => d+"...")
@@ -226,19 +256,22 @@ function refreshTree(tree) {
   var firstLoad = !hierarchy
   var sliderChanged = firstLoad || d3.select("#slider-size-div").datum().from|0 != sizeFrom || d3.select("#slider-size-div").datum().to|0 != sizeTo
                                || d3.select("#slider-ratio-div").datum().from|0 != ratioFrom || d3.select("#slider-ratio-div").datum().to|0 != ratioTo 
+                               || d3.select("#slider-level-div").datum().from|0 != levelFrom || d3.select("#slider-level-div").datum().to|0 != levelTo 
   var filterChanged = d3.select("#filtre").property("value")!=filterValue
   if(firstLoad || sliderChanged || filterChanged) {
     sizeFrom = firstLoad?10:d3.select("#slider-size-div").datum().from|0;
     sizeTo = firstLoad?null:d3.select("#slider-size-div").datum().to|0;
     ratioFrom = firstLoad?0:d3.select("#slider-ratio-div").datum().from/100;
     ratioTo = firstLoad?null:d3.select("#slider-ratio-div").datum().to/100;
+    levelFrom = firstLoad?3:d3.select("#slider-level-div").datum().from|0;
+    levelTo = firstLoad?6:d3.select("#slider-level-div").datum().to|0;
     filterValue = d3.select("#filtre").property("value");
   }
   var ratioRange = tree.getRatioRange(tree.root)
   if(firstLoad) ratioTo = ratioRange.max
   if(firstLoad) sizeTo = tree.root.size
 
-  var toRender = tree.slice(tree.root, tree.root.hierarchy, 3, 5, sizeFrom, sizeTo, ratioFrom, ratioTo, filterValue, expandedNodes, collapsedNodes); 
+  var toRender = tree.slice(tree.root, tree.root.hierarchy, levelFrom, levelTo, sizeFrom, sizeTo, ratioFrom, ratioTo, filterValue, expandedNodes, collapsedNodes); 
   hierarchy = tree.toLeafOnlyHierarchy(toRender);
 
   //Drawing filters
@@ -251,6 +284,10 @@ function refreshTree(tree) {
     ratioMax = ratioTo;
     ratioData = {"min":ratioMin*100, "max":(ratioMax*100)|0, "from":ratioFrom*100, "to":(ratioTo*100)|0
          , "width":300, "height":35, "padding":15, "cursorHeight":20, "cursorWidth":7, "axisHeight":17}
+    levelMin = 2
+    levelMax = 10
+    levelData = {"min":levelMin, "max":levelMax, "from":levelFrom|0, "to":levelTo|0
+         , "width":300, "height":35, "padding":15, "cursorHeight":20, "cursorWidth":7, "axisHeight":17}
   }
   else {
     sizeData.from = sizeFrom;
@@ -258,14 +295,19 @@ function refreshTree(tree) {
 
     ratioData.from = (ratioFrom*100)|0;
     ratioData.to = (ratioTo*100)|0;
+
+    levelData.from = levelFrom|0;
+    levelData.to = levelTo|0;
   }
   d3.select("#slider-size-div").call(epislider, [sizeData]);
   d3.select("#slider-ratio-div").call(epislider, [ratioData]);
+  d3.select("#slider-level-div").call(epislider, [levelData]);
   renderTree(hierarchy);
 }
 
 var hierarchy;
 var raw;
+var root;
 var filterValue;
 var sizeFrom;
 var sizeTo;
@@ -276,6 +318,11 @@ var ratioFrom;
 var ratioTo;
 var ratioMin;
 var ratioMax;
+var levelData;
+var levelFrom;
+var levelTo;
+var levelMin;
+var levelMax;
 var ratioData;
 var view;
 var currentFocus;

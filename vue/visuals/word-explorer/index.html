@@ -20,11 +20,40 @@
   </div>
   <div class="rowdiv-wrap">
     <div style="height:800px;width:800px" class="celldiv">
-      <svg width="800" height="800"></svg>
+      <svg width="800" height="800">
+       <defs>
+         <pattern id = "selected" height = "100%" width = "100%" patternContentUnits = "objectBoundingBox">
+            <image xlink:href = "selected.png" preserveAspectRatio = "none" 
+                   width = "1" height = "1"/>
+         </pattern>
+         <pattern id = "unselected" height = "100%" width = "100%" patternContentUnits = "objectBoundingBox">
+            <image xlink:href = "unselected.png" preserveAspectRatio = "none" 
+                   width = "1" height = "1"/>
+         </pattern>
+         <pattern id = "expand" height = "100%" width = "100%" patternContentUnits = "objectBoundingBox">
+            <image xlink:href = "expand.png" preserveAspectRatio = "none" 
+                   width = "1" height = "1"/>
+         </pattern>
+         <pattern id = "collapse" height = "100%" width = "100%" patternContentUnits = "objectBoundingBox">
+            <image xlink:href = "collapse.png" preserveAspectRatio = "none" 
+                   width = "1" height = "1"/>
+         </pattern>
+       </defs>
+     </svg>
     </div>
-    <div style="height:1000px;width:600px" class="coldiv">
-      <div class="celldiv">Top Phrases on Selected Cluster</div>
-      <div id="phrasesContainer" class="coldiv">
+    <div style="height:1000px;" class="coldiv">
+      <div style="display:none" class="coldiv" id="selectedFrame">
+        <div class="celldiv"><h3>Selected Cluster</h3></div>
+        <div class="celldiv">
+          <table id="selectedClusterContainer">
+            <tr><th>&nbsp;</th><th>Titre</th><th>Nb Patients</th><th>Mots principales</th></tr>
+          </table>
+        </div>
+      </div>
+      <div style="height:1000px;width:600px" class="coldiv">
+        <div class="celldiv"><h3>Top Phrases on Focus Cluster</h3></div>
+        <div id="phrasesContainer" class="coldiv">
+        </div>
       </div>
     </div>
   </div>

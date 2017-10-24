@@ -21,8 +21,8 @@ div.in-filter {
 }
 
 .node-option {
-  fill:white;
-  stroke-width: 1.5px;
+  stroke-width: 1px;
+  stroke: black;
   cursor: pointer;
 }
 
@@ -76,7 +76,26 @@ div.in-filter {
   background-size: 20px 20px;
   background-repeat:no-repeat;
 }
+.td-bullet {
+  background-image:url("bullet_triangle_grey.png");
+  width:20px;
+  background-size: 20px 20px;
+  background-repeat:no-repeat;
+}
 
+td {
+  border: 1px solid lightgray;
+  padding-left:4px;
+}
+tr {
+}
+table {
+  border-collapse: collapse;
+  width:100%;
+}
+th {
+  background-color:lightblue;
+}
 
 .path-part-bullet {
   background-image:url("next.png");

@@ -94,6 +94,11 @@ function getFocus(id, node) {
    return [node];
   return [node].concat(node.children.filter(c => id.startsWith(c.hierarchy.join(","))).flatMap(c => getFocus(id, c)));
 }
+function getNode(id, node) {
+  if(node.hierarchy.join(",") === id)
+   return node;
+  return getNode(id, node.children.filter(c => id.startsWith(c.hierarchy.join(",")))[0]);
+}
 
 function setFocus(node, root) {
   currentFocus = node; 
@@ -140,20 +145,48 @@ function init(focus) {
   
 }
 function showOptions(d, show) {
+  var canCollapse = !d.data.leaf;
+  var isExpanded = !d.data.childrenHidden;
+  var isSelected =  selectedNodes.includes(d.data.id); 
+  var angleExpand, angleSelect;
+
+  if(!canCollapse) {
+    angleSelect = 0; 
+  } else {
+    angleExpand = -Math.PI/20
+    angleSelect = Math.PI/20
+  } 
   var data = show?[d]:[]
-  var update = gAction.selectAll("circle").data(data);
+  //Show expandCollapse 
+  if(canCollapse) {
+    var update = gAction.selectAll("circle.node-option-expand").data(data);
+    var enter = update.enter().append("circle")
+                  .classed("node-option", true)
+                  .classed("node-option-expand", true)
+                  .on("click", (d)=> {showOptions(d, false); toggleNode(d); d3.event.stopPropagation();})
+    update.exit().remove();
+  
+    var v = view;
+    var k = diameter / v[2]; 
+    update.merge(enter)
+       .attr("transform", function(d, i) { return "translate(" + (d.x + d.r * Math.sin(angleExpand) - v[0]) * k + "," + (d.y - d.r*Math.cos(angleExpand) - v[1]) * k + ")"; })
+       .attr("r", function(d) { return d.r/10 * k; })
+       .attr("fill", isExpanded?"url(#collapse)":"url(#expand)");
+    }
+  //Show select
+  var update = gAction.selectAll("circle.node-option-select").data(data);
   var enter = update.enter().append("circle")
                 .classed("node-option", true)
-                .on("click", (d)=> {showOptions(d, false); toggleNode(d); d3.event.stopPropagation();})
+                .classed("node-option-select", true)
+                .on("click", (d)=> {showOptions(d, false); toggleSelection(d); d3.event.stopPropagation();})
   update.exit().remove();
 
   var v = view;
   var k = diameter / v[2]; 
-
   update.merge(enter)
-     .attr("transform", function(d) { return "translate(" + (d.x - v[0]) * k + "," + (d.y - d.r - v[1]) * k + ")"; })
-     .attr("r", function(d) { return d.r/10 * k; });
-
+     .attr("transform", function(d, i) { return "translate(" + (d.x + d.r * Math.sin(angleSelect) - v[0]) * k + "," + (d.y - d.r*Math.cos(angleSelect) - v[1]) * k + ")"; })
+     .attr("r", function(d) { return d.r/10 * k; })
+     .attr("fill", isSelected?"url(#selected)":"url(#unselected)");
 }
 
 function toggleNode(d) {
@@ -161,9 +194,15 @@ function toggleNode(d) {
     expandNode(d);
   } else if(d.children.length>0) {
     collapseNode(d);
-  } else {
-    alert("fix me!");
   }
+}
+
+function toggleSelection(d) {
+ if(selectedNodes.includes(d.data.id))
+     selectedNodes.splice(selectedNodes.indexOf(d.data.id), 1);
+ else 
+     selectedNodes.push(d.data.id);
+ render();
 }
 
 function expandNode(d) {
@@ -242,6 +281,23 @@ function drawPhrases(d) {
   exitPhrase.style("display", "none");
 }
 
+function drawSelectedClusters() {
+  if(selectedNodes.length  == 0)
+    d3.select("#selectedFrame").style("display","none");
+  var updateCluster = d3.select("#selectedClusterContainer").selectAll("tr.cluster").data(selectedNodes.map(id => getNode(id, raw.root)), n => n.hierarchy.join(","));
+  var enterCluster = updateCluster.enter().append("tr");
+  var exitCluster = updateCluster.exit();
+  enterCluster.classed("cluster", true);
+  enterCluster.append("td").classed("td-bullet", true).html("&nbsp;&nbsp;");
+  enterCluster.append("td").classed("cluster-name", true).text(d => d.name);
+  enterCluster.append("td").classed("cluster-size", true).text(d => d.size);
+  enterCluster.append("td").classed("cluster-topWOrds", true).text(d => d.words.join(", "));
+
+  exitCluster.remove();
+  if(selectedNodes.length > 0)
+    d3.select("#selectedFrame").style("display",null);
+}
+
 function render() {
   var firstLoad = !hierarchy
   if(firstLoad) {
@@ -249,6 +305,7 @@ function render() {
   }
   else {
     refreshTree(raw);
+    drawSelectedClusters();
   }
 }
 
@@ -271,7 +328,7 @@ function refreshTree(tree) {
   if(firstLoad) ratioTo = ratioRange.max
   if(firstLoad) sizeTo = tree.root.size
 
-  var toRender = tree.slice(tree.root, tree.root.hierarchy, levelFrom, levelTo, sizeFrom, sizeTo, ratioFrom, ratioTo, filterValue, expandedNodes, collapsedNodes); 
+  var toRender = tree.slice(tree.root, tree.root.hierarchy, levelFrom, levelTo, sizeFrom, sizeTo, ratioFrom, ratioTo, filterValue, expandedNodes, collapsedNodes, selectedNodes); 
   hierarchy = tree.toLeafOnlyHierarchy(toRender);
 
   //Drawing filters
@@ -334,5 +391,6 @@ var removedCircle;
 var removedText;
 var expandedNodes = [];
 var collapsedNodes = [];
+var selectedNodes = [];
 render();
 

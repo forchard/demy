@@ -19,8 +19,8 @@
   <div class="rowdiv-wrap" id="path-container" >
   </div>
   <div class="rowdiv-wrap">
-    <div style="height:800px;width:800px" class="celldiv">
-      <svg width="800" height="800">
+    <div class="celldiv" id="svg-container" >
+      <svg id="wordtree">
        <defs>
          <pattern id = "selected" height = "100%" width = "100%" patternContentUnits = "objectBoundingBox">
             <image xlink:href = "selected.png" preserveAspectRatio = "none" 
@@ -41,16 +41,19 @@
        </defs>
      </svg>
     </div>
-    <div style="height:1000px;" class="coldiv">
-      <div style="display:none" class="coldiv" id="selectedFrame">
-        <div class="celldiv"><h3>Selected Cluster</h3></div>
-        <div class="celldiv">
-          <table id="selectedClusterContainer">
-            <tr><th>&nbsp;</th><th>Titre</th><th>Nb Patients</th><th>Mots principales</th></tr>
-          </table>
+    <div id="right-column" class="coldiv">
+      <div class="coldiv">
+        <span style="font-size:10px;cursor:pointer" onclick="if(d3.select('#charger').style('display') === 'inline') {d3.select('#charger').style('display','none')} else {d3.select('#charger').style('display','inline')}">Saufgarder/Restaurer Selection:</span><div style="display:none" id="charger"><input id="selection" value=""><img src="refresh.png" style="width:20px;height:20px" id="load" onclick="refreshSelection()"></div></div>
+        <div class="coldiv" id="selectedFrame" style="display:none">
+          <div class="celldiv"><h3>Selected Cluster</h3>
+          <div class="celldiv">
+            <table id="selectedClusterContainer">
+              <tr><th>&nbsp;</th><th>Titre</th><th>Nb Patients</th><th>Mots principales</th></tr>
+            </table>
+          </div>
         </div>
       </div>
-      <div style="height:1000px;width:600px" class="coldiv">
+      <div class="coldiv">
         <div class="celldiv"><h3>Top Phrases on Focus Cluster</h3></div>
         <div id="phrasesContainer" class="coldiv">
         </div>

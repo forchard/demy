@@ -1,18 +1,3 @@
-var svg = d3.select("svg"),
-    margin = 20,
-    diameter = +svg.attr("width"),
-    g = svg.append("g").classed("circle", true).attr("transform", "translate(" + diameter / 2 + "," + diameter / 2 + ")");
-    gText = svg.append("g").classed("text", true).attr("transform", "translate(" + diameter / 2 + "," + diameter / 2 + ")");
-    gAction = svg.append("g").classed("action", true).attr("transform", "translate(" + diameter / 2 + "," + diameter / 2 + ")");
-
-var color = d3.scaleLinear()
-    .domain([-1, 5])
-    .range(["hsl(152,80%,80%)", "hsl(228,30%,40%)"])
-    .interpolate(d3.interpolateHcl);
-
-var pack = d3.pack()
-    .size([diameter - margin, diameter - margin])
-    .padding(2);
 
 
 function renderTree(r) {
@@ -202,6 +187,7 @@ function toggleSelection(d) {
      selectedNodes.splice(selectedNodes.indexOf(d.data.id), 1);
  else 
      selectedNodes.push(d.data.id);
+ d3.select("#selection").property("value", selectedNodes.join(";"));
  render();
 }
 
@@ -299,11 +285,53 @@ function drawSelectedClusters() {
 }
 
 function render() {
+  //setting default sizes
+  var width = d3.select("#svg-container").node().parentNode.getBoundingClientRect().width;
+  var svgWidth, columnWidth;
+  
+  if(width>600) {
+    svgWidth = (width*0.6)|0
+    columnWidth = (width*0.4-20)|0
+  } else {
+    svgWidth = width|0;
+    columnWidth = (width)|0
+  }
+  d3.select("#svg-container").style("width", svgWidth+"px");
+  d3.select("#wordtree").attr("width", svgWidth);
+  d3.select("#wordtree").attr("height", svgWidth);
+  d3.select("#right-column").style("width", columnWidth+"px");
+
+  svg = d3.select("#svg-container > svg");
+  margin = 20;
+  diameter = +svg.attr("width");
+
+
   var firstLoad = !hierarchy
   if(firstLoad) {
-     raw = new WordTree().fromPath("phrase_clusters.json", refreshTree);
+    g = svg.append("g").classed("circle", true).attr("transform", "translate(" + diameter / 2 + "," + diameter / 2 + ")");
+    gText = svg.append("g").classed("text", true).attr("transform", "translate(" + diameter / 2 + "," + diameter / 2 + ")");
+    gAction = svg.append("g").classed("action", true).attr("transform", "translate(" + diameter / 2 + "," + diameter / 2 + ")");
+
+    pack = d3.pack()
+      .size([diameter - margin, diameter - margin])
+      .padding(2);
+
+    color = d3.scaleLinear()
+      .domain([-1, 5])
+      .range(["hsl(152,80%,80%)", "hsl(228,30%,40%)"])
+      .interpolate(d3.interpolateHcl);
+
+    raw = new WordTree().fromPath("phrase_clusters.json", refreshTree);
   }
   else {
+    g = svg.select("g.circle").attr("transform", "translate(" + diameter / 2 + "," + diameter / 2 + ")");
+    gText = svg.select("g.circle").attr("transform", "translate(" + diameter / 2 + "," + diameter / 2 + ")");
+    gAction = svg.select("g.circle").attr("transform", "translate(" + diameter / 2 + "," + diameter / 2 + ")");
+
+    pack = d3.pack()
+      .size([diameter - margin, diameter - margin])
+      .padding(2);
+
     refreshTree(raw);
     drawSelectedClusters();
   }
@@ -362,6 +390,20 @@ function refreshTree(tree) {
   renderTree(hierarchy);
 }
 
+function refreshSelection() {
+  selectedNodes = d3.select("#selection").property("value").split(";");
+  d3.select('#charger').style('display','none')
+  render();
+}
+
+var svg;
+var margin;
+var diameter;
+var g;
+var gText;
+var gAction;
+var color = d3.scaleLinear()
+var pack = d3.pack()
 var hierarchy;
 var raw;
 var root;
@@ -393,4 +435,4 @@ var expandedNodes = [];
 var collapsedNodes = [];
 var selectedNodes = [];
 render();
-
+d3.select(window).on('resize', render); 

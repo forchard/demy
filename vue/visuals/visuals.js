@@ -156,3 +156,65 @@ vRender["Filter"].render = function(svg, data) {
 
 
 }
+
+vRender["Table"].render = function(svg, data) {
+  var data = {"columNames":["Nom", "Prenom", "Age"]
+              ,"rows":[
+                  ["Birrien", "Marie", "35"]
+                  ["Péron", "Camille", "35"]
+                  ["Bourdon", "Loïc", "20"]
+                  ["Ramirez", "Javiera", "56"]
+                  ["Riara", "Sev", "39"]
+                  ["Grenapin", "Clémence", "23"]
+                  ["Rieiro", "Maï", "37"]
+               ]
+               ,"widths":[0.4, 0.4, 0.2]
+               ,"font-family":"Verdana"
+               ,"font-size":10
+               ,"background-color":"#FFFFFF"
+               ,"background-color-inter":"#F3F3F3"
+               }
+  
+  const margin = {top: 10, right: 10, bottom: 10, left: 10},
+    width = +svg.attr("width") - margin.left - margin.right,
+    height = +svg.attr("height") - margin.top - margin.bottom,
+  const rowHeight = data["font-size"]+2;
+  var xCol = 0;
+  var i = 0;
+  const colPositions = data.withs.map(w => r = {"left":(xCol+=width*data.widths[i])-width*data.widths[i],"width":width*data.widths[i], "index":i++})
+
+  const uDef = svg.selectAll("defs").data([1])
+  const eDef = uDef.enter().append("defs")
+  uDef.exit().remove();
+
+
+  const uPaths = uDef.merge(eDef).selectAll("path").data(colPositions, d => d.index +"_"+d.left+"_"+d.width);
+  const ePaths = uPaths.enter()
+                       .attr("id", d => "colpos"+d.index)
+                       .attr("d", d => "M "+d.left+" "+(data["font-size"]+1)+" H "+ d.width)
+  uPaths.exit().remove();
+
+
+  const uRows = svg.selectAll("g").data(data.rows)
+  const uRows.enter().append("g").attr("transform", (d, i) => "translate(" + margin.left + "," + (margin.top + (i+1)*rowHeight) + ")");
+
+  var addTo =g.selectAll("rect").data(data).enter()
+   addTo.append('rect')
+        .attr("class", "area").attr("clip-path", "url(#clip)")
+        .attr('x', 0)
+        .attr('y', function(d, i) {return i*(20+1)})
+        .attr('width', width)
+        .attr('height', 20)
+        .style('fill', "#333333");  
+   addTo.append('text')
+        .attr("class", "area").attr("clip-path", "url(#clip)")
+        .attr('x', width/2)
+        .attr('y', function(d, i) {return (i+1)*(20+1)-5})
+        .attr('font-size', 13)
+        .attr('fill', "#DDDDDD")
+        .attr('alignment-baseline',"middle")
+        .attr("text-anchor","middle")
+        .text(function (d) {return d;});  
+
+
+}

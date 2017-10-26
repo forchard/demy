@@ -2,7 +2,7 @@
 <html lang="us">
 <head>
   <meta charset="utf-8">
-  <title>D3+JQuery(UI) Test</title>
+  <title>Vue</title>
   <link href="visuals/visuals.css" rel="stylesheet">
   <link href="css/jquery-ui.css" rel="stylesheet">
   <link href="css/base.css" rel="stylesheet">
@@ -20,7 +20,7 @@
     <div class="header"><img class="logo" src="img/logo.png"></div>
     <div class="content">
       <div class="left-pane">
-        <div class="workspace-switch"></div>
+        <div class="workspace-switch"><span class="workspace-name"></span><img class="switch-icon" src="img/open.png"></div>
         <div class="fields"></div>
       </div>
       <div class="pane-resizer">&nbsp;</div>
@@ -37,7 +37,14 @@
   <div class="options-title">Options</div>
   <div class="options-details"></div>
 </div>
-<!--div class="pick-function" id="pick-function">
+<div class="modal">
+  <div class="modal-window">
+    <div class="modal-title"></div>
+    <div class="modal-content"></div>
+    <div class="modal-waiting">&nbsp;</div>
+    <div class="modal-buttons"></div>
+  </div>
+</div><!--div class="pick-function" id="pick-function">
   <div class="options-title">Function to Apply</div>
   <div class="options-details"></div>
 </div-->

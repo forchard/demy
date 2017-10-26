@@ -1,7 +1,3 @@
-$(function(){
-   setup();
-});
-
 var draggingField = false;
 var draggingVisual = false;
 var resizingVisual = false;
@@ -21,19 +17,33 @@ var addingToVisualId = null;
 var keepOptionsOpen=false;
 var currentVisualOptionIndex=-1;
 
-
-function setup() {
- storage.getWorkspaces(chooseWorkspace);
+window.onload = function() {
+ showAvailableProjects();
+ d3.select("img.switch-icon").on("click", showAvailableProjects);
 }
 
-function chooseWorkspace(err, workspaces) {
+
+
+function showAvailableProjects() {
+  showModal("Select Epicraft Project", "Hello", [], ()=>{},(div)=>{ storage.getWorkspaces((err, wks)=> {drawWorkspaces(err, wks, div)});});
+}
+
+function drawWorkspaces(err, workspaces, div) {
   if(err==null) {
-    const ws = workspaces[0];
-    storage.getWorkspace(ws, (err, data) => {
-    if(err == null);
-      applyWorkspace(data); 
-    });
+    const update = d3.select(div).selectAll("div.project-list").data(workspaces, d=>d);
+    update.enter()
+      .append("div").classed("project-list", true)
+      .property("text", d => d).text(d => d)
+      .on("click", (d) => {changeWorkspace(d);d3.select("span.workspace-name").text(d);d3.select("div.modal").style("display", null);});
+    update.exit().remove();
   }
+}
+
+function changeWorkspace(ws) {
+  storage.getWorkspace(ws, (err, data) => {
+  if(err == null);
+    applyWorkspace(data); 
+  });
 }
 
 
@@ -787,7 +797,7 @@ function renderFieldFunctions(fieldData, holderData, valueItem) {
   newChoices.append("span")
 
   var allChoices = choices.merge(newChoices);
-  allChoices.selectAll("input")
+  allChoices.selectAll("input")	
     .property("checked", function(d) {return d.name == currentChoice})
     .style("display", fieldData.showDetails);
   allChoices.selectAll("span").text(function(d) {return d.name});
@@ -797,3 +807,34 @@ function renderFieldFunctions(fieldData, holderData, valueItem) {
 function out(text) {
   d3.select("#console").text(text);
 }
+
+function showModal(title, text, buttonsText, action, drawing) {
+  var i = 0;
+  var data = [].concat(buttonsText);
+  const modal = d3.select("div.modal")
+    .style("width", window.screen.width+"px")
+    .style("height", window.screen.height+"px")
+    .style("display", "block")
+  ;
+  
+  modal.select("div.modal-window > div.modal-title").text(title);
+  const content = modal.select("div.modal-window > div.modal-content").style("display", "none");
+  content.selectAll("*").remove();
+  const wait = modal.select("div.modal-window > div.modal-waiting").style("display", "block");
+  const uButtons = modal.select("div.modal-window > div.modal-buttons").selectAll("div.modal-button").data(data);
+  uButtons.exit().remove();
+  const eButtons = uButtons.enter().append("div").classed("modal-button", true);
+  uButtons.merge(eButtons)
+    .text(d => d)
+    .on("click", (d, i, g) => {try {action(d); } finally{ modal.style("display", null);  } })
+
+  drawing(content.node());
+  setTimeout(() => {
+    content.style("display", "block");
+    wait.style("display", "none");
+  }, 2000);
+
+}
+
+
+

@@ -23,6 +23,10 @@ div.main-window{
 img.logo {
   margin-left:20px;
 }
+img.switch-icon {
+  width:20px;
+  height:auto;
+}
 div.header {
   margin: 10px;
 }
@@ -212,4 +216,71 @@ div.candidate-field-multi {
   background-color:#888800;
   height:2px;
 }
+div.modal {
+  position:absolute;
+  top:0;
+  left:0;
+  background-color:rgba(255, 255, 255, 0.8);
+  display:none;
+  z-index:10;
+}
 
+div.modal-window {
+  margin: 10%;
+  border: solid black 1px;
+  border-radius: 10px;
+  background-color:#FFFFFF
+}
+
+div.modal-title {
+  margin: 20px;
+  text-align:center;
+  font-size:large;
+}
+
+div.modal-buttons {
+  margin: 20px;
+  height: 80%;
+  text-align:center;
+}
+
+div.modal-button {
+  text-align:center;
+  border: solid #adadad 1px;
+  min-width:50px;
+  border-radius: 5px;
+  display:inline-block;
+  cursor:pointer;
+}
+div.modal-button:hover {
+  background-color:#e6e6e6
+} 
+
+div.modal-waiting {
+  background-image: url(../img/waiting.gif);
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size:contain;
+  height:120px;
+}
+
+div.project-list {
+  margin: 2px 30% 2px 30%;
+  padding: 4px 0px 4px 0px;
+  text-align:center;
+  background-color:lightgray;
+  border-radius: 2px;
+  cursor:pointer;
+}
+
+div.project-list:hover {
+  background-color:#6666BB;
+}
+
+div.workspace-switch {
+  font-size: large;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+}

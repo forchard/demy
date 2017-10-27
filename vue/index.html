@@ -17,17 +17,19 @@
 <body>
   <div id="console"></div>
   <div class="main-window">
-    <div class="header"><img class="logo" src="img/logo.png"></div>
+    <div class="header"><img class="logo" src="img/logo.png"><div class="logo">Vue</div></div>
     <div class="content">
       <div class="left-pane">
         <div class="workspace-switch"><span class="workspace-name"></span><img class="switch-icon" src="img/open.png"></div>
         <div class="fields"></div>
       </div>
-      <div class="pane-resizer">&nbsp;</div>
+      <div class="pane-resizer"></div>
       <div class="canvas-container">
         <div class="grid"></div>
         <div class="canvas"></div>
       </div>
+      <div class="pane-resizer"></div>
+      <div class="pane-properties"></div>
     </div>
   </div>
 <div class="dragField" id="dragField"></div>
@@ -36,6 +38,10 @@
   <div class="pick-render"></div>
   <div class="options-title">Options</div>
   <div class="options-details"></div>
+</div>
+<div class="actions" id="actions">
+  <div class="actions-title"></div>
+  <div class="buttons-container"></div>
 </div>
 <div class="modal">
   <div class="modal-window">

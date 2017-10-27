@@ -72,6 +72,10 @@ var visualGallery = [
     ,"fields":[
       {"name":"Field", "type":"axis", "arity":"1", "group":"data"}
     ]}
+  ,{"name":"Table", "icon":"table.png", "alt":"Table"
+    ,"fields":[
+      {"name":"Field", "type":"axis", "arity":"*", "group":"data"}
+    ]}
 ]
 
 var measureFunctions = [
@@ -85,4 +89,9 @@ var measureFunctions = [
 var transformationFunctions = [
   {"name":"Other", "types":[], "isOther":true}
 ] 
+
+var actionButtons = [
+  {"name":"2DataQuery", "title":"Save as Epicraft Data Query", "icon":"dataExport.png"}
+  ,{"name":"DownloadData", "title":"Download data locally", "icon":"dataDownload.png"}
+]
 

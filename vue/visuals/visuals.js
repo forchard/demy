@@ -3,6 +3,7 @@ var vRender = {};
 vRender["Bars"] = {};
 vRender["Scatter"] = {};
 vRender["Filter"] = {};
+vRender["Table"] = {};
 
 
 vRender["Scatter"].brushed = function() {
@@ -158,15 +159,15 @@ vRender["Filter"].render = function(svg, data) {
 }
 
 vRender["Table"].render = function(svg, data) {
-  var data = {"columNames":["Nom", "Prenom", "Age"]
+  var data = {"columnNames":["Nom", "Prenom", "Age"]
               ,"rows":[
                   ["Birrien", "Marie", "35"]
-                  ["Péron", "Camille", "35"]
-                  ["Bourdon", "Loïc", "20"]
-                  ["Ramirez", "Javiera", "56"]
-                  ["Riara", "Sev", "39"]
-                  ["Grenapin", "Clémence", "23"]
-                  ["Rieiro", "Maï", "37"]
+                  ,["Péron", "Camille", "35"]
+                  ,["Bourdon", "Loïc", "20"]
+                  ,["Ramirez", "Javiera", "56"]
+                  ,["Riara", "Sev", "39"]
+                  ,["Grenapin", "Clémence", "23"]
+                  ,["Rieiro", "Maï", "37"]
                ]
                ,"widths":[0.4, 0.4, 0.2]
                ,"font-family":"Verdana"
@@ -178,43 +179,40 @@ vRender["Table"].render = function(svg, data) {
   const margin = {top: 10, right: 10, bottom: 10, left: 10},
     width = +svg.attr("width") - margin.left - margin.right,
     height = +svg.attr("height") - margin.top - margin.bottom,
-  const rowHeight = data["font-size"]+2;
-  var xCol = 0;
-  var i = 0;
-  const colPositions = data.withs.map(w => r = {"left":(xCol+=width*data.widths[i])-width*data.widths[i],"width":width*data.widths[i], "index":i++})
+    rowHeight = data["font-size"]+2;
+  var xCol = 0,
+    i = 0;
+  const colPositions = data.widths.map(w => r = {"from":xCol,"to":(xCol+=width*w), "index":i++})
 
+  //Defs for column positions
   const uDef = svg.selectAll("defs").data([1])
   const eDef = uDef.enter().append("defs")
   uDef.exit().remove();
 
-
+  //Paths in def for each column
   const uPaths = uDef.merge(eDef).selectAll("path").data(colPositions, d => d.index +"_"+d.left+"_"+d.width);
-  const ePaths = uPaths.enter()
+  const ePaths = uPaths.enter().append("path")
                        .attr("id", d => "colpos"+d.index)
-                       .attr("d", d => "M "+d.left+" "+(data["font-size"]+1)+" H "+ d.width)
+                       .attr("d", d => "M "+d.from+" "+(data["font-size"]+1)+" H "+ d.to)
   uPaths.exit().remove();
 
+  //G containers for each row
+  const uRows = svg.selectAll("g").data([data.columnNames].concat(data.rows));
+  const eRows = uRows.enter().append("g").attr("transform", (d, i) => "translate(" + margin.left + "," + (margin.top + (i+1)*rowHeight) + ")");
+  uRows.exit().remove();
+  const aRows = uRows.merge(eRows);
+  //Text for each row
+  eRows.append("text");
+  const aRowText = aRows.selectAll("text")
+    .attr("font-family", data["font-family"])
+    .attr("font-size", data["font-size"])
+  ;
 
-  const uRows = svg.selectAll("g").data(data.rows)
-  const uRows.enter().append("g").attr("transform", (d, i) => "translate(" + margin.left + "," + (margin.top + (i+1)*rowHeight) + ")");
-
-  var addTo =g.selectAll("rect").data(data).enter()
-   addTo.append('rect')
-        .attr("class", "area").attr("clip-path", "url(#clip)")
-        .attr('x', 0)
-        .attr('y', function(d, i) {return i*(20+1)})
-        .attr('width', width)
-        .attr('height', 20)
-        .style('fill', "#333333");  
-   addTo.append('text')
-        .attr("class", "area").attr("clip-path", "url(#clip)")
-        .attr('x', width/2)
-        .attr('y', function(d, i) {return (i+1)*(20+1)-5})
-        .attr('font-size', 13)
-        .attr('fill', "#DDDDDD")
-        .attr('alignment-baseline',"middle")
-        .attr("text-anchor","middle")
-        .text(function (d) {return d;});  
-
-
+  //Text path for each cell
+  const uCell = aRowText.selectAll("textPath").data(d => d);
+  const eCell = uCell.enter().append("textPath");
+  uCell.exit().remove();
+  const aCell = uCell.merge(eCell)
+                 .attr("xlink:href", (d, i) => "#colpos"+i)
+                 .text(d => d);
 }

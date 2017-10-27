@@ -276,6 +276,7 @@ function fieldDragStart() {
 }
 function visualDragStart() {
   hideOptions();
+  hideActions();
   draggingVisual = true;
   currentVisualWidth=d3.event.subject.width;
   currentVisualHeight=d3.event.subject.height;
@@ -287,6 +288,7 @@ function resizePane() {
 }
 function visualResizeStart() {
   hideOptions();
+  hideActions();
   resizingVisual = true;
   setResize(d3.event.subject);
   resizingData = this.parentNode.__data__;
@@ -464,6 +466,27 @@ function setResize(d) {
   resizeRight = (dir.indexOf("e")>-1);
 }
 
+function showActionsAt(visualIndex) {
+  var options = d3.select("#actions");
+  var pBox = d3.select("div.grid").node().getBoundingClientRect();
+  options
+   .style("left",((pBox.x + window.scrollX)+ visuals[visualIndex].x1+1)+"px")
+   .style("top",(pBox.y+ window.scrollY + visuals[visualIndex].y0+1)+"px").style("display","flex")
+  ;
+
+  options.select("div.actions-title")
+    .selectAll("div.close-button").data(["x"]).enter().append("div").classed("close-button", true)
+    .on("click",hideActions )
+    .text(function(d) {return d;});
+
+  var uButton = options.select("div.buttons-container").selectAll("div.action-button").data(actionButtons, d => d.name);
+  var eButton = uButton.enter().append("div").classed("action-button", true);
+  uButton.exit().remove();
+  eButton.attr("title", d => d.title)
+    .append("img").attr("src", d => "img/"+d.icon).classed("action-icon", true);
+
+
+}
 function showOptionsAt(visualIndex) {
   currentVisualOptionIndex=visualIndex;
   if(!visuals[visualIndex].renderAs)
@@ -588,6 +611,7 @@ function showOptionsAt(visualIndex) {
   } else {
     options.style("cursor", "auto"); 
   }
+  showActionsAt(visualIndex);
 }
 function changeRender(visual, renderAs) {
     var first=false;
@@ -643,6 +667,10 @@ function changeRender(visual, renderAs) {
 function hideOptions() {
   d3.select("#options").style("display", "none");
   currentVisualOptionIndex = -1;
+}
+
+function hideActions() {
+  d3.select("#actions").style("display", "none");
 }
 
 function showDropOptions() {

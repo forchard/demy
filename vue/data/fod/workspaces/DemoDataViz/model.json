@@ -67,7 +67,7 @@
         ,{"name":"Nb Patients","type":"column", "dataType":"int", "formule":"","format":null, "visible":true, "order":6, "level":1, "table":"Visite"}
         ]
     }
-    ,{"name":"Time Series Malaria", "order":1, "visible":true, "Source":"myDb", "group":"Models", "collapsed":"true"
+    ,{"name":"Time Series Malaria", "order":1, "visible":true, "Source":"myDb", "group":"Plans'dexécution", "collapsed":"true"
       ,"fields": [
          {"name":"IdPatient","type":"column", "dataType":"string", "formule":"IdPatient","format":null, "visible":false, "order":0, "level":1, "table":"Visite"}
         ,{"name":"Age Patient","type":"column", "dataType":"int", "formule":"DateDiff(Date, Now(), 'yyyy')","format":null,"visible":true, "order":1, "level":1, "table":"Visite"}

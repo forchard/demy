@@ -1,0 +1,31 @@
+.yui-skin-sam .yui-panel { border-color:#6EABC7; }
+.yui-skin-sam .yui-panel .hd,.yui-skin-sam .yui-panel .bd,.yui-skin-sam .yui-panel .ft { border-color:#6EABC7; }
+.yui-skin-sam .yui-panel .hd { border-bottom:1px solid #6EABC7; }
+.yui-skin-sam .yui-panel .bd,.yui-skin-sam .yui-panel .ft { background:#F1F7F9; border-bottom:none; }
+.yui-skin-sam .yui-panel .hd { color:#F1F7F9; background:#6EABC7 }
+.yui-skin-sam .container-close { background:url(/VooLibAssets/images/yui_sprite.png) no-repeat 0 -300px; }
+.yui-skin-sam .yui-calcontainer { background:#E4EFF4; border:1px solid #6EABC7; }
+.yui-skin-sam .yui-calendar a.calnav{ border:1px solid transparent; color:#466C7E; }
+.yui-skin-sam .yui-calendar a.calnav:hover{ background:#F1F7F9; border:1px solid #466C7E; }
+.yui-skin-sam .yui-calendar .calnavleft{ background:url(/VooLibAssets/images/yui_sprite.png) no-repeat 0 -450px; }
+.yui-skin-sam .yui-calendar .calnavright{ background:url(/VooLibAssets/images/yui_sprite.png) no-repeat 0 -500px; }
+.yui-skin-sam .yui-calendar .calweekdaycell{ color:#466C7E; }
+.yui-skin-sam .yui-calendar td.calcell{ border:1px solid #6EABC7; background:#F1F7F9; }
+.yui-skin-sam .yui-calendar td.calcell a { color:#5A8BA2; }
+.yui-skin-sam .yui-calendar td.calcell.today { background:#466C7E; }
+.yui-skin-sam .yui-calendar td.calcell.today a { background:#D7E8EF; color:#466C7E; }
+.yui-skin-sam .yui-calendar td.calcell.oom { background:#E4EFF4; color:#AFD1E0; }
+.yui-skin-sam .yui-calendar td.calcell.selected { background:#F1F7F9; color:#5A8BA2; }
+.yui-skin-sam .yui-calendar td.calcell.selected a { background:#5A8BA2; color:#F1F7F9; }
+.yui-skin-sam .yui-calendar td.calcell.calcellhover { background:#F1F7F9; color:#1E2E36; }
+.yui-skin-sam .yui-calendar td.calcell.calcellhover a { background:#D7E8EF; color:#1E2E36; }
+.yui-skin-sam .yui-dialog .ft span button { background:#F1F7F9; color: #324D5A; border:1px solid #324D5A; }
+.yui-skin-sam .yui-dialog .ft span button:hover { background:#D7E8EF; color: #1E2E36; }
+.yui-skin-sam .yui-calcontainer .yui-cal-nav-mask{ background:#6EABC7; }
+.yui-skin-sam .yui-calcontainer .yui-cal-nav{ border:1px solid #6EABC7; background:#F1F7F9;}
+.yui-skin-sam .yui-calcontainer .yui-cal-nav-y input.yui-invalid{ background:#6EABC7; color:#F1F7F9;}
+.yui-skin-sam .yui-calcontainer .yui-cal-nav .yui-cal-nav-btn { border:none; background:transparent; }
+.yui-skin-sam .yui-calcontainer .yui-cal-nav .yui-cal-nav-btn button { background:#F1F7F9; color: #324D5A; border:1px solid #324D5A; }
+.yui-skin-sam .yui-calcontainer .yui-cal-nav .yui-cal-nav-btn.yui-default { border:none;background:transparent; }
+.yui-skin-sam .yui-calcontainer .yui-cal-nav .yui-cal-nav-btn.yui-default button { background:#BDD8E5; color: #324D5A; border:1px solid #324D5A; }
+.yui-skin-sam .yui-calcontainer .yui-cal-nav .yui-cal-nav-btn button:hover { background:#D7E8EF; color: #1E2E36; }

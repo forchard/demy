@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html class="yui3-js-enabled" id="yui_3_10_1_1_1509368290031_5206">
+<div id="yui3-css-stamp" style="position: absolute !important; visibility: hidden !important" class=""></div><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+	<title>Module statistiques</title>
+	<meta charset="utf-8">
+	<link href="Module%20statistiques_files/leaflet.css" media="screen, print" rel="stylesheet" type="text/css">
+<link href="Module%20statistiques_files/bootstrap-datetimepicker.css" media="screen, print" rel="stylesheet" type="text/css">
+<link href="Module%20statistiques_files/bootstrap-datepicker3.css" media="screen, print" rel="stylesheet" type="text/css">
+<link href="Module%20statistiques_files/contents.css" media="screen, print" rel="stylesheet" type="text/css">
+<link href="Module%20statistiques_files/codemirror.css" media="screen, print" rel="stylesheet" type="text/css">
+<link href="Module%20statistiques_files/paginator.css" media="screen, print" rel="stylesheet" type="text/css">
+<link href="Module%20statistiques_files/menu.css" media="screen, print" rel="stylesheet" type="text/css">
+<link href="Module%20statistiques_files/fonts-min.css" media="screen, print" rel="stylesheet" type="text/css">
+<link href="Module%20statistiques_files/button.css" media="screen, print" rel="stylesheet" type="text/css">
+<link href="Module%20statistiques_files/container.css" media="screen, print" rel="stylesheet" type="text/css">
+<link href="Module%20statistiques_files/datatable.css" media="screen, print" rel="stylesheet" type="text/css">
+<link href="Module%20statistiques_files/calendar.css" media="screen, print" rel="stylesheet" type="text/css">
+<link href="Module%20statistiques_files/font-awesome.css" media="screen" rel="stylesheet" type="text/css">
+<link href="Module%20statistiques_files/bootstrap.css" media="screen, print" rel="stylesheet" type="text/css">
+<link href="Module%20statistiques_files/style.css" media="screen, print" rel="stylesheet" type="text/css">
+<link href="Module%20statistiques_files/yui_calendar.css" media="screen, print" rel="stylesheet" type="text/css">
+<link href="Module%20statistiques_files/yui_datatable.css" media="screen, print" rel="stylesheet" type="text/css">
+<link href="Module%20statistiques_files/form.css" media="screen, print" rel="stylesheet" type="text/css">
+<link href="Module%20statistiques_files/modulestats.css" media="screen, print" rel="stylesheet" type="text/css">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link charset="utf-8" rel="stylesheet" id="yui_3_10_1_1_1509368290031_43" href="Module%20statistiques_files/combo.css">
+<link charset="utf-8" rel="stylesheet" id="yui_3_10_1_1_1509368290031_2206" href="Module%20statistiques_files/combo_002.css">
+<link href="maquette.css" rel="stylesheet">
+<script src="../js/d3.js"></script>
+</head>
+
+
+<body class="yui3-skin-sam  yui-skin-sam" id="yui_3_10_1_1_1509368290031_5205">
+<div class="mask" id="layout_dialog_mask" style="z-index: 999999; height: 880px; width: 1525px; display: none;">&nbsp;</div><iframe id="_yuiResizeMonitor" title="Text Resize Monitor" tabindex="-1" role="presentation" style="position: absolute; visibility: visible; background-color: transparent; border-width: 0px; width: 2em; height: 2em; left: 0px; top: -29px;"></iframe>
+<div class="yui3-widget-mask" style="position: fixed; width: 100%; height: 100%; top: 0px; left: 0px; z-index: 1000; display: none;"></div>
+<div id="yui_3_10_1_1_1509368290031_15006" class="yui3-widget yui3-panel yui3-widget-positioned yui3-widget-stacked yui3-widget-modal yui3-panel-hidden" style="width: 250px; left: 637px; top: 335px; z-index: 1000;" tabindex="0">
+<div id="yui_3_10_1_1_1509368290031_15008" class="yui3-panel-content yui3-widget-stdmod">
+<div class="yui3-widget-hd">Chargement en cours...</div>
+<div class="yui3-widget-bd">
+<div class="widget-loading"></div></div></div></div>
+<div style="position: absolute; display: none; z-index: 999; top: -999px; left: -999px;" id="yui_3_10_1_1_1509368290031_3804" class="yui3-dd-proxy"></div>
+<div style="top: 0px; left: 0px; position: absolute; z-index: 9999; overflow: hidden; background-color: red; display: none; height: 5px; width: 5px;" id="yui_3_10_1_1_1509368290031_3788" class="yui3-dd-shim">
+<div id="script-232_shim" style="height: 38px; width: 342px; background-color: yellow; opacity: 0.5; z-index: 1; overflow: hidden; top: -900px; left: -900px; position: absolute;"></div>
+<div id="script-230_shim" style="height: 38px; width: 342px; background-color: yellow; opacity: 0.5; z-index: 1; overflow: hidden; top: -900px; left: -900px; position: absolute;"></div>
+<div id="script-234_shim" style="height: 38px; width: 342px; background-color: yellow; opacity: 0.5; z-index: 1; overflow: hidden; top: -900px; left: -900px; position: absolute;"></div>
+<div id="script-213_shim" style="height: 38px; width: 342px; background-color: yellow; opacity: 0.5; z-index: 1; overflow: hidden; top: -900px; left: -900px; position: absolute;"></div>
+<div id="script-4_shim" style="height: 38px; width: 342px; background-color: yellow; opacity: 0.5; z-index: 1; overflow: hidden; top: -900px; left: -900px; position: absolute;"></div>
+<div id="script-219_shim" style="height: 38px; width: 342px; background-color: yellow; opacity: 0.5; z-index: 1; overflow: hidden; top: -900px; left: -900px; position: absolute;"></div></div>
+
+<div class="app-list">
+  <div class="app-list-item"><a href="../index.html">Vue</a></div>
+  <div class="app-list-item"><a href="../maquette-epicraft/Editeur client.html">Epicraft</a></div>
+</div>
+	
+<div id="page" class="container width-95pc">
+		<header>
+			
+              <div class="header"><div class="epilogo">&nbsp;</div><div class="logo">Module R</div></div>
+			
+<div id="country-select" class="btn-group"><button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><strong>FR</strong> <span class="caret"></span></button><ul class="dropdown-menu"><li><a href="https://stats.preprod.voozanoo.net/modulestats/lang/index/change-lang/lang/en_GB">English (UK)</a></li><li><a href="https://stats.preprod.voozanoo.net/modulestats/lang/index/change-lang/lang/en_US">English (US)</a></li></ul></div>		</header>
+
+		<!-- Si le projet est en mode provider, on affiche la liste des consumers (avec les liens) -->
+		
+		<!-- Si le projet est en mode consumer, on affiche le lien vers le provider -->
+		<nav class="oauth-consumer-menu" id="yui_3_10_1_1_1509368290031_14963">
+	<a href="https://portailepi.voozanoo.net/portailepi">Portail</a>
+</nav>
+
+		
+<div id="content">
+			
+<div id="main" style="opacity: 1;"><h2 class="page-title "><span>Editer le plan d'analyse</span></h2><form id="form_main" class="vzn-form form-horizontal row">
+<div id="exportAmapDialog-groupdialog" class="disabled-background" style="display: none;"><fieldset id="exportAmapDialog-groupdialog-dialog" class="groupdialog"><h4 class="dialog-header row"></h4>
+<div class="dialog-body row" style="">
+<div id="exportAmapDialog" class="col-xs-12">
+<div class="form-group" id="vzn59f7225b9e8616_74313322">
+<div class="vzn-box col-xs-10" id="vzn59f7225b9e8794_58916041">
+<div class="statictext h4-like" id="vzn59f7225b9e8869_31690935"><span>Export des données</span></div></div></div>
+<div class="form-group" id="vzn59f7225b9e8993_16197528"><label class="control-label col-xs-3" id="vzn59f7225b9e8a98_68938481" style=""><span data-field="id_provider">Nom</span></label>
+<div class="field col-xs-9"><select name="providers-list" id="providers-list" class="form-control"><option selected="selected"></option><option value="4">stats_filtres_sal</option><option value="6">stats_filtres_met</option><option value="8">stats_bi</option><option value="10">stats_binter</option><option value="12">stats_bm6</option><option value="14">stats_bs</option></select></div></div>
+<div id="vzn59f7225b9e8fc7_29051551-group" class="group-transparent group-transparent-2 panel-primary" style="display: none; transition: opacity 500ms ease-in 0ms; opacity: 0;">
+<div class="panel-body " id="vzn59f7225b9e8fc7_29051551-group_body">
+<div class="row">
+<div id="vzn59f7225b9e8fc7_29051551" class="col-xs-12">
+<div class="form-group" id="vzn59f7225b9e9158_97000720"><label class="control-label col-xs-3" id="vzn59f7225b9e9241_78100920" style=""><span data-field="format">Format</span></label>
+<div class="field col-xs-9"><select name="vzn59f7225b9e93a3_60888184" id="vzn59f7225b9e93a3_60888184" class="form-control"><option selected="selected"></option><option value="1">Comma Separated Values (.CSV)</option><option value="2">Microsoft Excel 2007/2010 XML (.xlsx)</option><option value="3">Microsoft Excel 97/2000/XP/2003 (.xls)</option><option value="4">RDS</option><option value="5">RDATA</option></select></div></div>
+<div id="vzn59f7225b9e9740_33259776-group" class="group-transparent group-transparent-3 panel-primary" style="display: none; transition: opacity 500ms ease-in 0ms; opacity: 0;">
+<div class="panel-body " id="vzn59f7225b9e9740_33259776-group_body">
+<div class="row">
+<div id="vzn59f7225b9e9740_33259776" class="col-xs-12">
+<div id="vzn59f7225b9e9967_89048625-group" class="group-transparent group-transparent-4 panel-primary" style="display: none; transition: opacity 500ms ease-in 0ms; opacity: 0;">
+<div class="panel-body " id="vzn59f7225b9e9967_89048625-group_body">
+<div class="row">
+<div id="vzn59f7225b9e9967_89048625" class="col-xs-12">
+<div class="form-group" id="vzn59f7225b9e9b11_36883551"><label class="control-label col-xs-3" id="vzn59f7225b9e9c41_39895571" style=""><span data-field="encoding">Encodage</span></label>
+<div class="field col-xs-9"><select name="vzn59f7225b9e9de5_59621114" id="vzn59f7225b9e9de5_59621114" class="form-control"><option selected="selected"></option><option value="1">ISO-8859-1</option><option value="2">UTF-8</option></select></div></div>
+<div class="form-group" id="vzn59f7225b9ea081_41382893"><label class="control-label col-xs-3" id="vzn59f7225b9ea171_90499149" style=""><span data-field="separator">Séparateur</span></label>
+<div class="field col-xs-9"><select name="vzn59f7225b9ea2e3_30273071" id="vzn59f7225b9ea2e3_30273071" class="form-control"><option selected="selected"></option><option value="1">Semicolon (;)</option><option value="2">Comma (,)</option><option value="3">Tabulation</option></select></div></div></div></div></div></div>
+<div id="vzn59f7225b9ea643_92850250-group" class="group-transparent group-transparent-4 panel-primary" style="opacity: 1;">
+<div class="panel-body " id="vzn59f7225b9ea643_92850250-group_body">
+<div class="row">
+<div id="vzn59f7225b9ea643_92850250" class="col-xs-12"><input onclick="return false;" id="vzn59f7225b9ea812_32897558" class="btn col-xs-offset-3 btn-primary" value="Exporter" type="button"></div></div></div></div>
+<div id="vzn59f7225b9eaa09_24038823-group" class="group-transparent group-transparent-4 panel-primary" style="display: none; transition: opacity 500ms ease-in 0ms; opacity: 0;">
+<div class="panel-body " id="vzn59f7225b9eaa09_24038823-group_body">
+<div class="row">
+<div id="vzn59f7225b9eaa09_24038823" class="col-xs-12">
+<div id="vzn59f7225b9eac37_03504573-group" class="group-transparent group-transparent-5 panel-primary" style="display: none; transition: opacity 500ms ease-in 0ms; opacity: 0;">
+<div class="panel-body " id="vzn59f7225b9eac37_03504573-group_body">
+<div class="row">
+<div id="vzn59f7225b9eac37_03504573" class="col-xs-12">
+<div class="vzn-box col-xs-offset-3" id="vzn59f7225b9eadd7_50718795">
+<div class="vzn-box glyphicon glyphicon-refresh glyphicon-spin" id="vzn59f7225b9eaec2_00511470"></div>
+<div class="statictext" id="vzn59f7225b9eaf63_18553553"><span>Génération du fichier...</span></div></div></div></div></div></div>
+<div id="vzn59f7225b9eb112_81378676-group" class="group-transparent group-transparent-5 panel-primary" style="display: none; transition: opacity 500ms ease-in 0ms; opacity: 0;">
+<div class="panel-body " id="vzn59f7225b9eb112_81378676-group_body">
+<div class="row">
+<div id="vzn59f7225b9eb112_81378676" class="col-xs-12"><a class="col-xs-offset-3 btn btn-primary" href="https://stats.preprod.voozanoo.net/modulestats/#" id="providerDownloadLink">
+<div class="vzn-box fa fa-download pull-left font_x1-5" id="vzn59f7225b9eb3a1_70306513"></div>
+<div class="vzn-box pull-left" id="vzn59f7225b9eb485_40272931">
+<div class="statictext" id="vzn59f7225b9eb524_80713670"><span>Télécharger</span></div></div></a></div></div></div></div></div></div></div></div></div></div></div></div></div></div></div></div></div></div>
+<div class="dialog-footer row text-right"><button id="exportAmapDialog-groupdialog-close" class="btn btn-default">Fermer</button></div></fieldset></div>
+<div class="form-group" id="vzn59f7225b9ec8e0_34338477">
+<div class="vzn-box col-xs-12 col-md-4 form-inline" id="vzn59f7225b9ec9c5_43020819">
+<div class="form-control-static field readonly-field div-inline label-rightMargin" id="amap_title" style=""><span>TMI Préprod - Compléments statistiques Arrêt de travail</span></div><button id="edit_btn" class="btn btn-xs btn-default" type="button"><span class="glyphicon glyphicon-pencil"></span> </button></div>
+<div class="vzn-box col-xs-12 col-md-8 text-right" id="vzn59f7225b9ece80_27741580"><button id="import_btn" class="btn btn btn-default right-5-margin" type="button"><span class="fa fa-download"></span> Source de données</button>
+<div class="btn-group right-5-margin"><button id="export_scripts" type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown"><span class="glyphicon glyphicon-export" aria-hidden="true"></span> Export des scripts</button></div>
+<div class="btn-group right-5-margin"><button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown"><span class="fa fa-bar-chart"></span>&nbsp;Visualiser les données&nbsp;<span class="caret"></span></button><ul class="dropdown-menu dropdown-menu-right text-left" role="menu"><li><a id="browse_data" href="#">Parcourir les données</a></li><li><a id="show_data_summary" href="#">Afficher le descriptif des données</a></li></ul></div>
+<div class="statictext" id="vzn59f7225b9ed397_00791360"><span></span></div><button id="btnBack" class="btn btn-default" type="button"><span class="fa fa-mail-reply"></span> Retour</button><input onclick="return false;" id="btnSaveAmap" class="btn btn-primary left-5-margin" value="Enregistrer" type="button"></div></div>
+<div class="form-group" id="vzn59f7225b9edeb3_77293833">
+<div id="vzn59f7225b9edf77_02960338" class="widget-userGroup field col-md-3 col-lg-4">
+<div class="groups-selected">
+<div class=""><span class="label label-default">Main</span></div></div>
+<div class="clear"></div><button class="btn btn-default btn-xs" type="submit" data-toggle="modal" data-target="#modal-vzn59f7225b9edf77_02960338">Editer</button></div>
+<div class="modal-userGroup modal fade" id="modal-vzn59f7225b9edf77_02960338" tabindex="-1" role="dialog" aria-labelledby="selectGroupModal">
+<div class="modal-dialog" role="document">
+<div class="modal-content">
+<div class="modal-header"><button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button><h4 class="modal-title" id="myModalLabel">Sélection de groupe</h4></div>
+<div class="modal-body"><ul class="list-group"></ul></div>
+<div class="modal-footer"><button type="button" class="btn btn-default" data-dismiss="modal">Fermer</button></div></div></div></div></div>
+<div id="editAmapDialog-groupdialog" class="disabled-background" style="display: none;"><fieldset id="editAmapDialog-groupdialog-dialog" class="groupdialog"><h4 class="dialog-header row"></h4>
+<div class="dialog-body row" style="">
+<div id="editAmapDialog" class="col-xs-12">
+<div class="form-group" id="vzn59f7225b9ee1b5_39310154"><label class="control-label col-xs-3" id="vzn59f7225b9ee290_01115066" style=""><span data-field="name">Nom</span></label>
+<div class="field col-xs-9"><input id="vzn59f7225b9ee3d5_97615817" name="vzn59f7225b9ee3d5_97615817" value="TMI Préprod - Compléments statistiques Arrêt de travail" maxlength="255" class="form-control" style="" null="" type="text"></div></div>
+<div class="form-group" id="vzn59f7225b9ee496_06388989"><label class="control-label col-xs-3" id="vzn59f7225b9ee575_51302340" style=""><span data-field="description">Description</span></label>
+<div class="field col-xs-9"><textarea rows="5" cols="50" id="vzn59f7225b9ee687_51123985" name="vzn59f7225b9ee687_51123985" class="form-control"></textarea></div></div>
+<div class="form-group" id="vzn59f7225b9ee741_24459627"><label class="control-label col-xs-3" id="vzn59f7225b9ee842_54724808" style=""><span data-field="tags">Mots clés</span></label>
+<div id="vzn59f7225b9eea01_41388270" class="field col-xs-9">
+<div class="tag-list">
+<div class="tag-label pull-left label label-default" style="margin: 3px;"><span>fass</span><span class="tag-remove glyphicon glyphicon-remove" style="margin-left: 15px;"></span></div></div><input class="form-control yui3-aclist-input" aria-autocomplete="list" aria-expanded="false" aria-owns="yui_3_10_1_1_1509368290031_14146" id="yui_3_10_1_1_1509368290031_14164" autocomplete="off" type="text">
+<div id="yui_3_10_1_1_1509368290031_14134" class="yui3-widget yui3-aclist yui3-widget-positioned yui3-aclist-hidden" style="position: relative; left: 0px; top: 0px;" aria-hidden="true">
+<div id="yui_3_10_1_1_1509368290031_14136" class="yui3-aclist-content"><ul class="yui3-aclist-list" id="yui_3_10_1_1_1509368290031_14146" role="listbox"></ul></div></div>
+<div class="yui3-aclist-aria" aria-live="polite" role="status"></div></div></div></div></div>
+<div class="dialog-footer row text-right"><button id="editAmapDialog-groupdialog-close" class="btn btn-default">Fermer</button></div></fieldset></div>
+<div id="choiceModelDialog-groupdialog" class="disabled-background" style="display: none;"><fieldset id="choiceModelDialog-groupdialog-dialog" class="groupdialog"><h4 class="dialog-header row"></h4>
+<div class="dialog-body row" style="">
+<div id="choiceModelDialog" class="col-xs-12">
+<div class="form-group" id="vzn59f7225b9ef0a6_76216256">
+<div class="vzn-box col-xs-3" id="vzn59f7225b9ef1b4_11661084">
+<div class="statictext control-label" id="vzn59f7225b9ef270_10296061"><span>Rechercher</span></div></div>
+<div class="field col-xs-9"><input id="vzn59f7225b9ef3a6_37972958" class="form-control yui3-aclist-input" style="margin-left: 0px;" aria-autocomplete="list" aria-expanded="false" aria-owns="yui_3_10_1_1_1509368290031_14328" autocomplete="off" type="text">
+<div id="yui_3_10_1_1_1509368290031_14315" class="yui3-widget yui3-aclist yui3-widget-positioned yui3-aclist-hidden" style="position: relative; left: 0px; top: 0px;" aria-hidden="true">
+<div id="yui_3_10_1_1_1509368290031_14317" class="yui3-aclist-content"><ul class="yui3-aclist-list" id="yui_3_10_1_1_1509368290031_14328" role="listbox"></ul></div></div>
+<div class="yui3-aclist-aria" aria-live="polite" role="status"></div></div></div>
+<div class="form-group" id="vzn59f7225b9ef460_35618964"><label class="mandatory control-label col-xs-3" id="vzn59f7225b9ef549_24305839" style=""><span data-field="name">Nom de la ressource *</span></label>
+<div class="field col-xs-9"><select name="vzn59f7225b9ef6c9_20854964" id="vzn59f7225b9ef6c9_20854964" class="form-control"><option selected="selected"></option></select></div></div></div></div>
+<div class="dialog-footer row text-right"><button id="choiceModelDialog-groupdialog-close" class="btn btn-default">Fermer</button><button id="choiceModelDialog-groupdialog-validate" class="btn btn-primary">Ok</button></div></fieldset></div>
+<div class="form-group" id="amap_manager">
+<div class="vzn-box col-sm-9" id="vzn59f7225b9efdd9_96648555">
+<div class="field col-sm-12" id="yui_3_10_1_1_1509368290031_14921"><textarea rows="5" cols="50" id="highlighter" name="highlighter" class="form-control" style="display: none;">```{r,
+ results="asis", echo=FALSE, message=FALSE, warning=FALSE, fig.width=15,
+ fig.height=9}
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+#
+                          Rapports stats TMI
+#
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+#
+ ------------------------------------------------------
+# Librairies
+# ------------------------------------------------------
+
+library(tidyr)
+#library(ISOweek)
+library(xtable)
+library('RServerUtils')
+library(dplyr)
+
+
+# ------------------------------------------------------
+# Fonction figure.export2 pour les camemberts
+# ------------------------------------------------------
+
+figure.export2 &lt;- function(x,
+                          filename=NULL,
+                          title=NULL,
+                          format="png") {
+
+  .FN &lt;- filename
+  .TT &lt;- title
+
+  # If filename is NULL -&gt; ERROR
+  # 
+---------------------------------------------------------------------------
+
+  if (is.null(.FN)) {
+    stop("You MUST provide a filename (without extension)")
+  }
+  
+  if (is.null(.TT)) {
+    .TT &lt;- sprintf("exports/%s.%s", .FN, .FM)
+  }
+  
+  # We are testing if 'exports' directory exists
+  # If no, we create it
+  # 
+---------------------------------------------------------------------------
+
+  if (!dir.exists("exports")) {
+    dir.create("exports")
+  }
+  
+  URLFMT &lt;- "&lt;a href=\"%s.%s\" class=\"RExport\"&gt;%s: 
+%s&lt;/a&gt;&lt;br /&gt;"
+  if (is.null(x)) {
+    for (fmt in c(format)) {
+      fname &lt;- sprintf("exports/%s.%s", filename, fmt)
+      if (fmt == "png") {
+        dev.copy(png, fname, width = 9, height = 10, units="in", 
+res=500); 
+		dev.off()
+        .URL &lt;- sprintf(URLFMT, .FN, fmt, fmt, .TT)
+        cat(.URL)
+      }
+      if (fmt == "jpg") {
+        dev.copy(jpeg, fname); dev.off()
+        .URL &lt;- sprintf(URLFMT, .FN, fmt, fmt, .TT)
+        cat(.URL)
+      }
+      if (fmt == "pdf") {
+        dev.copy(pdf, fname); dev.off()
+        .URL &lt;- sprintf(URLFMT, .FN, fmt, fmt, .TT)
+        cat(.URL)
+      }
+      if (fmt == "svg") {
+        dev.copy(svg, fname); dev.off()
+        .URL &lt;- sprintf(URLFMT, .FN, fmt, fmt, .TT)
+        cat(.URL)
+      }
+    }
+  }
+  else {
+    if (class(x)[1] == 'gg') {
+      for (fmt in c(format)) {
+        fname &lt;- sprintf("exports/%s.%s", filename, fmt)
+        ggsave(fname, plot = x, device = fmt)
+        .URL &lt;- sprintf(URLFMT, .FN, fmt, fmt, .TT)
+        cat(.URL)
+      }
+    }
+  }
+}
+
+
+# ------------------------------------------------------
+# Récupération des exports
+# ------------------------------------------------------
+
+data1=read.csv2("stats_bi.csv",as.is=T,na.strings="")
+data2=read.csv2("stats_binter.csv",as.is=T,na.strings="")
+data3=read.csv2("stats_bm6.csv",as.is=T,na.strings="")
+data4=read.csv2("stats_bs.csv",as.is=T,na.strings="")
+
+data_fil_sal=read.csv2("stats_filtres_sal.csv",as.is=T,na.strings="")
+data_fil_met=read.csv2("stats_filtres_met.csv",as.is=T,na.strings="")
+#print(xtable(data_fil_sal),type="html",include.rownames=F)
+#print(xtable(data_fil_met),type="html",include.rownames=F)
+
+# ------------------------------------------------------
+# Merge et Filtre sur les données
+# ------------------------------------------------------
+
+# renommage de la variable intensité gêne
+data1=rename(data1,gene_intensite=bi_gene_intensite_1)
+data2=rename(data2,gene_intensite=bint_gene_intensite_1)
+data3=rename(data3,gene_intensite=bm6_gene_intensite_1)
+data4=rename(data4,gene_intensite=bs_gene_intensite_1)
+
+# renommage de la variable intensité douleur
+data1=rename(data1,douleur_intensite=bi_douleur_intensite_1)
+data2=rename(data2,douleur_intensite=bint_douleur_intensite_1)
+data3=rename(data3,douleur_intensite=bm6_douleur_intensite_1)
+data4=rename(data4,douleur_intensite=bs_douleur_intensite_1)
+
+# transformation en "character" des colonnes variables dico multiple
+data1$hist_eg_acromio=as.character(data1$hist_eg_acromio)
+data2$hist_eg_acromio=as.character(data2$hist_eg_acromio)
+data3$hist_eg_acromio=as.character(data3$hist_eg_acromio)
+data4$hist_eg_acromio=as.character(data4$hist_eg_acromio)
+
+data1$hist_ed_acromio=as.character(data1$hist_ed_acromio)
+data2$hist_ed_acromio=as.character(data2$hist_ed_acromio)
+data3$hist_ed_acromio=as.character(data3$hist_ed_acromio)
+data4$hist_ed_acromio=as.character(data4$hist_ed_acromio)
+
+# renommage de la variable gêne
+data1=rename(data1,gene=bi_gene)
+data2=rename(data2,gene=bint_gene_actuellement)
+data3=rename(data3,gene=bm6_gene_actuellement)
+data4=rename(data4,gene=bs_gene_actuellement)
+
+# renommage de la variable douleur
+data1=rename(data1,douleur=bi_douleur)
+data2=rename(data2,douleur=bint_douleur_actuellement)
+data3=rename(data3,douleur=bm6_douleur_actuellement)
+data4=rename(data4,douleur=bs_douleur_actuellement)
+
+# renommage de la variable localisation gêne
+#data1=rename(data1,gene_localisation=bi_gene_localisation)
+#data2=rename(data2,gene_localisation=bint_gene_localisation)
+#data3=rename(data3,gene_localisation=bm6_gene_localisation)
+#data4=rename(data4,gene_localisation=bs_gene_localisation)
+
+# renommage de la variable localisation douleur
+#data1=rename(data1,douleur_localisation=bi_douleur_localisation)
+#data2=rename(data2,douleur_localisation=bint_douleur_localisation)
+#data3=rename(data3,douleur_localisation=bm6_douleur_localisation)
+#data4=rename(data4,douleur_localisation=bs_douleur_localisation)
+
+
+# merge des 4 exports
+data=bind_rows(data1,data2,data3,data4)
+data=data[order(data$id_data), ]
+
+# on enlève les lignes salariés sans aucun bilan
+data=filter(data,!(is.na(type_bilan)))
+
+# on ne garde que les bilans renseignés
+data=filter(data,statut_bilan==1)
+
+#print("data")
+#cat('&lt;div class="table-responsive"&gt;')
+#print(xtable(data),type="html",include.rownames=F)
+#cat('&lt;/div&gt;')
+
+#cat('&lt;div class="table-responsive"&gt;')
+#print(xtable(data1),type="html",include.rownames=F)
+#cat('&lt;/div&gt;')
+
+#cat('&lt;div class="table-responsive"&gt;')
+#print(xtable(data2),type="html",include.rownames=F)
+#cat('&lt;/div&gt;')
+
+#cat('&lt;div class="table-responsive"&gt;')
+#print(xtable(data3),type="html",include.rownames=F)
+#cat('&lt;/div&gt;')
+
+
+#cat('&lt;div class="table-responsive"&gt;')
+#print(xtable(data4),type="html",include.rownames=F)
+#cat('&lt;/div&gt;')
+
+
+# ------------------------------------------------------
+# Récupération des paramètres
+# ------------------------------------------------------
+
+#JSON$params
+
+# paramètre kiné
+#kine=JSON$params$fil_kine
+kine=42
+# paramètre intensité gêne
+#intensite_gene=as.integer(JSON$params$codes$fil_gene)
+intensite_gene=5
+# paramètre bilan gêne
+#bilan_gene=JSON$params$codes$fil_gene_bilan
+bilan_gene="BI"
+# paramètre intensité douleur
+#intensite_douleur=as.integer(JSON$params$codes$fil_douleur)
+intensite_douleur=5
+# paramètre bilan douleur
+#bilan_douleur=JSON$params$codes$fil_douleur_bilan
+bilan_douleur="BI"
+
+
+
+# ------------------------------------------------------
+# Conditions d'affichage du graphique et Messages
+# ------------------------------------------------------
+
+conditions=TRUE
+
+# si le tableau renvoyé est vide
+if (nrow(data)==0){
+  conditions=FALSE
+  cat('&lt;p align="center"&gt;&lt;font size="5" color="#B1C150"&gt; 
+Aucunes données enregistrées &lt;/font&gt;&lt;/p&gt;')
+}
+
+
+```
+
+
+
+```{r, results="asis", echo=FALSE, message=FALSE, warning=FALSE, 
+fig.width=15, fig.height=9}
+
+if (conditions==TRUE){
+# ------------------------------------------------------
+
+# ------------------------------------------------------
+# Prise en compte des filtres
+# ------------------------------------------------------
+
+
+# on récupère les salariés de la dataquery salarié
+salaries1=data_fil_sal$id_data
+if (TRUE %in% 
+duplicated(salaries1)){salaries1=salaries1[-which(duplicated(salaries1))]}
+salaries1=as.vector(salaries1)
+
+if
+ (length(salaries1)==0){
+  conditions=F
+}
+
+#print(salaries1)
+
+# on récupère les salariés de la dataquery métier
+salaries2=data_fil_met$id_data
+if (TRUE %in% 
+duplicated(salaries2)){salaries2=salaries2[-which(duplicated(salaries2))]}
+salaries2=as.vector(salaries2)
+
+if
+ (length(salaries2)==0){
+  conditions=F
+}
+
+#print(salaries2)
+
+
+# on merge les 2 premières listes de salariés
+if ((length(salaries1)!=0) &amp;&amp; (length(salaries2)!=0)){
+  salaries=base::intersect(salaries1,salaries2)
+} else {
+  salaries=0
+}
+
+
+# on créé la liste salariés pour le filtre Kiné
+if (!(is.null(kine))){
+  # filtre sur le dernier bilan enregistré par salarié
+  data_dern_bilan = data %&gt;%
+  	group_by(id_data) %&gt;%
+  	filter(sys_creation_date==max(sys_creation_date)) 
+  # filtre sur le kiné
+  data_kine = data_dern_bilan %&gt;%
+    filter(id_owner==kine)
+  # on récupère les salariés du filtre sur kiné
+  salaries3=data_kine$id_data
+  if (TRUE %in% 
+duplicated(salaries3)){salaries3=salaries3[-which(duplicated(salaries3))]}
+
+  salaries3=as.vector(salaries3)
+  
+  if (length(salaries3)==0){
+	conditions=F
+	salaries=0
+  }
+  
+  # on merge avec la troisième liste de salariés
+  if (salaries!=0){
+	salaries=base::intersect(salaries,salaries3)
+  }
+  
+  #print(salaries3)
+}
+
+
+# on crée la liste salarié pour le filtre gêne
+salaries4=0
+if (!(is.na(intensite_gene))){
+  # filtre sur le bilan selectionné pour la gêne
+  data_bilan_gene = data %&gt;%
+	group_by(id_data) %&gt;%
+	filter(type_bilan==bilan_gene)
+  # filtre sur la gêne
+  data_gene = data_bilan_gene %&gt;%
+	filter(gene_intensite==intensite_gene)
+  # on récupère les salariés du filtre gêne
+  salaries4=data_gene$id_data
+  if (TRUE %in% 
+duplicated(salaries4)){salaries4=salaries4[-which(duplicated(salaries4))]}
+
+  salaries4=as.vector(salaries4)
+  
+  if (length(salaries4)==0){
+	conditions=F
+	salaries=0
+  }
+  
+  # on merge avec la quatrième liste de salariés
+  if (salaries!=0){
+	salaries=base::intersect(salaries,salaries4)
+  }
+  
+  #print(salaries4)
+}
+
+
+# on crée la liste salarié pour le filtre douleur
+salaries5=0
+if (!(is.na(intensite_douleur))){
+  # filtre sur le bilan selectionné pour la douleur
+  data_bilan_douleur = data %&gt;%
+	group_by(id_data) %&gt;%
+	filter(type_bilan==bilan_douleur)
+  # filtre sur la douleur
+  data_douleur = data_bilan_douleur %&gt;%
+	filter(douleur_intensite==intensite_douleur)
+  # on récupère les salariés du filtre douleur
+  salaries5=data_douleur$id_data
+  if (TRUE %in% 
+duplicated(salaries5)){salaries5=salaries5[-which(duplicated(salaries5))]}
+
+  salaries5=as.vector(salaries5)
+  
+  if (length(salaries5)==0){
+	conditions=F
+	salaries=0
+  }
+  
+  # on merge avec la cinquième liste de salariés
+  if (salaries!=0){
+	salaries=base::intersect(salaries,salaries5)
+  }
+  
+  #print(salaries5)
+
+}
+
+
+#print(salaries)
+
+# on ne garde que les salariés filtrés sur le métier pour les bilans
+if ((length(salaries)!=0) &amp;&amp; (salaries!=0)){
+  data=filter(data,id_data %in% salaries)
+} else {
+  conditions=FALSE
+  cat('&lt;p align="center"&gt;&lt;font size="5" color="#B1C150"&gt; 
+Aucunes données enregistrées &lt;/font&gt;&lt;/p&gt;')
+}
+
+#print("data")
+#cat('&lt;div class="table-responsive"&gt;')
+#print(xtable(data),type="html",include.rownames=F)
+#cat('&lt;/div&gt;')
+
+# si le tableau renvoyé est vide
+if (nrow(data)==0){
+  conditions=FALSE
+  cat('&lt;p align="center"&gt;&lt;font size="5" color="#B1C150"&gt; 
+Aucunes données enregistrées &lt;/font&gt;&lt;/p&gt;')
+}
+
+# ------------------------------------------------------
+}
+
+```
+
+```{r, results="asis", echo=FALSE, message=FALSE, warning=FALSE, 
+fig.width=15, fig.height=9}
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+#
+                  Compléments statistiques - Arrêt de travail
+#
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+if
+ (conditions==TRUE){
+# ------------------------------------------------------
+
+# ------------------------------------------------------
+# Sélection des variables
+# ------------------------------------------------------
+
+# on récupère le nombre de salariés concernés par les stats
+salaries_stat=data$id_data
+if (TRUE %in% 
+duplicated(salaries_stat)){salaries_stat=salaries_stat[-which(duplicated(salaries_stat))]}
+nb_sal=length(salaries_stat)
+#print(nb_sal)
+
+#
+ le sous-titre
+subtitle=paste0("Pour ",nb_sal," salariés")
+
+# ------------------------------------------------------
+}
+
+```
+
+```{r, results="asis", echo=FALSE, message=FALSE, warning=FALSE, 
+fig.width=15, fig.height=9}
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+#
+   1) Pourcentage de personnes ayant été au moins une fois en arrêt de 
+travail
+#
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+if
+ (conditions==TRUE){
+# ------------------------------------------------------
+
+# ------------------------------------------------------
+# Traitement des données
+# ------------------------------------------------------
+
+dataP=select(data,id_data,type_bilan,bi_sal_arret)
+
+dataP=filter(dataP,type_bilan=="BI")
+
+
+#print("dataP")
+#cat('&lt;div class="table-responsive"&gt;')
+#print(xtable(dataP),type="html",include.rownames=F)
+#cat('&lt;/div&gt;')
+
+
+# on fait le calcul
+dataM = dataP %&gt;%
+  
+summarise(bi_sal_arret=sum(bi_sal_arret,na.rm=T)/length(bi_sal_arret[!is.na(bi_sal_arret)])*100)
+
+#print("dataM")
+#cat('&lt;div
+ class="table-responsive"&gt;')
+#print(xtable(dataM),type="html",include.rownames=F)
+#cat('&lt;/div&gt;')
+
+
+# ------------------------------------------------------
+}
+
+```
+
+
+
+```{r, results="asis", echo=FALSE, message=FALSE, warning=FALSE, 
+fig.width=9, fig.height=9}
+
+if (conditions==TRUE){
+# ------------------------------------------------------
+
+# ------------------------------------------------------
+# Affichage camembert
+# ------------------------------------------------------
+
+# récupération des valeurs et arrondi
+a = round(dataM[1,1],0)
+x = c(a,100-a)
+
+# le titre
+titre="% de personnes ayant été au moins une fois en arrêt de travail \n
+ en rapport avec les symptomes décrits lors du bilan initial"
+
+# couleur
+color=c("#C5D759","#0174DF")
+
+# labels des parts
+names_arg=c(paste(a,"%"),paste(100-a,"%"))
+
+# le camembert
+par(mar=c(3,5,6,4)+0.1)
+pie(x, 
+	labels = names_arg,
+    col = color,
+	radius = 0.8,
+	cex=1.3)
+
+		
+# Titre
+title(titre,line=3,cex.main=1.3)
+
+# sous-titre
+mtext(subtitle,line=1.5,cex=1.2)
+
+# label de la légende
+legende=c("Arrêt de travail","Pas d'arrêt de travail")
+
+# la légende
+legend(x="topright",
+       legend=legende,
+       fill=color,
+       bty="n",
+       cex=1.3,
+       x.intersp=0.2,
+       y.intersp=1)
+
+
+# export du graphique au format png
+figure.export2(NULL, title="Export du graphique", 
+filename="tmi_export_graph23", format="png")
+
+
+
+# ------------------------------------------------------
+}
+
+```
+
+
+
+</textarea>
+<div class="CodeMirror cm-s-default CodeMirror-wrap col-sm-12" style="height: 366px;" id="yui_3_10_1_1_1509368290031_14920">
+<div style="overflow: hidden; position: relative; width: 3px; height: 0px; top: 47px; left: 174px;" id="yui_3_10_1_1_1509368290031_14919"><textarea style="position: absolute; padding: 0px; width: 1px; height: 1em; outline: medium none; font-size: 4px;" autocorrect="off" autocapitalize="off" spellcheck="false" tabindex="0" id="yui_3_10_1_1_1509368290031_14918" wrap="off"></textarea></div>
+<div class="CodeMirror-hscrollbar" style="left: 33px;">
+<div style="height: 1px; width: 0px;"></div></div>
+<div class="CodeMirror-vscrollbar" style="display: block; bottom: 0px;">
+<div style="width: 1px; height: 7316px;"></div></div>
+<div class="CodeMirror-scrollbar-filler"></div>
+<div class="CodeMirror-gutter-filler"></div>
+<div class="CodeMirror-scroll" tabindex="-1" draggable="true" id="yui_3_10_1_1_1509368290031_14959">
+<div class="CodeMirror-sizer" style="margin-left: 33px; min-height: 7316px;" id="yui_3_10_1_1_1509368290031_14958">
+<div style="position: relative; top: 0px;" id="yui_3_10_1_1_1509368290031_14957">
+<div class="CodeMirror-lines" id="yui_3_10_1_1_1509368290031_14956">
+<div style="position: relative; outline: medium none;" id="yui_3_10_1_1_1509368290031_14955">
+<div class="CodeMirror-measure"></div>
+<div style="position: relative; z-index: 1; display: none;">
+<div class="CodeMirror-selected" style="position: absolute; left: 4px; top: 0px; width: 978px; height: 14px;"></div>
+<div class="CodeMirror-selected" style="position: absolute; left: 4px; top: 322px; width: 448px; height: 14px;"></div>
+<div class="CodeMirror-selected" style="position: absolute; left: 4px; top: 14px; width: 978px; height: 308px;"></div></div>
+<div class="CodeMirror-code" style="" id="yui_3_10_1_1_1509368290031_14954">
+<div style="position: relative;">
+<div style="position: absolute; left: -33px;">
+<div class="CodeMirror-linenumber CodeMirror-gutter-elt" style="left: 0px; width: 24px;">1</div></div><pre>```{<span class="cm-variable">r</span>, <span class="cm-variable">results</span><span class="cm-operator">=</span><span class="cm-string">"asis"</span>, <span class="cm-variable">echo</span><span class="cm-operator">=</span><span class="cm-variable">FALSE</span>, <span class="cm-variable">message</span><span class="cm-operator">=</span><span class="cm-variable">FALSE</span>, <span class="cm-variable">warning</span><span class="cm-operator">=</span><span class="cm-variable">FALSE</span>, <span class="cm-variable">fig.width</span><span class="cm-operator">=</span><span class="cm-number">15</span>, <span class="cm-variable">fig.height</span><span class="cm-operator">=</span><span class="cm-number">9</span>}</pre></div>
+<div style="position: relative;">
+<div style="position: absolute; left: -33px;">
+<div class="CodeMirror-linenumber CodeMirror-gutter-elt" style="left: 0px; width: 24px;">2</div></div><pre>&nbsp;</pre></div>
+<div style="position: relative;">
+<div style="position: absolute; left: -33px;">
+<div class="CodeMirror-linenumber CodeMirror-gutter-elt" style="left: 0px; width: 24px;">3</div></div><pre>&nbsp;</pre></div>
+<div style="position: relative;">
+<div style="position: absolute; left: -33px;">
+<div class="CodeMirror-linenumber CodeMirror-gutter-elt" style="left: 0px; width: 24px;">4</div></div><pre><span class="cm-comment">#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~</span></pre></div>
+<div style="position: relative;">
+<div style="position: absolute; left: -33px;">
+<div class="CodeMirror-linenumber CodeMirror-gutter-elt" style="left: 0px; width: 24px;">5</div></div><pre><span class="cm-comment">#</span></pre></div>
+<div style="position: relative;">
+<div style="position: absolute; left: -33px;">
+<div class="CodeMirror-linenumber CodeMirror-gutter-elt" style="left: 0px; width: 24px;">6</div></div><pre><span class="cm-comment">#                          Rapports stats TMI</span></pre></div>
+<div style="position: relative;">
+<div style="position: absolute; left: -33px;">
+<div class="CodeMirror-linenumber CodeMirror-gutter-elt" style="left: 0px; width: 24px;">7</div></div><pre><span class="cm-comment">#</span></pre></div>
+<div style="position: relative;">
+<div style="position: absolute; left: -33px;">
+<div class="CodeMirror-linenumber CodeMirror-gutter-elt" style="left: 0px; width: 24px;">8</div></div><pre><span class="cm-comment">#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~</span></pre></div>
+<div style="position: relative;">
+<div style="position: absolute; left: -33px;">
+<div class="CodeMirror-linenumber CodeMirror-gutter-elt" style="left: 0px; width: 24px;">9</div></div><pre>&nbsp;</pre></div>
+<div style="position: relative;">
+<div style="position: absolute; left: -33px;">
+<div class="CodeMirror-linenumber CodeMirror-gutter-elt" style="left: 0px; width: 24px;">10</div></div><pre>&nbsp;</pre></div>
+<div style="position: relative;">
+<div style="position: absolute; left: -33px;">
+<div class="CodeMirror-linenumber CodeMirror-gutter-elt" style="left: 0px; width: 24px;">11</div></div><pre><span class="cm-comment"># ------------------------------------------------------</span></pre></div>
+<div style="position: relative;">
+<div style="position: absolute; left: -33px;">
+<div class="CodeMirror-linenumber CodeMirror-gutter-elt" style="left: 0px; width: 24px;">12</div></div><pre><span class="cm-comment"># Librairies</span></pre></div>
+<div style="position: relative;">
+<div style="position: absolute; left: -33px;">
+<div class="CodeMirror-linenumber CodeMirror-gutter-elt" style="left: 0px; width: 24px;">13</div></div><pre><span class="cm-comment"># ------------------------------------------------------</span></pre></div>
+<div style="position: relative;">
+<div style="position: absolute; left: -33px;">
+<div class="CodeMirror-linenumber CodeMirror-gutter-elt" style="left: 0px; width: 24px;">14</div></div><pre>&nbsp;</pre></div>
+<div style="position: relative;">
+<div style="position: absolute; left: -33px;">
+<div class="CodeMirror-linenumber CodeMirror-gutter-elt" style="left: 0px; width: 24px;">15</div></div><pre><span class="cm-variable">library</span>(<span class="cm-variable">tidyr</span>)</pre></div>
+<div style="position: relative;">
+<div style="position: absolute; left: -33px;">
+<div class="CodeMirror-linenumber CodeMirror-gutter-elt" style="left: 0px; width: 24px;">16</div></div><pre><span class="cm-comment">#library(ISOweek)</span></pre></div>
+<div style="position: relative;">
+<div style="position: absolute; left: -33px;">
+<div class="CodeMirror-linenumber CodeMirror-gutter-elt" style="left: 0px; width: 24px;">17</div></div><pre><span class="cm-variable">library</span>(<span class="cm-variable">xtable</span>)</pre></div>
+<div style="position: relative;">
+<div style="position: absolute; left: -33px;">
+<div class="CodeMirror-linenumber CodeMirror-gutter-elt" style="left: 0px; width: 24px;">18</div></div><pre><span class="cm-variable">library</span>(<span class="cm-string">'RServerUtils'</span>)</pre></div>
+<div style="position: relative;">
+<div style="position: absolute; left: -33px;">
+<div class="CodeMirror-linenumber CodeMirror-gutter-elt" style="left: 0px; width: 24px;">19</div></div><pre><span class="cm-variable">library</span>(<span class="cm-variable">dplyr</span>)</pre></div>
+<div style="position: relative;">
+<div style="position: absolute; left: -33px;">
+<div class="CodeMirror-linenumber CodeMirror-gutter-elt" style="left: 0px; width: 24px;">20</div></div><pre>&nbsp;</pre></div>
+<div style="position: relative;">
+<div style="position: absolute; left: -33px;">
+<div class="CodeMirror-linenumber CodeMirror-gutter-elt" style="left: 0px; width: 24px;">21</div></div><pre>&nbsp;</pre></div>
+<div style="position: relative;">
+<div style="position: absolute; left: -33px;">
+<div class="CodeMirror-linenumber CodeMirror-gutter-elt" style="left: 0px; width: 24px;">22</div></div><pre><span class="cm-comment"># ------------------------------------------------------</span></pre></div>
+<div style="position: relative;">
+<div style="position: absolute; left: -33px;">
+<div class="CodeMirror-linenumber CodeMirror-gutter-elt" style="left: 0px; width: 24px;">23</div></div><pre><span class="cm-comment"># Fonction figure.export2 pour les camemberts</span></pre></div>
+<div style="position: relative;">
+<div style="position: absolute; left: -33px;">
+<div class="CodeMirror-linenumber CodeMirror-gutter-elt" style="left: 0px; width: 24px;">24</div></div><pre><span class="cm-comment"># ------------------------------------------------------</span></pre></div>
+<div style="position: relative;">
+<div style="position: absolute; left: -33px;">
+<div class="CodeMirror-linenumber CodeMirror-gutter-elt" style="left: 0px; width: 24px;">25</div></div><pre>&nbsp;</pre></div>
+<div style="position: relative;">
+<div style="position: absolute; left: -33px;">
+<div class="CodeMirror-linenumber CodeMirror-gutter-elt" style="left: 0px; width: 24px;">26</div></div><pre><span class="cm-variable">figure.export2</span> <span class="cm-arrow">&lt;-</span> <span class="cm-keyword">function</span>(<span class="cm-variable">x</span>,</pre></div>
+<div style="position: relative;">
+<div style="position: absolute; left: -33px;">
+<div class="CodeMirror-linenumber CodeMirror-gutter-elt" style="left: 0px; width: 24px;">27</div></div><pre>                          <span class="cm-variable">filename</span><span class="cm-arg-is">=</span><span class="cm-atom">NULL</span>,</pre></div>
+<div style="position: relative;">
+<div style="position: absolute; left: -33px;">
+<div class="CodeMirror-linenumber CodeMirror-gutter-elt" style="left: 0px; width: 24px;">28</div></div><pre>                          <span class="cm-variable">title</span><span class="cm-arg-is">=</span><span class="cm-atom">NULL</span>,</pre></div>
+<div style="position: relative;">
+<div style="position: absolute; left: -33px;">
+<div class="CodeMirror-linenumber CodeMirror-gutter-elt" style="left: 0px; width: 24px;">29</div></div><pre>                          <span class="cm-variable">format</span><span class="cm-arg-is">=</span><span class="cm-string">"png"</span>) {</pre></div>
+<div style="position: relative;">
+<div style="position: absolute; left: -33px;">
+<div class="CodeMirror-linenumber CodeMirror-gutter-elt" style="left: 0px; width: 24px;">30</div></div><pre>&nbsp;</pre></div>
+<div style="position: relative;">
+<div style="position: absolute; left: -33px;">
+<div class="CodeMirror-linenumber CodeMirror-gutter-elt" style="left: 0px; width: 24px;">31</div></div><pre>  <span class="cm-variable">.FN</span> <span class="cm-arrow">&lt;-</span> <span class="cm-variable">filename</span></pre></div>
+<div style="position: relative;">
+<div style="position: absolute; left: -33px;">
+<div class="CodeMirror-linenumber CodeMirror-gutter-elt" style="left: 0px; width: 24px;">32</div></div><pre>  <span class="cm-variable">.TT</span> <span class="cm-arrow">&lt;-</span> <span class="cm-variable">title</span></pre></div>
+<div style="position: relative;">
+<div style="position: absolute; left: -33px;">
+<div class="CodeMirror-linenumber CodeMirror-gutter-elt" style="left: 0px; width: 24px;">33</div></div><pre>&nbsp;</pre></div>
+<div style="position: relative;">
+<div style="position: absolute; left: -33px;">
+<div class="CodeMirror-linenumber CodeMirror-gutter-elt" style="left: 0px; width: 24px;">34</div></div><pre>  <span class="cm-comment"># If filename is NULL -&gt; ERROR</span></pre></div>
+<div style="position: relative;">
+<div style="position: absolute; left: -33px;">
+<div class="CodeMirror-linenumber CodeMirror-gutter-elt" style="left: 0px; width: 24px;">35</div></div><pre>  <span class="cm-comment"># ---------------------------------------------------------------------------</span></pre></div>
+<div style="position: relative;">
+<div style="position: absolute; left: -33px;">
+<div class="CodeMirror-linenumber CodeMirror-gutter-elt" style="left: 0px; width: 24px;">36</div></div><pre>  <span class="cm-keyword">if</span> (<span class="cm-variable">is.null</span>(<span class="cm-variable">.FN</span>)) {</pre></div></div>
+<div class="CodeMirror-cursor" style="left: 140px; top: 42px; height: 14px; visibility: hidden;">&nbsp;</div>
+<div class="CodeMirror-cursor CodeMirror-secondarycursor" style="display: none; visibility: hidden;">&nbsp;</div></div></div></div></div>
+<div style="position: absolute; height: 30px; width: 1px; top: 7316px;"></div>
+<div class="CodeMirror-gutters" style="height: 7316px;">
+<div class="CodeMirror-gutter CodeMirror-linenumbers" style="width: 32px;"></div></div></div></div></div>
+<div class="vzn-box text-left col-xs-6" id="vzn59f7225b9f0114_22319952"><button id="btnUndo" class="btn disabled btn-default" type="button" disabled="disabled" data-toggle="tooltip" data-original-title="Revenir en arrière"><span class="fa fa-mail-reply"></span> </button><button id="btnRedo" class="btn disabled btn-default" type="button" disabled="disabled" data-toggle="tooltip" data-original-title="Revenir en avant"><span class="fa fa-mail-forward"></span> </button></div>
+<div class="vzn-box col-xs-6 text-right" id="vzn59f7225b9f0676_82608716"><button id="btnDebug" class="btn btn-action btn-default" type="button" data-toggle="tooltip" data-original-title="Mode débogage"><span class="fa fa-bug"></span> </button><button id="btn_play_script" class="btn btn-action btn-primary" type="button" data-toggle="tooltip" data-original-title="Lancer le script"><span class="glyphicon glyphicon-play"></span> </button><button id="btn_play_all_scripts" class="btn btn-action btn-primary" type="button" data-toggle="tooltip" data-original-title="Lancer tous les scripts"><span class="glyphicon glyphicon glyphicon-stats"></span> </button></div></div>
+<div class="vzn-box clearfix visible-xs" id="vzn59f7225b9f0ca3_98822678"></div>
+<div class="vzn-box col-sm-3" id="vzn59f7225b9f0de3_53773215">
+<div id="amap_script_list" class="col-sm-12" style="height: 400px;">
+<div id="script-4" class="btn_amap_script_display amap_script_list_analysis btn_script_draggable yui3-dd-drop yui3-dd-draggable selected" style="display: block;">
+<div class="amap_script_list_analysis_title">Arrêt de travail</div>
+<div class="amap_script_list_analysis_buttons"><button id="btn_edit_script-4" class="btn btn-default btn-xs btn_amap_script_edit" type="button"><span class="glyphicon glyphicon-pencil"></span></button><button id="btn_delete_script-4" class="btn btn-default btn-xs btn_amap_script_delete" type="button"><span class="glyphicon glyphicon-remove"></span></button></div></div>
+<div id="script-219" class="btn_amap_script_display amap_script_list_analysis btn_script_draggable yui3-dd-drop yui3-dd-draggable" style="display: block;">
+<div class="amap_script_list_analysis_title">New Script 1</div>
+<div class="amap_script_list_analysis_buttons"><button id="btn_edit_script-219" class="btn btn-default btn-xs btn_amap_script_edit" type="button"><span class="glyphicon glyphicon-pencil"></span></button><button id="btn_delete_script-219" class="btn btn-default btn-xs btn_amap_script_delete" type="button"><span class="glyphicon glyphicon-remove"></span></button></div></div>
+<div id="amap_script_add" class="amap_script_list_analysis text-center btn_new_script" style="display: block;"><span class="glyphicon glyphicon-plus"></span></div></div></div></div>
+<div class="form-group" id="vzn59f7225b9f1849_21892798">
+<div class="vzn-box col-sm-12 hidden-xs" id="vzn59f7225b9f1916_39845079">
+<div id="separator_to_drag"><hr><hr><hr></div></div></div>
+<div class="form-group" id="vzn59f7225b9f1d02_33450200">
+<div class="vzn-box col-sm-12" id="outputScript"></div></div>
+<div class="yui-panel-container yui-dialog yui-simple-dialog shadow yui-overlay-hidden" id="layout_dialog_c" style="visibility: hidden; left: 573px; top: 349px; z-index: 1000000; opacity: 1;">
+<div id="layout_dialog" class="yui-module yui-overlay yui-panel" style="visibility: inherit; width: 300px;">
+<div class="hd">Fin</div><a class="container-close" href="#" id="yui_3_10_1_1_1509368290031_15114">Close</a>
+<div class="bd">Enregistrement réussi<form name="frm_layout_dialog"><input name="layout_dialog" value="" type="hidden"></form></div>
+<div class="ft"><span class="button-group"></span></div></div>
+<div class="underlay"></div></div></form></div>		</div>
+		<footer></footer>
+	</div>
+
+</body>
+<script>
+window.onload = function() {
+ d3.select("div.epilogo").on("click", toggleApps);
+}
+
+function toggleApps() {
+  if(d3.select("div.app-list").style("display")==="none") {
+    d3.select("div.app-list").style("display", "block");
+  } else {
+    d3.select("div.app-list").style("display", "none");
+  }
+}
+  
+</script>
+
+
+</html>

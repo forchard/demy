@@ -18,11 +18,96 @@ var keepOptionsOpen=false;
 var currentVisualOptionIndex=-1;
 
 window.onload = function() {
- showAvailableProjects();
+ storage.getWorkspaces((err, wks)=> changeWorkspace(wks[0]));
  d3.select("img.switch-icon").on("click", showAvailableProjects);
+ d3.select("div.epilogo").on("click", toggleApps);
+ showProperties();
 }
 
+function toggleApps() {
+  if(d3.select("div.app-list").style("display")==="none") {
+    d3.select("div.app-list").style("display", "block");
+  } else {
+    d3.select("div.app-list").style("display", "none");
+  }
+}
 
+function showProperties() {
+  const properties = [
+    {"title":"Filtres", "elements":[
+            {"name":"Age", "type":"object" 
+             , "properties":[
+                 {"type":"dropdownlist", "label":"Display as", "values":["Textbox", "List"], "value":"List"}
+                 ,{"type":"input", "label":"Prompt", "value":"Select Age"}
+                 ,{"type":"input", "label":"Default", "value":"max(age)"}
+                 ,{"type":"input", "label":"Source", "value":"Patient[\"age\"]"}
+                 ,{"type":"list", "label":"Connections", "values":["Table 1[\"age\#]", " Table 2[\"age\#]"]}
+             ]}
+            ,{"name":"Pays","type":"object"
+             , "properties":[
+             ]}
+            ,{"name":"Region","type":"object"
+             , "properties":[
+             ]}
+         ]}
+  ];
+  const uGroup = d3.select("div.pane-properties").selectAll("div.property-grop").data(properties, d => d.title);
+  uGroup.exit().remove();
+  const eGroup = uGroup.enter().append("div").classed("property-group", true);
+  const aGroup = uGroup.merge(eGroup);
+  eGroup.append("div").classed("property-group-title", true).text(d => d.title);
+  eGroup.append("div").classed("property-group-content", true);
+
+  const uProperty = aGroup.selectAll("div.property-group-content > div.property-item").data(d => d.elements, d => d.name);
+  uProperty.exit().remove();
+  const eProperty = uProperty.enter().append("div").classed("property-item", "true")
+  eProperty.filter(d => d.type === "object").append("div").classed("object-name", true);
+  eProperty.filter(d => d.type === "object").append("div").classed("object-properties", true);
+  const aProperty = uProperty.merge(eProperty);
+  aProperty.filter(d => d.type === "object").selectAll("div.object-name").text(d => d.name);
+
+  const uOProperty = aProperty.filter(d => d.type === "object").selectAll("div.object-properties > div.object-property").data(d => d.properties);
+  uOProperty.exit().remove();
+  const eOProperty = uOProperty.enter().append("div").classed("object-property", true);
+  const eOPropertyInput = eOProperty.filter(d => d.type === "input");
+  eOPropertyInput.append("span").classed("property-label", true);
+  eOPropertyInput.append("input").attr("type", "input").classed("property-value", true);
+
+  const aOProperty = uOProperty.merge(eOProperty);
+  
+  //Input porperties
+  const aOPropertyInput = aOProperty.filter(d => d.type === "input");
+  aOPropertyInput.selectAll("span.property-label").text(d => d.label);
+  aOPropertyInput.selectAll("input.property-value").property("value", d => d.value);
+
+
+  //List properties
+  const eOPropertyList = eOProperty.filter(d => d.type === "list");
+  eOPropertyList.append("div").classed("property-label", true);
+  const eOPropertyListContainer = eOPropertyList.append("div").classed("property-values", true);
+  const aOPropertyList = aOProperty.filter(d => d.type === "list");
+  aOPropertyList.selectAll("div.property-label").text(d => d.label);
+  const uOPropertyListValues = eOPropertyList.selectAll("div.property-values").selectAll("div.property-list-value").data(d => d.values);
+  uOPropertyListValues.exit().remove();
+  const eOPropertyListValues = uOPropertyListValues.enter().append("div").classed("property-list-value", true);
+  const aOPropertyListValues = uOPropertyListValues.merge(eOPropertyListValues);
+  aOPropertyListValues.text(d => d)
+
+  //DropDownlistr properties
+  const eOPropertyDDList = eOProperty.filter(d => d.type === "dropdownlist");
+  eOPropertyDDList.append("span").classed("property-label", true);
+  const eOPropertyDDListCOntainer = eOPropertyDDList.append("select").classed("property-values", true);
+  const aOPropertyDDList = aOProperty.filter(d => d.type === "dropdownlist");
+  aOPropertyDDList.selectAll("span.property-label").text(d => d.label);
+  const uOPropertyDDListValues = aOPropertyDDList.selectAll("select.property-values").selectAll("option.property-list-value").data(d => d.values);
+  uOPropertyDDListValues.exit().remove();
+  const eOPropertyDDListValues = uOPropertyDDListValues.enter().append("option").classed("property-list-value", true);
+  const aOPropertyDDListValues = uOPropertyDDListValues.merge(eOPropertyDDListValues);
+  aOPropertyDDListValues.property("value", d => d).text(d => d)
+  
+
+
+}
 
 function showAvailableProjects() {
   showModal("Select Epicraft Project", "Hello", [], ()=>{},(div)=>{ storage.getWorkspaces((err, wks)=> {drawWorkspaces(err, wks, div)});});

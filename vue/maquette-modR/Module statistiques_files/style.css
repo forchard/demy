@@ -1,0 +1,1280 @@
+.clear { clear:both; }
+.error { background:#FFB9B9 !important; border:1px solid #FF0000 !important; color:#FF0000 !important; font:bold 100% Arial,Helvetica,Geneva,Sans-serif !important; }
+.warning { background:#FFE3B9 !important; border:1px solid #FF9900 !important; color:#FF9900 !important; font:bold 100% Arial,Helvetica,Geneva,Sans-serif !important; }
+/*.alerte { background: #ffd8d8 !important; border:1px solid #b14848 !important; color: #b14848 !important; font:bold 100% Arial,Helvetica,Geneva,Sans-serif !important; }*/
+.alerte { background:#C1DCF0 !important; border:1px solid #1E7FCB !important; color:#1E7FCB !important; font:bold 100% Arial,Helvetica,Geneva,Sans-serif !important; }
+.notice { background:#B9F4D1 !important; border:1px solid #01D758 !important; color:#01D758 !important; font:bold 100% Arial,Helvetica,Geneva,Sans-serif !important; }
+.info { background:#D5C7F1 !important; border:1px solid #6633CC !important; color:#6633CC !important; font:bold 100% Arial,Helvetica,Geneva,Sans-serif !important; }
+.hidden { visibility:hidden; }
+.waiting-message { background:transparent url("/VooLibAssets/images/busy.gif") no-repeat top center; padding:20px; text-align:center; }
+.width-100pc { width: 100%; }
+.text-bold { font-weight: bold !important; }
+.text-underline { text-decoration: underline !important; }
+.inline-block { display: inline-block !important; }
+.display-none { display: none !important; }
+.position-fixed { position: fixed !important; }
+.width-100pc { width: 100% !important; }
+
+html, body { min-height: 100%; }
+body
+{
+/*	padding-top: 20px;*/
+	box-sizing: border-box;
+	-moz-box-sizing: border-box;
+	-webkit-box-sizing: border-box;
+    margin: 0;
+	font:normal 14px Arial,Helvetica,Geneva,Sans-serif;
+	color:#000000;
+		background-repeat: no-repeat;
+	background-attachment: fixed;
+	background: #CAE0EA; /* Old browsers */
+	background: -moz-linear-gradient(top,  #95C1D6 0%, #CAE0EA 100%); /* FF3.6+ */
+	background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#95C1D6), color-stop(100%,#CAE0EA)); /* Chrome,Safari4+ */
+	background: -webkit-linear-gradient(top,  #95C1D6 0%,#CAE0EA 100%); /* Chrome10+,Safari5.1+ */
+	background: -o-linear-gradient(top,  #95C1D6 0%,#CAE0EA 100%); /* Opera 11.10+ */
+	background: -ms-linear-gradient(top,  #95C1D6 0%,#CAE0EA 100%); /* IE10+ */
+	background: linear-gradient(to bottom,  #95C1D6 0%,#CAE0EA 100%); /* W3C */
+	filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#95C1D6', endColorstr='#CAE0EA',GradientType=0 ); /* IE6-9 */
+	overflow-y: scroll;
+
+}
+body.mainframelight
+{
+	background: none;
+	padding: 0;
+	margin: 0;
+}
+dt, dd
+{
+	margin:0.5em;
+}
+dt
+{
+	display:block;
+	float:left;
+	clear:left;
+	width:100px;
+	text-align:right;
+}
+dd
+{
+	clear:right;
+}
+#page
+{
+	position: relative;
+	/* width: 940px; @deprecated bootstrap.css */
+	margin: 0 auto;
+	background: #FFFFFF;
+	/*padding: 20px;*/
+	/*border-radius: 10px 10px 10px 10px;*/
+}
+
+#header
+{
+	height:auto;
+	position: relative;
+	width: 100%;
+}
+
+/* Links */
+a { color: #507C90; }
+a:hover { color: #95C1D6; }
+
+/* Password forgotten link */
+a.forgot-pwd { text-decoration: none; border-bottom-style: dashed; border-bottom-width: 1px;  }
+
+#logo
+{
+	position: relative;
+}
+
+#logo a
+{
+	background-image: url("/VooLibAssets/images/logo.png");
+	background-position: center center;
+	height: 50px;
+	width: 270px;
+	display: block;
+	text-indent: -999999px;
+}
+
+ul.main-action { margin:0; padding:0; list-style:none; }
+ul.main-action li { float:left; list-style:none; background:#BDD8E5; color: #324D5A; font:bold 120% Arial,Helvetica,Geneva,Sans-serif; border:2px solid #324D5A; border-left:none; text-transform:uppercase; }
+ul.main-action li a { text-decoration:none; color: #324D5A; padding:0.2em 1em; display:block; }
+ul.main-action li.main-action-first { border:2px solid #324D5A; }
+ul.main-action li:hover { background:#D7E8EF; color: #1E2E36; }
+
+h2 { font:bold 160% Arial,Helvetica,Geneva,Sans-serif; color:#324D5A; text-decoration:none; border-bottom: 1px solid #D3D3D3; padding-bottom: 7px; }
+
+/* Title like */
+#page .h1-like, #page .h2-like, #page .h3-like,
+#page .h4-like, #page .h5-like { padding: 5px; margin: 10px 0; font-weight: bold; display: block; float: none; }
+
+#page .h1-like { font-size: 2.4em; }
+#page .h2-like { font-size: 2.1em; }
+#page .h3-like { font-size: 1.7em; }
+#page .h4-like { font-size: 1.3em; }
+#page .h5-like { font-size: 1.1em; }
+
+/* Text alignement */
+.force-text-left { text-align: left !important; }
+.force-text-right { text-align: right !important; }
+.force-text-center { text-align: center !important; }
+
+.yui3-panel .yui3-widget-bd .widget-loading {
+	width: 68px;
+	height: 68px;
+	margin: 5px auto;
+	background: url("/VooLibAssets/images/widgetloading.gif") center center no-repeat;
+}
+
+/* Span used with a WidgetListing to show number of lines displayed */
+span.listing_total {
+	padding-left: 5px;
+}
+
+/* Class to show a pretty border on a table ans his sub elements (th, td) */
+table.bordered {
+	border-collapse: collapse;
+}
+
+table.bordered, table.bordered th, table.bordered td {
+	border: 1px solid #6EABC7;
+}
+
+.yui-skin-sam .yui-dialog {
+	z-index: 10002 !important; /* au dessus des modals bootstrap */
+}
+
+/* Style of the default button shown in a Yui2 SimpleDialog box */
+.yui-skin-sam .yui-dialog .ft span.default button {
+	background-color: #88BAD1;
+}
+
+/* Provider menu (List of all consumers reachable */
+.oauth-provider-menu, .oauth-consumer-menu {
+	/* border: 1px solid #88BAD1; */
+	/* background-color: #F1F7F9; */
+}
+.oauth-provider-menu ul {
+	list-style-type: none;
+	padding: 0;
+	/* margin: 10px; */
+}
+.oauth-provider-menu ul li, .oauth-consumer-menu a {
+	display: inline-block;
+	border: 1px solid #5A8BA2;
+	background-color: #D7E8EF;
+	padding: 5px 10px;
+	margin-right: 10px;
+}
+
+.oauth-provider-menu ul li:hover, .oauth-consumer-menu a:hover {
+	background-color: #AFD1E0;
+}
+
+.oauth-consumer-menu {
+	/* padding: 10px; */
+	padding-bottom: 10px;
+}
+
+
+/* ### Backoffice : Users management ### */
+.user-password input {
+	width: 200px;
+	display: inline;
+}
+
+#passwdout {
+	background-color: #EEEEEE;
+	border: 1px solid #CCCCCC;
+	padding: 1px;
+	width: 120px;
+	display: inline-block;
+	vertical-align: bottom;
+	margin-left: 10px;
+	height: 34px;
+	border-radius: 4px;
+}
+
+#passwd_lv {
+	height: 100%;
+	overflow: hidden;
+}
+
+/* Style for rows related to disabled users */
+table tbody.yui-dt-data tr.user-disable td {
+	background-color: #f77
+}
+
+/* Widget GroupLink styles */
+
+/* Sélecteur de rôles */
+div.gl-roleselect-container div.gl-roleselect-select {
+	display: inline-block;
+}
+div.gl-roleselect-container div.gl-roleselect-select select {
+	width: auto;
+}
+
+/* Bouton pour ajouter le rôle */
+div.gl-roleselect-container div.gl-roleselect-add {
+	display: inline-block;
+	margin-left: 1em;
+}
+
+/* Composant représentant un rôle */
+fieldset.gl-role {
+	margin-top: 1em;
+	min-height: 3em;
+	position: relative;
+	padding: 10px;
+}
+
+/* Croix pour retirer un rôle */
+fieldset.gl-role span.gl-role-remove {
+	position: absolute;
+	display: block;
+	padding: 3px 5px;
+	top: 20px;
+	right: 10px;
+	cursor: pointer;
+}
+
+/* Sélecteur de groupe présent dans un rôle */
+div.gl-groupselect-container div.gl-groupselect-select {
+	display: inline-block;
+}
+div.gl-groupselect-container div.gl-groupselect-select select {
+	width: auto;
+}
+
+/* Bouton pour ajouter un group au rôle */
+div.gl-groupselect-container div.gl-groupselect-add {
+	display: inline-block;
+	margin-left: 1em;
+}
+
+/* Style des Axes dans le sélecteur des groupes */
+div.gl-groupselect-select select optgroup {
+	font-style: normal;
+}
+
+/* Groupe non sélectionnable */
+option.gl-groupselect-group-disabled {
+	/*text-decoration: line-through;*/
+	background-color: #dadada;
+	color: #666;
+}
+
+/* Container des groupes sélectionnés pour le rôle */
+div.gl-role-groups-container {
+}
+
+/* Un groupe */
+div.gl-group-container {
+	border-radius: 10px;
+	-moz-border-radius: 10px;
+	-webkit-border-radius: 10px;
+	border: 1px solid #000;
+	background-color: #95C1D6;
+	position: relative;
+	min-height: 50px;
+	min-width: 100px;
+	margin-right: 15px;
+	margin-top: 15px;
+	float: left;
+	box-shadow: 2px 2px 5px #999999;
+	padding: 0 5px;
+}
+
+div.gl-group-container-readonly {
+	background-color: #e2e2e2;
+}
+
+/* Un group désactivé */
+.gl-group-disabled {
+	text-decoration: line-through;
+	background-color: #d5d5d5 !important;
+}
+
+/* Croix pour supprimer le groupe */
+div.gl-group-container span.gl-group-remove {
+	position: absolute;
+	top: 0;
+	right: 5px;
+	cursor: pointer;
+}
+
+/* Libellé du groupe */
+div.gl-group-container span.gl-group-label {
+	display: block;
+	margin-top: 15px;
+	text-align: center;
+	vertical-align: middle;
+}
+
+/* ### End of Backoffice : Users management ### */
+
+/* Widget ActionList */
+
+
+.yui3-optionspanel_panel-content {
+	background-color: #fff;
+}
+
+.yui3-optionspanel_panel-hidden {
+	visibility: hidden;
+}
+
+/* Widget Matrix */
+
+.matrix {
+	<!--width: initial;-->
+}
+.matrix-variable-label {
+	padding-top: 0.7em !important;
+}
+.matrix div.radio-field:hover,
+.matrix div.checkbox-field:hover {
+	cursor: pointer;
+	background-color: #f1f1f1;
+}
+.matrix div.radio-field input:hover,
+.matrix div.checkbox-field input:hover{
+	cursor: pointer;
+}
+
+.matrix th .select-column:hover {
+	cursor: pointer;
+	background-color: #f1f1f1;
+}
+
+.matrix .select-column input {
+    margin-left: -2px;
+}
+
+.matrix .radio label, .matrix .checkbox label {
+    min-height: 23px;
+    padding-left: 26px;
+}
+
+/* ### Backoffice : OAuth */
+
+/* Container for WidgetUCSelector */
+.ucselector-ct {
+	margin: 5px;
+}
+
+/* Container for select of WidgetUCSelector */
+.ucselector-ct .ucselector-ct-select {
+	display: inline-block;
+}
+
+/* Container for Add button of WidgetUCSelector */
+.ucselector-ct .ucselector-ct-btn {
+	display: inline-block;
+	margin-left: 10px;
+}
+
+/* Multi bind listing : center the checkboxes */
+.oauth-multibind .yui-dt-data .yui-dt-col-checked .yui-dt-liner {
+	text-align: center;
+}
+
+/* ### End of Backoffice : OAuth */
+
+/* ### Backoffice : Groups management */
+
+/* Related to Drag and Drop classes */
+.yui3-skin-sam .yui3-dd-proxy { -moz-border-radius: 2px; -webkit-border-radius: 2px; border-radius: 2px; opacity: 0.65; }
+.yui3-skin-sam .yui3-treeview-node-drop-over { border: 1px solid #4f4 !important; background-color: #dfd; }
+.yui3-skin-sam .yui3-treeview-node-drop-invalid { border: 1px solid #c00 !important; background-color: #fcc; }
+.yui3-skin-sam .yui3-treeview .yui3-dd-dragging { opacity: 0.25; }
+
+/* Folder directory for every node */
+.yui3-skin-sam .yui3-treeview-icon {
+	background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABD0lEQVQ4T63TsUrDUBTG8Y+TUhfnIhQR6tC8i4uC+BBFKVGETiLUoUPQRfENXARRfApfwCVLRSlFsMTSapsmOd6vuLRJoLEOvyU3/8PhwhVVxTLE2m4g007DNpwMNv8RAHvGUSrF1v1Z/TwNz9iK2WPjsXXo3jUPZvDbVW3Xbbdf0Ov1E25P9122HCDj8QTD4fcM3++jXF6HiKDb7SR4nge2ZgCsKIqRxvc/USqtoVLZTKhWbbCdbhCGMbIMBl+pRqPgd4NYrfloUWy5QSEMFX/B9h82iLUwf3mLYrv8AJ1EqyIWisWVXNhMW3y8vtVOLm7qzctc2LAVfX5o6dO1Yxzn5LAV8yQD493o5MQm+AEX3F8P8w0R8QAAAABJRU5ErkJggg==") !important;
+}
+
+/* To cancel background gradient set for every row */
+.yui3-skin-sam .yui3-treeview-row {
+	background-image: none !important;
+}
+
+/* Level list related to GroupsTreeView */
+.yui3-skin-sam .yui3-groupstreeview-levels-list {
+	list-style-type: none;
+	padding: 0;
+}
+
+.yui3-skin-sam .yui3-groupstreeview-levels-list li {
+	display: inline-block;
+	color: #507C90;
+	border-bottom: 1px dotted #507C90;
+	margin-right: 20px;
+	font-size: 12px;
+	cursor: help;
+}
+
+/* Transformation du padding-left en margin-left, plus esthétique lors sur highlight du group name */
+.yui3-skin-sam .yui3-treeview-label {
+	padding-left: 0 !important;
+	margin-left: 6px;
+}
+
+/* Over sur le li du levelContainer */
+.yui3-skin-sam li.yui3-groupstreeview-level-over,
+/* Over dans le Tree */
+.yui3-skin-sam .yui3-groupstreeview-level-over .yui3-treeview-label {
+	background-color: #ff0;
+	color: #000;
+	border-bottom: none;
+	text-decoration: underline;
+}
+
+/* Style des "options" pour chaque node (cachés par défaut) */
+.yui3-skin-sam .yui3-groupstreeview-add-child,
+.yui3-skin-sam .yui3-groupstreeview-enable,
+.yui3-skin-sam .yui3-groupstreeview-disable,
+.yui3-skin-sam .yui3-groupstreeview-add-new,
+.yui3-skin-sam .yui3-groupstreeview-remove,
+.yui3-skin-sam .yui3-groupstreeview-toggle-menu {
+	display: none;
+	margin-left: 40px;
+	color: #666;
+	font-weight: bold;
+	font-size: 12px;
+}
+.yui3-skin-sam .yui3-groupstreeview-label-disabled {
+	font-weight: normal;
+	text-decoration: line-through;
+	padding-left: 0 !important;
+	margin-left: 6px;
+}
+
+/* Affichage des "options" lorsque le node est selected */
+.yui3-skin-sam .yui3-treeview-selected > .yui3-treeview-row .yui3-groupstreeview-add-child,
+.yui3-skin-sam .yui3-treeview-selected > .yui3-treeview-row .yui3-groupstreeview-enable,
+.yui3-skin-sam .yui3-treeview-selected > .yui3-treeview-row .yui3-groupstreeview-disable,
+.yui3-skin-sam .yui3-treeview-selected > .yui3-treeview-row .yui3-groupstreeview-add-new,
+.yui3-skin-sam .yui3-treeview-selected > .yui3-treeview-row .yui3-groupstreeview-remove,
+.yui3-skin-sam .yui3-treeview-selected > .yui3-treeview-row .yui3-groupstreeview-toggle-menu {
+	display: inline-block;
+}
+
+/* Sauf pour le node étant le noeud racine (seule possibilité : ajout d'un enfant) */
+.yui3-skin-sam .yui3-treeview-children[role="tree"] > .yui3-treeview-selected > .yui3-treeview-row .yui3-groupstreeview-add-new,
+.yui3-skin-sam .yui3-treeview-children[role="tree"] > .yui3-treeview-selected > .yui3-treeview-row .yui3-groupstreeview-enable,
+.yui3-skin-sam .yui3-treeview-children[role="tree"] > .yui3-treeview-selected > .yui3-treeview-row .yui3-groupstreeview-disable,
+.yui3-skin-sam .yui3-treeview-children[role="tree"] > .yui3-treeview-selected > .yui3-treeview-row .yui3-groupstreeview-remove {
+	display: none;
+}
+
+
+.yui3-skin-sam .yui3-treeview, .yui3-treeview * {
+	-moz-user-select: auto !important;
+	-ms-user-select: auto !important;
+	-webkit-user-select: auto !important;
+	user-select: auto !important;
+}
+
+/* Surcharge du style de l'ul pour les children */
+.yui3-skin-sam .yui3-treeview-node .yui3-treeview-children {
+	margin: 0 !important;
+	padding-left: 68px !important;
+	border-left: 1px dotted #aaa;
+}
+
+/* La row directement enfant du node à merger sera entourée en pointillés */
+.yui3-skin-sam .yui3-groupstreeview-node-merge > .yui3-treeview-row {
+	border: 1px dashed #999 !important;
+}
+
+/* Toutes les row enfants du node à merger (direct et sur N niveau) seront semi-transparents */
+.yui3-skin-sam .yui3-groupstreeview-node-merge .yui3-treeview-row {
+	opacity: 0.5;
+}
+
+/*
+	Trick pour que l'affichage de l'indicateur (ouverture/fermeture node) soit affiché en fonction de la classe
+	"has-children" et non "can-have-children"
+	Car on veut cette indicateur uniquement si le group a des enfant, pas "unqiuement" s'il peut en avoir
+*/
+.yui3-skin-sam .yui3-treeview-can-have-children > .yui3-treeview-row > .yui3-treeview-indicator {
+	visibility: hidden;
+}
+.yui3-skin-sam .yui3-treeview-has-children > .yui3-treeview-row > .yui3-treeview-indicator {
+	visibility: visible;
+}
+
+/* Style du menu (Overlay) pour le GroupsTreeView */
+.yui3-js-enabled .yui3-overlay-loading {
+    top: -1000em;
+    left: -1000em;
+    position: absolute;
+}
+
+.yui3-treeview .yui3-overlay-content {
+    background-color: #ECEFFB;
+    border: 1px solid #9EA8C6;
+    border-radius: 3px;
+    box-shadow: 3px 3px 5px rgba(0, 0, 0, 0.25);
+}
+
+.yui3-treeview .yui3-overlay-content .yui3-widget-hd {
+    background-color: #B6BFDA;
+    color: #30418C;
+    font-size: 120%;
+    font-weight: bold;
+    padding: 0.2em 0.5em 0.3em;
+    border-radius: 2px 2px 0 0;
+}
+
+.yui3-treeview .yui3-overlay-content .yui3-widget-bd {
+    padding: 0.4em 0.6em 0.5em;
+}
+
+.yui3-treeview .yui3-overlay-content .yui3-widget-ft {
+    background-color:#DFE3F5;
+    padding: 0.4em 0.6em 0.5em;
+    border-radius: 0 0 2px 2px;
+}
+
+.yui3-treeview .yui3-overlay-content ul {
+	list-style-type: none;
+	margin: 0;
+	padding: 0;
+}
+
+.yui3-treeview .yui3-overlay-content ul li {
+	cursor: pointer;
+}
+
+.yui3-treeview .yui3-overlay-content ul li:hover {
+	text-decoration: underline;
+}
+
+/* ### End of Backoffice : Groups management */
+
+
+/* Messages d'erreur sur la page d'authentification */
+ul.errors
+{
+	list-style-type: none;
+}
+
+ul.errors li
+{
+	color: red;
+	padding-top: 5px;
+}
+
+
+#auth_std, #auth_cps, #auth_oauth, #auth_message, #info_message, #auth_otp {
+	width: 310px;
+	margin: 10px auto;
+	margin-bottom: 25px;
+}
+
+#auth_std h2, #auth_cps h2, #auth_otp h2 {
+	font-variant: normal;
+	font-weight: normal;
+	text-decoration: none;
+	border-left: 4px solid #466C7E;
+	border-bottom: 1px solid #466C7E;
+	padding-left:5px;
+}
+
+#authentication_cps #submit-element, #auth_oauth button, #auth_otp button, #authentication #submit-element {
+	margin: 0;
+	float: right;
+}
+
+
+/* **** Forgot password page **** */
+#forgot-pwd {
+	margin-top: 50px;
+}
+
+#forgot-pwd .errors {
+	padding-left : 0;
+}
+
+#forgot-pwd #captcha-element {
+	margin: 0;
+}
+
+#forgot-pwd label {
+	font-size: 120%;
+}
+
+#forgot-pwd-end-message {
+	font:bold 145% Arial,Helvetica,Geneva,Sans-serif; 
+	color:#324D5A; 
+	text-decoration:none; 	
+	padding-bottom: 7px;
+	margin-bottom: 80px;
+    margin-top: 30px;
+}
+
+/* Widget Table */
+
+.widgettable-row-selected {
+	background-color: #eeeeee !important;
+}
+
+/* Widget Bulk (from Editor) */
+
+.widget_bulk {
+	margin: 0;
+	padding: 0;
+}
+
+
+/* Bootstrap overrides */
+
+/* Intégration de la couleur dominante du projet au btn-primary de bootstrap */
+.btn-primary {
+	background-color: #AFD1E0;
+	background-image: -webkit-gradient(linear, left 0%, left 100%, from(#CAE0EA), to(#AFD1E0));
+	background-image: -webkit-linear-gradient(top, #CAE0EA, 0%, #AFD1E0, 100%);
+	background-image: -moz-linear-gradient(top, #CAE0EA 0%, #AFD1E0 100%);
+	background-image: linear-gradient(to bottom, #CAE0EA 0%, #AFD1E0 100%);
+	background-repeat: repeat-x;
+	border-color: #95C1D6;
+	/*filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff428bca', endColorstr='#ff3071a9', GradientType=0);*/
+}
+
+.btn-primary:hover {
+	background-image: none;
+	background-color: #95C1D6;
+	border-color: #7BB2CC;
+}
+
+.btn-primary:focus,
+.btn-primary:active,
+.btn-primary.active {
+  background-color: #7BB2CC;
+  border-color: #7BB2CC;
+}
+
+/* Override panel default style*/
+.panel {
+	border-color: #7BB2CC;
+}
+
+.panel-primary > .panel-heading {
+    background-color: #7BB2CC;
+}
+
+/* gestion glyphicon pour les collapsibles panels */
+.panel-heading[aria-expanded="true"] h3 span:before {
+	content: "\e253";
+}
+
+.panel-heading[aria-expanded="false"] h3 span:before {
+	content: "\e252";
+}
+
+.panel-heading.collapsible{
+	cursor: pointer;
+}
+
+/* No bold for label */
+label { font-weight: normal; }
+
+/* Custom Media Queries rules */
+
+@media (max-width: 767px) {
+	body{
+        font-size: 18px;
+    }
+    #page{
+        padding: 0;
+    }
+    .vzn-form {
+        margin: 0;
+        padding-left: 0;
+        padding-right: 0;
+    }
+    #content #main > h2{
+        margin-top: 5px;
+        margin-bottom: 0;
+    }
+
+    fieldset.group {
+        padding: 5px;
+    }
+    div.group, fieldset.group {
+        border-width: 0;
+        margin: 0 0;
+    }
+    fieldset.group legend{
+        border-top-width: 0;
+        border-right-width: 0;
+        border-bottom-width: 2px;
+        border-left-width: 0;
+        font: bold 1.2em Arial,Helvetica,Geneva,sans-serif;
+        margin-left: -5px;
+        padding: 5px;
+        width: calc(100% + 10px);
+    }
+    .row {
+         margin-left: 0;
+         margin-right: 0;
+     }
+    .col-xs-1, .col-xs-2, .col-xs-3, .col-xs-4, .col-xs-5, .col-xs-6, .col-xs-7, .col-xs-8, .col-xs-9, .col-xs-10, .col-xs-11, .col-xs-12 {
+        padding-left: 0;
+        padding-right: 0;
+    }
+	
+    .container {
+        margin-left: auto;
+        margin-right: auto;
+        padding-left: 0;
+        padding-right: 0;
+    }
+	
+    .container > .navbar-header, .container-fluid > .navbar-header, .container > .navbar-collapse, .container-fluid > .navbar-collapse {
+        margin-left: 0;
+        margin-right: 0;
+    }
+    .form-horizontal .form-group {
+        margin-left: 0;
+        margin-right: 0;
+    }
+    .form-control {
+        font-size: 18px;
+        height: auto;
+        padding: 4px;
+    }
+}
+
+
+@media (min-width: 768px) {
+	.text-sm-left, .form-horizontal .text-sm-left { text-align: left; }
+	.text-sm-center, .form-horizontal .text-sm-center { text-align: center; }
+	.text-sm-right, .form-horizontal .text-sm-right { text-align: right; }
+}
+
+@media (min-width: 992px) {
+	.text-md-left, .form-horizontal .text-md-left { text-align: left; }
+	.text-md-center, .form-horizontal .text-md-center { text-align: center; }
+	.text-md-right, .form-horizontal .text-md-right { text-align: right; }
+}
+
+@media (min-width: 1200px) {
+	.text-lg-left, .form-horizontal .text-lg-left { text-align: left; }
+	.text-lg-center, .form-horizontal .text-lg-center { text-align: center; }
+	.text-lg-right, .form-horizontal .text-lg-right { text-align: right; }
+}
+
+/* On force le margin-bottom à 0 pour le panel qui contient les tests de cohérence
+( class 'yui3-overlay-content' ET 'panel' placé sur la div du contenu) */
+.yui3-overlay-content.panel {
+	margin-bottom: 0;
+}
+
+/* On force la width en cas de mélange d'icon Font-Awesome et Glyphicon pour éviter des décalages */
+.input-group-addon, .input-group-btn {
+  width: 2.9em;
+}
+
+/* Sous Chrome l'icône présente dans un input-group est décalé par rapport au champ, visiblement cela provient
+d'un 'top' mis à 1px, on l'annule. Sous FF l'affichage reste correct */
+.input-group-addon.glyphicon {
+	top: 0;
+}
+
+/* On 'déguise' le span en lien pour la suppresion de tag <= plus d'intuitivité */
+.tag-label .tag-remove{
+	cursor: pointer;
+}
+
+/* Correction pour le mask */
+#layout_dialog_mask,
+#layout_input_dialog_mask {
+    z-index: 10002 !important; /* au dessus des modals bootstrap */
+}
+
+#layout_confirm_dialog_mask {
+    z-index: 10 !important;
+}
+
+
+/* Warning constraints */
+.panel-constraints {
+	margin-top: 10px;
+	border-color: #ddd;
+}
+.panel-constraints .panel-body {
+	padding: 10px;
+}
+.panel-constraints .alert {
+	margin-top: 5px;
+	margin-bottom: 5px;
+}
+
+/* Lang select */
+#country-select {
+	position: absolute;
+	top: 5px;
+	right: 5px;
+}
+#country-select img {
+	border: 1px solid #ccc;
+}
+#country-select button {
+	border: none;
+}
+
+/* post query */
+.box-query {
+    background: #f1f7f9 none repeat scroll 0 0;
+    /*border: 1px solid;*/
+    color: #000000;
+    margin: 10px 0;
+    padding:15px;
+	border-radius: 5px
+}
+
+.box-query:hover {
+	background-color: #F7F9FB;
+}
+
+.box-query .btn-collapse .glyphicon:hover {
+    color: #48494B;
+}
+
+.margin-bottom-10 {
+    margin-bottom: 10px;
+}
+
+.box-query .query-title {
+    font-size: 18px;
+	font-weight: bold;
+	padding-bottom: 15px;
+}
+
+.box-query .query-message {
+    text-align: justify;
+}
+
+.box-query .query-title:first-letter {
+	text-transform:uppercase;
+}
+
+.query-record-count {
+    font-size:  30px;
+    position: absolute;
+    right: 40px;
+}
+
+.box-query:hover {
+	cursor: pointer;
+}
+
+.box-query.query-bg-ntc {
+    background-color: #5bc0de;
+    border-color: #46b8da;
+	color: #fff;
+}
+
+.box-query.query-bg-ntc:hover {
+    background-color: #46b8da;
+}
+
+.box-query.query-bg-ntc .btn-collapse .glyphicon:hover {
+    color: #D8DEDC;
+}
+
+.box-query.query-bg-alt {
+    background-color: #337ab7;
+    border-color: #2e6da4;
+	color: #fff;
+}
+
+.box-query.query-bg-alt:hover {
+    background-color: #2e6da4;
+}
+
+.box-query.query-bg-alt .btn-collapse .glyphicon:hover {
+	color: #D8DEDC;
+}
+
+.box-query.query-bg-err {
+    background-color: #d9534f;
+    border-color: #d43f3a;
+	color: #fff;
+}
+
+.box-query.query-bg-err:hover {
+    background-color: #d43f3a;
+}
+
+.box-query.query-bg-err .btn-collapse .glyphicon:hover {
+    color: #D8DEDC;
+}
+
+.box-query.query-bg-wrn {
+    background-color: #f0ad4e;
+    border-color: #eea236;
+	color: #fff;
+}
+
+.box-query.query-bg-wrn:hover {
+    background-color: #eea236;
+}
+
+.box-query.query-bg-wrn .btn-collapse .glyphicon:hover {
+    color: #D8DEDC;
+}
+
+div.query-details {
+	font-size: 14px;
+	text-align: justify;
+}
+
+div.query-details .btn-collapse {
+	font-size: 18px;	
+	margin-bottom: 3px;
+}
+
+div.query-details .request {
+	
+}
+
+div.query-details .request .title {
+	font-weight: bold;
+	padding-bottom: 7px;
+}
+
+#filter-postQuery .yui3-aclist {
+    margin-top: 0;
+}
+
+
+/* *** WidgetFindVariables *** */
+
+.find_variables_varsets_list .find_variables_varsets_list_varset {
+	padding: 5px 10px;
+	font-size: 18px;
+	cursor: pointer;
+}
+.find_variables_varsets_list .find_variables_varsets_list_varset:hover {
+	background-color: #eee;
+}
+
+.find_variables_results {
+	position: relative;
+	margin: 10px;
+	border: 1px solid #cae0ea;
+	border-radius: 3px;
+}
+.find_variables_results .find_variables_results_close {
+	display: block;
+	position: absolute;
+	top: 10px;
+	right: 10px;
+	cursor: pointer;
+	z-index:10;
+}
+.find_variables_results .find_variables_results_close:hover {
+	top: 10px;
+	right: 10px;
+}
+.find_variables_results .alert {
+	margin-bottom: 0px !important;
+}
+
+.find_variables_results .find_variables_vignette {
+	padding: 5px;
+	cursor: pointer;
+}
+.find_variables_results .find_variables_vignette:hover {
+	opacity: 0.8;
+}
+.find_variables_results .find_variables_vignette[selected="selected"] {
+	opacity: 0.6;
+}
+.find_variables_results .find_variables_vignette .find_variables_vignette_varsetname {
+	font-size: 16px;
+}
+
+.find_variables_search_input_parent {
+	width: 100% !important;
+}
+
+.find_variables_search_helpers .glyphicon {
+	font-size: 22px;
+	margin-left: 10px;
+	padding-top: 5px;
+	cursor: pointer;
+}
+
+/* *** Switch On/Off *** */
+
+.onoffswitch {
+	position: relative; width: 44px;
+	-webkit-user-select:none; -moz-user-select:none; -ms-user-select: none;
+	margin: 0px 5px;
+}
+.onoffswitch-checkbox {
+	display: none;
+}
+.onoffswitch-label {
+	display: block; overflow: hidden; cursor: pointer;
+	height: 15px; padding: 0; line-height: 15px;
+	border: 0px solid #FFFFFF; border-radius: 21px;
+	background-color: #96C6FA;
+	margin-bottom: 0 !important;
+}
+.onoffswitch-label:before {
+	content: "";
+	display: block; width: 21px; margin: -3px;
+	background: #42A5F5;
+	position: absolute; top: 0; bottom: 0;
+	right: 25px;
+	border-radius: 21px;
+}
+.onoffswitch-checkbox:checked + .onoffswitch-label {
+	background-color: #96C6FA;
+}
+.onoffswitch-checkbox:checked + .onoffswitch-label, .onoffswitch-checkbox:checked + .onoffswitch-label:before {
+   border-color: #96C6FA;
+}
+.onoffswitch-checkbox:checked + .onoffswitch-label .onoffswitch-inner {
+	margin-left: 0;
+}
+.onoffswitch-checkbox:checked + .onoffswitch-label:before {
+	right: 0px; 
+	background-color: #42A5F5; 
+}
+.onoffswitch-choice {
+	vertical-align: top;
+	font-weight: bold;
+}
+
+/* *** WidgetFilterGroup *** */
+
+.filter_group {
+	padding: 20px;
+	margin: 15px 0px;
+	border: 1px solid #7bb2cc;
+	border-radius: 5px;
+	position: relative;
+}
+
+/* *** WidgetFilterElement *** */
+
+.filter_variable {
+	position: relative;
+	margin-top: 15px;
+	margin-bottom: 15px;
+}
+.filter_variable .filter_variable_actions {
+	position: absolute;
+	top: 0;
+	right: 0;
+}
+.filter_variable .filter_variable_actions .btn,
+.filter_variable .filter_variable_actions .btn:hover,
+.filter_variable .filter_variable_actions .btn:active {
+	background-color: transparent;
+	border: none;
+}
+.filter_variable .value_approximation_input {
+	width: auto !important;
+}
+.filter_variable .panel-body {
+	padding-top: 20px !important;
+}
+.filter_variable .margin-top-0-5-em {
+	margin-top: 0.5em;
+}
+
+.filter_variable .value_input_preview {
+	width: auto;
+}
+.filter_variable .value_select_preview {
+	width: auto;
+}
+.filter_variable .text-left-hard {
+	text-align: left !important;
+}
+.filter_variable .label-edit-zone-text {
+	cursor: pointer;
+}
+.filter_variable .boolean_input {
+	border: 1px solid rgb(170, 170, 170);
+	border-radius: 4px;
+	background-image: none;
+}
+.filter_variable .boolean_input_true {
+	background-color: rgb(170, 208, 170); color: rgb(255, 255, 255);
+}
+.filter_variable .boolean_input_false {
+	background-color: rgb(208, 170, 170); color: rgb(255, 255, 255);
+}
+.filter_variable .boolean_input_null {
+	background-color: rgb(255, 255, 255); color: rgb(0, 0, 0);
+}
+.filter_variable .value_checkboxes {
+	border: 1px solid #BDD8E5;
+	border-radius: 5px;
+	max-height: 120px;
+	overflow-y: scroll;
+	padding: 5px;
+	width:100%;
+}
+.filter_variable_grip, .filter_group_grip {
+	position: absolute;
+	top: 2px;
+	left: 2px;
+	font-size: 12px;
+	cursor: pointer;
+}
+
+/* *** WidgetDicoTable *** */
+
+td.dico-archived, th.dico-archived {
+	background-color: #f9f9f9;
+    color: #ccc;
+}
+
+/* *** Field Radio *** */
+
+.archived-text {
+	margin-top: 15px;
+	margin-left: -10px;
+	font-weight: bold;
+}
+.archived-text-list {
+	margin-left: -10px;
+	font-weight: bold;
+}
+
+/* *** WidgetErrors *** */
+
+.field-error-button {
+	margin-top: 5px;
+	font-weight: bold;
+}
+.field-error-detail {
+	position: relative;
+	padding: 20px 0px 0px 10px;
+	font-weight: bold;
+}
+.field-error-detail .glyphicon-remove {
+	position: absolute;
+	top: 5px;
+	left: 0px;
+	cursor: pointer;
+	width: 15px;
+	height: 15px;
+}
+
+.level-color-error {
+	/*color: #ff0000 !important;*/
+	color: #FF0000 !important;
+}
+.level-background-error {
+	/*background-color: #ffb9b9 !important;*/
+	background-color: #FFB9B9 !important;
+}
+.level-color-warning {
+	/*color: #ff9900 !important;*/
+	color: #FF9900 !important;
+}
+.level-background-warning {
+	/*background-color: #ffe3b9 !important;*/
+	background-color: #FFE3B9 !important;
+}
+.level-color-alert {
+	/*color: #b14848 !important;*/
+	color: #1E7FCB !important;
+}
+.level-background-alert {
+	/*background-color: #ffd8d8 !important;*/
+	background-color: #C1DCF0 !important;
+}
+.level-color-notice {
+	/*color: #ccff00 !important;*/
+	color: #01D758 !important;
+}
+.level-background-notice {
+	/*background-color: #f1ffb9 !important;*/
+	background-color: #B9F4D1 !important;
+}
+
+.coherence_test_panel {
+	z-index: 1000;
+}
+.coherence_test_panel_top {
+	width: 100%;
+	top: 0;
+	left: 0;
+}
+.coherence_test_panel_bottom {
+	width: 100%;
+	bottom: 0;
+	left: 0;
+}
+.coherence_test_panel_left {
+	height: 100%;
+	top: 0;
+	left: 0;
+}
+.coherence_test_panel_right {
+	height: 100%;
+	top: 0;
+	right: 0;
+}
+
+.coherence_test_panel .container {
+	/*border: 1px solid black;*/
+	border: 1px solid #E4E1E1;
+	border-radius: 5px;
+	/*padding: 10px;*/
+	padding: 0 5px;
+	cursor: pointer;
+	background-color: white;
+}
+
+.coherence_test_panel_top .container , .coherence_test_panel_bottom .container {
+	max-height: 200px;
+	overflow-y: scroll;
+}
+.coherence_test_panel_left .container, .coherence_test_panel_right .container {
+	width: auto;
+	max-width: 400px;
+	height: 100%;
+	overflow-y: scroll;
+	text-align: center;
+}
+
+.coherence_test_panel_left .coherence_test_panel_resume_mode, .coherence_test_panel_right .coherence_test_panel_resume_mode {
+	max-width: 80px;
+}
+
+.coherence_test_panel .level_square {
+	/*margin: 10px;*/
+	margin: 5px 2px;
+}
+.coherence_test_panel_top .level_square, .coherence_test_panel_bottom .level_square {
+	display: inline-block;
+}
+
+.coherence_test_panel .glyphicon-chevron-up,
+.coherence_test_panel .glyphicon-chevron-down,
+.coherence_test_panel .glyphicon-chevron-left,
+.coherence_test_panel .glyphicon-chevron-right {
+	font-size: 20px;
+	margin: 5px;
+}
+
+.coherence_test_panel .coherence_test_panel_detail_mode_messages .alert {
+	margin-bottom: 5px;
+}

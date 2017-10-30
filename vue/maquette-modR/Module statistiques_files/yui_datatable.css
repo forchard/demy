@@ -1,0 +1,22 @@
+.yui-skin-sam .yui-dt table { width:100%; border:1px solid #6EABC7; }
+.yui-skin-sam .yui-dt th { background:#466C7E; border-right:1px solid #6EABC7; color:#F1F7F9; }
+.yui-skin-sam .yui-dt th a { font-weight:bold; color:#F1F7F9; }
+.yui-skin-sam .yui-dt td.yui-dt-last, .yui-skin-sam .yui-dt th.yui-dt-last { border:none; }
+.yui-skin-sam .yui-dt tr.yui-dt-first td { border-top:1px solid #6EABC7; }
+
+.yui-skin-sam .yui-dt th.yui-dt-col-action { width:100px; }
+
+.yui-skin-sam .yui-dt td { border-right:1px solid #6EABC7; }
+.yui-skin-sam th.yui-dt-asc,.yui-skin-sam th.yui-dt-desc { background:#324D5A; }
+.yui-skin-sam th.yui-dt-asc .yui-dt-liner { background:url(/VooLibAssets/images/dt-arrow-up.png) no-repeat right; }
+.yui-skin-sam th.yui-dt-desc .yui-dt-liner { background:url(/VooLibAssets/images/dt-arrow-dn.png) no-repeat right; }
+.yui-skin-sam tr.yui-dt-even { background:#F1F7F9; }
+.yui-skin-sam tr.yui-dt-odd { background:#E4EFF4; }
+.yui-skin-sam tr.yui-dt-even td.yui-dt-asc,.yui-skin-sam tr.yui-dt-even td.yui-dt-desc { background:#D7E8EF; }
+.yui-skin-sam tr.yui-dt-odd td.yui-dt-asc,.yui-skin-sam tr.yui-dt-odd td.yui-dt-desc { background:#CAE0EA; }
+.yui-skin-sam tr.yui-dt-selected td,.yui-skin-sam tr.yui-dt-selected td.yui-dt-asc,.yui-skin-sam tr.yui-dt-selected td.yui-dt-desc { background:#AFD1E0; color:#000000; }
+.yui-skin-sam tr.yui-dt-highlighted,.yui-skin-sam tr.yui-dt-highlighted td.yui-dt-asc,.yui-skin-sam tr.yui-dt-highlighted td.yui-dt-desc,.yui-skin-sam tr.yui-dt-even td.yui-dt-highlighted,.yui-skin-sam tr.yui-dt-odd td.yui-dt-highlighted { cursor:pointer; background:#BDD8E5; }
+.yui-dt-editor { background:#F1F7F9; border:1px solid #6EABC7; }
+.yui-dt-editor .yui-dt-button button { background:#F1F7F9; color: #324D5A border:1px solid #324D5A; width:auto; height:auto; }
+.yui-dt-editor .yui-dt-button button.yui-dt-default, .yui-dt-editor .yui-dt-button button:active { background:#BDD8E5; color: #324D5A; border:1px solid #324D5A; }
+.yui-dt-editor .yui-dt-button button:hover { background:#D7E8EF; color: #1E2E36; }

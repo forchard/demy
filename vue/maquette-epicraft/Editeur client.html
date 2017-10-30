@@ -1,0 +1,1054 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Editeur client
+</title>
+<link href="Editeur%20client_files/main.css" rel="stylesheet">
+<link href="maquette.css" rel="stylesheet">
+<script src="../js/d3.js"></script>
+</head>
+<body>
+<div id="root">
+<div data-reactroot="" style="display: flex; width: 100vw; height: 100vh; flex-direction: column;">
+<div class="app-list">
+  <div class="app-list-item"><a href="../index.html">Vue</a></div>
+  <div class="app-list-item"><a href="../maquette-modR/Module statistiques.html">Module R</a></div>
+</div>
+<nav class="connected navbar navbar-default">
+<div class="container-fluid">
+<div class="navbar-header">
+<div class="epilogo">&nbsp;</div>
+<a class="navbar-brand" href="#/">EpiCraft
+</a>
+<button type="button" class="navbar-toggle collapsed">
+<span class="sr-only">Toggle navigation
+</span>
+<span class="icon-bar">
+</span>
+<span class="icon-bar">
+</span>
+<span class="icon-bar">
+</span>
+</button>
+</div>
+<ul class="breadcrumb nav navbar-nav">
+<li>
+</li>
+<li role="presentation" class="active">
+<a href="#/edit-gui/vsnteiaava1509007116778">Démo Data Viz
+</a>
+</li>
+<li role="presentation">
+<a class="cursor-pointer">
+<span class="breadcrumb-pages-name">
+<i class="fa fa-file-text-o">
+</i>
+<!-- react-text: 934 --> &nbsp;
+<!-- /react-text -->
+<!-- react-text: 935 -->Suivi Malaria
+<!-- /react-text -->
+</span>
+<!-- react-text: 316 --> &nbsp;
+<!-- /react-text -->
+<i class="fa fa-caret-down">
+</i>
+</a>
+</li>
+<div class="navbar-form navbar-left">
+<div class="dropdown btn-group btn-group-sm btn-group-success">
+<button id="dropdown-add-resource" role="button" aria-haspopup="true" aria-expanded="false" type="button" class="dropdown-toggle btn btn-sm btn-success">
+<!-- react-text: 939 -->Nouveau
+<!-- /react-text -->
+<!-- react-text: 940 --> 
+<!-- /react-text -->
+<span class="caret">
+</span>
+</button>
+<ul role="menu" class="dropdown-menu dropdown-menu-right" aria-labelledby="dropdown-add-resource">
+<li role="presentation" class="">
+<a role="menuitem" tabindex="-1" href="#">
+<span>
+<i class="fa fa-file-o">
+</i>
+<i class="fa fa-home" style="margin-left: -10px; font-size: 0.6em;">
+</i>
+</span>
+<!-- react-text: 948 --> &nbsp;
+<!-- /react-text -->
+<!-- react-text: 949 -->Page d'accueil
+<!-- /react-text -->
+</a>
+</li>
+<li role="presentation" class="">
+<a role="menuitem" tabindex="-1" href="#">
+<i class="fa fa-file-text-o">
+</i>
+<!-- react-text: 953 --> &nbsp;
+<!-- /react-text -->
+<!-- react-text: 954 -->Formulaire
+<!-- /react-text -->
+</a>
+</li>
+<li role="separator" class="divider">
+</li>
+<li role="presentation" class="">
+<a role="menuitem" tabindex="-1" href="#">
+<i class="fa fa-file-code-o">
+</i>
+<!-- react-text: 959 --> &nbsp;
+<!-- /react-text -->
+<!-- react-text: 960 -->Ressource
+<!-- /react-text -->
+</a>
+</li>
+</ul>
+</div>
+</div>
+</ul>
+<div class="navbar-collapse collapse">
+<ul class="nav navbar-nav navbar-right">
+<li>
+<div class="icon-deploy">
+<span class="cursor-pointer">
+<i class="fa fa-bug">
+</i>
+</span>
+<!-- react-empty: 321 -->
+</div>
+</li>
+<li>
+<span>
+</span>
+</li>
+<li>
+<span>
+</span>
+</li>
+<ul class="nav navbar-nav">
+<!-- react-empty: 323 -->
+<li class="dropdown">
+<a id="dropdown-menu-files" role="button" class="dropdown-toggle" aria-haspopup="true" aria-expanded="false" href="#">
+<i class="fa fa-bars">
+</i>
+</a>
+<ul role="menu" class="dropdown-menu" aria-labelledby="dropdown-menu-files">
+<li role="heading" class="dropdown-header">Projets
+</li>
+<li role="presentation" class="active">
+<a href="#/" role="menuitem" tabindex="-1">
+<i class="fa fa-home">
+</i>
+<!-- react-text: 332 --> &nbsp;
+<!-- /react-text -->
+<!-- react-text: 333 -->Ouvrir la liste des projets
+<!-- /react-text -->
+</a>
+</li>
+<li role="heading" class="dropdown-header">Pages
+</li>
+<li role="presentation" class="disabled">
+<a role="menuitem" tabindex="-1" href="#">
+<i class="fa fa-wrench">
+</i>
+<!-- react-text: 338 --> &nbsp;
+<!-- /react-text -->
+<!-- react-text: 339 -->Editer les paramètres de cette page
+<!-- /react-text -->
+<!-- react-empty: 961 -->
+</a>
+</li>
+<li role="presentation" class="">
+<a role="menuitem" tabindex="-1" href="#">
+<i class="fa fa-file-text-o">
+</i>
+<!-- react-text: 344 --> &nbsp;
+<!-- /react-text -->
+<!-- react-text: 345 -->Ajouter une nouvelle page
+<!-- /react-text -->
+</a>
+</li>
+<li role="presentation" class="">
+<a role="menuitem" tabindex="-1" href="#">
+<i class="fa fa-file">
+</i>
+<!-- react-text: 349 --> &nbsp;
+<!-- /react-text -->
+<!-- react-text: 350 -->Importer depuis un fichier
+<!-- /react-text -->
+</a>
+</li>
+</ul>
+</li>
+</ul>
+<li>
+<div class="icon-deploy">
+<span class="cursor-pointer">
+<i class="fa fa-rocket">
+</i>
+</span>
+<!-- react-empty: 354 -->
+</div>
+</li>
+<li>
+<div class="panel-auth">
+<div class="user-avatar">F
+</div>
+</div>
+</li>
+<li role="presentation" class="">
+<a role="button" href="#">
+<div>
+<i class="fa fa-cogs">
+</i>
+<!-- react-empty: 30 -->
+</div>
+</a>
+</li>
+</ul>
+</div>
+</div>
+</nav>
+<!-- react-empty: 31 -->
+<div class="main-content">
+<div class="main-content">
+<div class="sidebar left">
+<i class="hide-details fa fa-arrow-circle-right open">
+</i>
+<div class="sidebar-content">
+<div id="sidebar-left">
+<ul role="tablist" class="nav nav-tabs">
+<li role="presentation" class="active">
+<a id="sidebar-left-tab-1" role="tab" aria-controls="sidebar-left-pane-1" aria-selected="true" href="#">
+<span class="tab-sidebar-properties-title">
+<i class="fa fa-list-alt">
+</i>
+<span class="sidebar-properties-title">
+<!-- react-text: 973 --> &nbsp;
+<!-- /react-text -->
+<!-- react-text: 974 -->Composants
+<!-- /react-text -->
+</span>
+</span>
+</a>
+</li>
+<li role="presentation" class="">
+<a id="sidebar-left-tab-2" role="tab" aria-controls="sidebar-left-pane-2" tabindex="-1" aria-selected="false" href="#">
+<span class="tab-sidebar-properties-title">
+<i class="fa fa-archive">
+</i>
+<span class="sidebar-properties-title">
+<!-- react-text: 980 --> &nbsp;
+<!-- /react-text -->
+<!-- react-text: 981 -->Archive
+<!-- /react-text -->
+</span>
+</span>
+</a>
+</li>
+</ul>
+<div class="tab-content">
+<div id="sidebar-left-pane-1" aria-labelledby="sidebar-left-tab-1" role="tabpanel" aria-hidden="false" class="tab-pane active fade in">
+<div class="content">
+<div class="component-list template-tile">
+<div class="component-list-sub">
+<span class="dnd-button btn btn-default thumbnail-component" draggable="true" data-type="textfield">
+<i class="fa editor-textfield">
+</i>
+<div class="legend">Champ texte
+</div>
+</span>
+<span class="dnd-button btn btn-default thumbnail-component" draggable="true" data-type="number">
+<i class="fa editor-number">
+</i>
+<div class="legend">Nombre
+</div>
+</span>
+<span class="dnd-button btn btn-default thumbnail-component" draggable="true" data-type="date">
+<i class="fa editor-date">
+</i>
+<div class="legend">Date/Heure
+</div>
+</span>
+<span class="dnd-button btn btn-default thumbnail-component" draggable="true" data-type="choice">
+<i class="fa editor-choice">
+</i>
+<div class="legend">Choix
+</div>
+</span>
+<span class="dnd-button btn btn-default thumbnail-component" draggable="true" data-type="boolean">
+<i class="fa editor-boolean">
+</i>
+<div class="legend">Booléen
+</div>
+</span>
+</div>
+<div class="component-list-sub">
+<span class="dnd-button btn btn-default thumbnail-component" draggable="true" data-type="text">
+<i class="fa editor-text">
+</i>
+<div class="legend">Texte
+</div>
+</span>
+</div>
+<div class="component-list-sub">
+<span class="dnd-button btn btn-default thumbnail-component" draggable="true" data-type="group">
+<i class="fa editor-group">
+</i>
+<div class="legend">Groupe
+</div>
+</span>
+<span class="dnd-button btn btn-default thumbnail-component" draggable="true" data-type="columns">
+<i class="fa editor-columns">
+</i>
+<div class="legend">Colonnes
+</div>
+</span>
+<span class="dnd-button btn btn-default thumbnail-component" draggable="true" data-type="tabs">
+<i class="fa editor-tabs">
+</i>
+<div class="legend">Onglets
+</div>
+</span>
+</div>
+<div class="component-list-sub">
+  <span class="dnd-button btn btn-default thumbnail-component" draggable="true" data-type="button">
+    <i class="fa editor-button"></i>
+    <div class="legend">Bouton</div>
+  </span>
+</div>
+<div class="component-list-sub">
+  <span class="dnd-button btn btn-default thumbnail-component" draggable="true" data-type="button">
+    <i class="fa fa-bar-chart"></i>
+    <div class="legend">Rapport</div>
+  </span>
+  <span class="dnd-button btn btn-default thumbnail-component" draggable="true" data-type="button">
+    <i class="fa fa-filter"></i>
+    <div class="legend">Filtre</div>
+  </span>
+</div>
+<div class="component-list-sub">
+<span class="dnd-button btn btn-default thumbnail-component" draggable="true" data-type="bulk">
+<i class="fa editor-bulk">
+</i>
+<div class="legend">Bulk
+</div>
+</span>
+</div>
+</div>
+</div>
+</div>
+<div id="sidebar-left-pane-2" aria-labelledby="sidebar-left-tab-2" role="tabpanel" aria-hidden="true" class="tab-pane fade">
+<div class="content">
+<div>
+<div class="background-message background-message-relative background-message-above">Aucune archive n'est disponible
+</div>
+<!-- react-empty: 1028 -->
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="gui-dragdrop" tabindex="1">
+<div class="gui-topbar">
+<div class="topbar-content">
+<div class="pull-right">
+<!-- react-empty: 1033 -->
+</div>
+<div class="toolbar">
+<div class="dropdown btn-group btn-group-sm">
+<button id="dropdown-size-container" role="button" aria-haspopup="true" aria-expanded="false" type="button" class="dropdown-toggle btn btn-sm btn-default">
+<span style="display: inline-block; position: relative; width: 20px; height: 15px;">
+<i class="fa fa-file-o" style="position: absolute; left: 1px;">
+</i>
+<i class="fa fa-arrows-h" style="position: absolute; left: 0px; bottom: -8px;">
+</i>
+</span>
+<!-- react-text: 1040 --> 
+<!-- /react-text -->
+<span class="caret">
+</span>
+</button>
+<ul role="menu" class="dropdown-menu" aria-labelledby="dropdown-size-container">
+<li role="presentation" class="">
+<a role="menuitem" tabindex="-1" href="#">
+<span class="label-menu">Très petite résolution (&lt;768px)
+</span>
+</a>
+</li>
+<li role="presentation" class="">
+<a role="menuitem" tabindex="-1" href="#">
+<span class="label-menu">Petite résolution (≥768px)
+</span>
+</a>
+</li>
+<li role="presentation" class="">
+<a role="menuitem" tabindex="-1" href="#">
+<span>
+<span class="glyphicon glyphicon-ok">
+</span>
+<!-- react-text: 1053 --> &nbsp;
+<!-- /react-text -->
+</span>
+<span class="label-menu">Moyenne résolution (≥992px)
+</span>
+</a>
+</li>
+<li role="presentation" class="">
+<a role="menuitem" tabindex="-1" href="#">
+<span class="label-menu">Grande résolution (≥1200px)
+</span>
+</a>
+</li>
+</ul>
+</div>
+<button type="button" class="btn btn-sm btn-danger">
+<i class="fa fa-trash-o">
+</i>
+</button>
+<div class="container-avatars">
+</div>
+</div>
+</div>
+</div>
+<div class="gui-content">
+<div style="position: relative;">
+<div class="clearfix" style="position: absolute; z-index: -100; left: 0px; top: 0px; opacity: 0;">
+<ul class="contextual-menu dropdown-menu" style="display: block; position: relative;">
+<div class="contextual-menu-header">Aucun composant sélectionné
+</div>
+<li role="presentation" class="disabled">
+<a data-item-index="0" role="menuitem" tabindex="-1" href="#">
+<span class="glyphicon glyphicon-scissors">&nbsp;
+</span>
+<!-- react-text: 1069 -->Couper
+<!-- /react-text -->
+</a>
+</li>
+<li role="presentation" class="disabled">
+<a data-item-index="1" role="menuitem" tabindex="-1" href="#">
+<span class="glyphicon glyphicon-copy">&nbsp;
+</span>
+<!-- react-text: 1073 -->Copier
+<!-- /react-text -->
+</a>
+</li>
+<li role="presentation" class="disabled">
+<a data-item-index="2" role="menuitem" tabindex="-1" href="#">
+<span class="glyphicon glyphicon-paste">&nbsp;
+</span>
+<!-- react-text: 1077 -->Coller
+<!-- /react-text -->
+</a>
+</li>
+<li role="separator" class="divider">
+</li>
+<li role="presentation" class="disabled">
+<a data-item-index="4" role="menuitem" tabindex="-1" href="#">
+<span class="glyphicon glyphicon-lock">&nbsp;
+</span>
+<!-- react-text: 1082 -->Verrouiller/Déverrouiller
+<!-- /react-text -->
+</a>
+</li>
+<li role="presentation" class="disabled">
+<a data-item-index="5" role="menuitem" tabindex="-1" href="#">
+<span class="glyphicon glyphicon-eye-open">&nbsp;
+</span>
+<!-- react-text: 1086 -->Afficher/Cacher
+<!-- /react-text -->
+</a>
+</li>
+<li role="separator" class="divider">
+</li>
+<li role="presentation" class="">
+<a data-item-index="7" role="menuitem" tabindex="-1" href="#">
+<span class="glyphicon glyphicon-briefcase">&nbsp;
+</span>
+<!-- react-text: 1091 -->Archive
+<!-- /react-text -->
+</a>
+</li>
+<li role="separator" class="divider">
+</li>
+<li role="presentation" class="disabled">
+<a data-item-index="9" role="menuitem" tabindex="-1" href="#">
+<span class="glyphicon glyphicon-trash">&nbsp;
+</span>
+<!-- react-text: 1096 -->Suppression
+<!-- /react-text -->
+</a>
+</li>
+</ul>
+</div>
+<div class="container" style="width: 992px;">
+<ul class="dnd-list" data-node-id="huwgphxcau1509007116803">
+<li data-node-id="qbhqhtbjov1509007578931" data-type="textfield" draggable="true" class="dnd-element">
+<div class="mock-container" tabindex="1">
+<div class="mock-delete hide">
+<button type="button" class="fa fa-trash btn btn-danger">
+</button>
+<div class="delete-line">
+</div>
+</div>
+<div class="mock form-horizontal">
+<div class="form-group">
+<div class="label-inline col-xs-3 mock-label control-label">
+<span class="mock-label-resize" draggable="true">
+<span>
+</span>
+</span>
+<span class="editable-textfield-container">
+<span class="editable-textfield">
+<!-- react-text: 1111 -->Champ G92G
+<!-- /react-text -->
+</span>
+</span>
+</div>
+<div class="col-xs-9">
+<div style="display: flex;">
+<div class="form-control mock mock-textfield placeholder" style="max-width: calc(100% - 5px);">
+<!-- react-text: 1115 -->Texte
+<!-- /react-text -->
+</div>
+</div>
+<span class="hint">
+</span>
+</div>
+</div>
+</div>
+</div>
+</li>
+<li data-node-id="mwhblhlvxr1509114574763" data-type="number" draggable="true" class="dnd-element">
+<div class="mock-container" tabindex="1">
+<div class="mock-delete hide">
+<button type="button" class="fa fa-trash btn btn-danger">
+</button>
+<div class="delete-line">
+</div>
+</div>
+<div class="mock form-horizontal">
+<div class="form-group">
+<div class="label-inline col-xs-3 mock-label control-label">
+<span class="mock-label-resize" draggable="true">
+<span>
+</span>
+</span>
+<span class="editable-textfield-container">
+<span class="editable-textfield">
+<!-- react-text: 1129 -->Champ A1LV
+<!-- /react-text -->
+</span>
+</span>
+</div>
+<div class="col-xs-9">
+<div class="mock mock-number">
+<div class="form-control placeholder">
+<!-- react-text: 1133 -->Num.
+<!-- /react-text -->
+</div>
+</div>
+<span class="hint">
+</span>
+</div>
+</div>
+</div>
+</div>
+</li>
+<li data-node-id="kounjbxgkk1509114577395" data-type="columns" draggable="true" class="dnd-element">
+<div class="mock-container" tabindex="1">
+<div class="mock-delete hide">
+<button type="button" class="fa fa-trash btn btn-danger">
+</button>
+<div class="delete-line">
+</div>
+</div>
+<div class="mock mock-columns">
+<div class="mock-columns-content">
+<div data-node-id="vdgjkkhtwp1509114577395" draggable="true" style="order: 0; flex-basis: calc(41.6667% - 10px);">
+<div class="mock-column-outside">
+<div class="mock-container" tabindex="1">
+<div class="mock-delete hide">
+<button type="button" class="fa fa-trash btn btn-danger">
+</button>
+<div class="delete-line">
+</div>
+</div>
+<div class="mock mock-column">
+<span class="mock-column-grip">
+</span>
+<ul class="dnd-list" data-node-id="vdgjkkhtwp1509114577395">
+<li data-node-id="fjnpqgqyee1509114637447" data-type="date" draggable="true" class="dnd-element">
+<div class="mock-container" tabindex="1">
+<div class="mock-delete hide">
+<button type="button" class="fa fa-trash btn btn-danger">
+</button>
+<div class="delete-line">
+</div>
+</div>
+<div class="mock form-horizontal">
+<div class="form-group">
+<div class="label-inline col-xs-3 mock-label control-label">
+<span class="mock-label-resize" draggable="true">
+<span>
+</span>
+</span>
+<span class="editable-textfield-container">
+<span class="editable-textfield">
+<!-- react-text: 1163 -->Champ RG98
+<!-- /react-text -->
+</span>
+</span>
+</div>
+<div class="col-xs-9">
+<div class="mock mock-date input-group">
+<div class="form-control">Date
+</div>
+<span class="input-group-addon">
+<span class="glyphicon glyphicon-calendar">
+</span>
+</span>
+</div>
+<span class="hint">
+</span>
+</div>
+</div>
+</div>
+</div>
+</li>
+</ul>
+</div>
+</div>
+<span class="mock-column-resize" draggable="true" data-node-id="vdgjkkhtwp1509114577395" data-relative-node-id="mfjlesuuxf1509114577396">
+<span>
+</span>
+</span>
+</div>
+</div>
+<div data-node-id="mfjlesuuxf1509114577396" draggable="true" style="order: 1; flex-basis: calc(58.3333% - 20px);">
+<div class="mock-column-outside">
+<div class="mock-container" tabindex="1">
+<div class="mock-delete hide">
+<button type="button" class="fa fa-trash btn btn-danger">
+</button>
+<div class="delete-line">
+</div>
+</div>
+<div class="mock mock-column">
+<span class="mock-column-grip">
+</span>
+<ul class="dnd-list" data-node-id="mfjlesuuxf1509114577396">
+</ul>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</li>
+<li data-node-id="varthplpej1509114595066" data-type="text" draggable="true" class="dnd-element">
+<div class="mock-container" tabindex="1">
+<div class="mock-delete hide">
+<button type="button" class="fa fa-trash btn btn-danger">
+</button>
+<div class="delete-line">
+</div>
+</div>
+<div class="mock mock-text control-label">
+<span>Lorem ipsum...
+</span>
+<!-- react-empty: 1188 -->
+</div>
+</div>
+</li>
+<li data-node-id="bndhuemijt1509114598674" data-type="columns" draggable="true" class="dnd-element">
+<div class="mock-container" tabindex="1">
+<div class="mock-delete hide">
+<button type="button" class="fa fa-trash btn btn-danger">
+</button>
+<div class="delete-line">
+</div>
+</div>
+<div class="mock mock-columns">
+<div class="mock-columns-content">
+<div data-node-id="dcbjkvralm1509114598674" draggable="true" style="order: 0; flex-basis: calc(33.3333% - 10px);">
+<div class="mock-column-outside">
+<div class="mock-container" tabindex="1">
+<div class="mock-delete hide">
+<button type="button" class="fa fa-trash btn btn-danger">
+</button>
+<div class="delete-line">
+</div>
+</div>
+<div class="mock mock-column">
+<span class="mock-column-grip">
+</span>
+<ul class="dnd-list" data-node-id="dcbjkvralm1509114598674">
+</ul>
+</div>
+</div>
+<span class="mock-column-resize" draggable="true" data-node-id="dcbjkvralm1509114598674" data-relative-node-id="tfxemlziim1509114598674">
+<span>
+</span>
+</span>
+</div>
+</div>
+<div data-node-id="tfxemlziim1509114598674" draggable="true" style="order: 1; flex-basis: calc(33.3333% - 20px);">
+<div class="mock-column-outside">
+<div class="mock-container" tabindex="1">
+<div class="mock-delete hide">
+<button type="button" class="fa fa-trash btn btn-danger">
+</button>
+<div class="delete-line">
+</div>
+</div>
+<div class="mock mock-column">
+<span class="mock-column-grip">
+</span>
+<ul class="dnd-list" data-node-id="tfxemlziim1509114598674">
+</ul>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<!-- react-empty: 1216 -->
+</div>
+<div class="sidebar sidebar-page">
+<i class="hide-details fa fa-arrow-circle-left open">
+</i>
+<div class="sidebar-content">
+<div id="sidebar-properties">
+<ul role="tablist" class="nav nav-tabs">
+<li role="presentation" class="active">
+<a id="sidebar-properties-tab-1" role="tab" aria-controls="sidebar-properties-pane-1" aria-selected="true" href="#">
+<span class="tab-sidebar-properties-title">
+<i class="fa fa-gear">
+</i>
+<span class="sidebar-properties-title">
+<!-- react-text: 1227 --> &nbsp;
+<!-- /react-text -->
+<!-- react-text: 1228 -->Propriétés
+<!-- /react-text -->
+</span>
+</span>
+</a>
+</li>
+<li role="presentation" class="">
+<a id="sidebar-properties-tab-2" role="tab" aria-controls="sidebar-properties-pane-2" tabindex="-1" aria-selected="false" href="#">
+<span class="tab-sidebar-properties-title">
+<i class="fa fa-comment">
+</i>
+<span class="sidebar-properties-title">
+<!-- react-text: 1234 --> &nbsp;
+<!-- /react-text -->
+<!-- react-text: 1235 -->Commentaires(0)
+<!-- /react-text -->
+</span>
+</span>
+</a>
+</li>
+</ul>
+<div class="tab-content">
+<div id="sidebar-properties-pane-1" aria-labelledby="sidebar-properties-tab-1" role="tabpanel" aria-hidden="false" class="tab-pane active">
+<div class="content">
+<div>
+<div class="division-properties">
+<div class="clearfix">
+</div>
+<div class="collapse in">
+<div class="property-container property-data">
+<form class="input-name ">
+<div class="form-group form-group-sm">
+<label class="label-class col-xs-NaN control-label">
+<span>
+<i>
+<i class="fa category-data">
+</i>
+<!-- react-text: 1250 --> &nbsp;
+<!-- /react-text -->
+</i>
+<!-- react-text: 1251 -->Nom
+<!-- /react-text -->
+<!-- react-text: 1252 --> &nbsp;
+<!-- /react-text -->
+</span>
+</label>
+<div class="col-xs-12">
+<span class="col-xs-12 input-group">
+<input value="Suivi Malaria" class="form-control" type="text">
+</span>
+<div class="clearfix">
+</div>
+<span class="help-block">
+<div class="well well-sm">
+</div>
+</span>
+<div class="clearfix">
+</div>
+</div>
+</div>
+</form>
+<!-- react-empty: 1260 -->
+</div>
+<div class="property-container">
+<form class="input-abbreviation ">
+<div class="form-group form-group-sm">
+<label class="label-class col-xs-NaN control-label">
+<span>
+<!-- react-text: 1266 -->Abréviation
+<!-- /react-text -->
+<!-- react-text: 1267 --> &nbsp;
+<!-- /react-text -->
+</span>
+</label>
+<div class="col-xs-12">
+<span class="col-xs-12 input-group">
+<input value="R1" class="form-control" type="text">
+</span>
+<div class="clearfix">
+</div>
+<span class="help-block">
+<div class="well well-sm">
+</div>
+</span>
+<div class="clearfix">
+</div>
+</div>
+</div>
+</form>
+<!-- react-empty: 1275 -->
+</div>
+<div class="property-container property-data">
+<span>
+<form class="input-varset ">
+<div class="form-group form-group-sm has-feedback has-success">
+<label class="col-xs-12 control-label">
+<span>
+<i class="fa category-data">
+</i>
+<!-- react-text: 1283 --> &nbsp;
+<!-- /react-text -->
+<!-- react-text: 1284 -->Varset
+<!-- /react-text -->
+<!-- react-text: 1285 --> &nbsp;
+<!-- /react-text -->
+<span class="glyphicon glyphicon-info-sign">
+</span>
+</span>
+</label>
+<div class="col-xs-12">
+<span class="col-xs-12 input-group">
+<input value="varset_bidon" disabled="disabled" class="form-control" type="text">
+<span class="form-control-feedback glyphicon glyphicon-ok">
+</span>
+<span class="input-group-btn">
+<button type="button" class="btn btn-sm btn-default">éditer
+</button>
+</span>
+</span>
+<div class="clearfix">
+</div>
+<span class="help-block">
+<div class="well well-sm well-success">
+</div>
+</span>
+<div class="clearfix">
+</div>
+</div>
+</div>
+</form>
+<!-- react-empty: 1297 -->
+<!-- react-empty: 1298 -->
+<!-- react-empty: 1299 -->
+</span>
+<!-- react-empty: 1300 -->
+</div>
+<div class="property-container property-data">
+<form class="input-varsetLabel ">
+<div class="form-group form-group-sm">
+<label class="label-class col-xs-NaN control-label">
+<span>
+<i>
+<i class="fa category-data">
+</i>
+<!-- react-text: 1308 --> &nbsp;
+<!-- /react-text -->
+</i>
+<!-- react-text: 1309 -->Label de varset
+<!-- /react-text -->
+<!-- react-text: 1310 --> &nbsp;
+<!-- /react-text -->
+</span>
+</label>
+<div class="col-xs-12">
+<span class="col-xs-12 input-group">
+<input value="varset_bidon" class="form-control" type="text">
+</span>
+<div class="clearfix">
+</div>
+<span class="help-block">
+<div class="well well-sm">
+</div>
+</span>
+<div class="clearfix">
+</div>
+</div>
+</div>
+</form>
+<!-- react-empty: 1318 -->
+</div>
+<div class="property-container">
+<div class="property property-tags">
+<div class="clearfix">
+</div>
+<fieldset>
+<form class="input-tags ">
+<div class="form-group form-group-sm">
+<label class="label-class col-xs-NaN control-label">
+<span>
+<!-- react-text: 1327 -->Tags
+<!-- /react-text -->
+<!-- react-text: 1328 --> &nbsp;
+<!-- /react-text -->
+</span>
+</label>
+<div class="col-xs-12">
+<span class="col-xs-12 input-group">
+<input list="list-input-tags" class="form-control" type="text">
+<datalist id="list-input-tags">
+</datalist>
+</span>
+<div class="clearfix">
+</div>
+<span class="help-block">
+<div class="well well-sm">
+</div>
+</span>
+<div class="clearfix">
+</div>
+</div>
+</div>
+</form>
+<span style="margin-left: 15px;">
+</span>
+</fieldset>
+</div>
+<!-- react-empty: 1338 -->
+</div>
+</div>
+</div>
+<div>
+</div>
+<div>
+</div>
+<div>
+</div>
+<div class="division-properties">
+<button type="button" class="btn btn-link btn-block">
+<span class="pull-left">structure
+</span>
+<i class="fa fa-plus">
+</i>
+</button>
+<div class="clearfix">
+</div>
+<div class="collapse">
+<div class="property-container">
+<div class="property property-button-modal">
+<div class="clearfix">
+</div>
+<!-- react-empty: 1351 -->
+<button type="button" class="btn btn-sm btn-default btn-block">
+<span>
+<span>
+<i class="fa fa-cog">
+</i>
+<!-- react-text: 1356 --> &nbsp;
+<!-- /react-text -->
+<!-- react-text: 1357 -->Propriétés personnalisées
+<!-- /react-text -->
+<!-- react-text: 1358 --> &nbsp; (
+<!-- /react-text -->
+<!-- react-text: 1359 -->0
+<!-- /react-text -->
+<!-- react-text: 1360 -->)
+<!-- /react-text -->
+</span>
+</span>
+</button>
+</div>
+<!-- react-empty: 1361 -->
+</div>
+<div class="property-container">
+<div class="property property-button-modal">
+<div class="clearfix">
+</div>
+<!-- react-empty: 1365 -->
+<button type="button" class="btn btn-sm btn-danger btn-block">
+<span>
+<span>
+<i class="fa fa-trash">
+</i>
+<!-- react-text: 1370 --> &nbsp;
+<!-- /react-text -->
+<!-- react-text: 1371 -->Delete this page
+<!-- /react-text -->
+</span>
+</span>
+</button>
+</div>
+<!-- react-empty: 1372 -->
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="sidebar-properties-pane-2" aria-labelledby="sidebar-properties-tab-2" role="tabpanel" aria-hidden="true" class="tab-pane">
+<div class="content">
+<div class="comment-wrapper">
+<div class="comment-list">
+<div class="background-message background-message-relative background-message-above">Aucun commentaire pour le moment
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</body>
+<script>
+window.onload = function() {
+ d3.select("div.epilogo").on("click", toggleApps);
+}
+
+function toggleApps() {
+  if(d3.select("div.app-list").style("display")==="none") {
+    d3.select("div.app-list").style("display", "block");
+  } else {
+    d3.select("div.app-list").style("display", "none");
+  }
+}
+  
+</script>
+</html>

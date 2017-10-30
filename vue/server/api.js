@@ -9,10 +9,10 @@ var http = require('http')
 exports.server = () => {
   return http.createServer((req, res) => {
     var login = conf.user.login;
-    console.log(`New Request from ${login} from ${req.connection.remoteAddress} > ${req.headers['x-forwarded-for'] || ' (no proxy)'}`);
     var url_parts = url.parse(req.url);
-    var path = url_parts.pathname; 
+    var path = decodeURIComponent((url_parts.pathname+'').replace(/\+/g, '%20')); 
     var query = url_parts.query;
+    console.log(`New Request from ${login}:${path} from ${req.connection.remoteAddress} > ${req.headers['x-forwarded-for'] || ' (no proxy)'}`);
     streamToString(req, conf.http.max_post_bytes, (post, err) => {
     if(err)
       return unexpectedError(res, err);

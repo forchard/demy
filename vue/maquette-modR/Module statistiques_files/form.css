@@ -1,0 +1,1298 @@
+textarea.disabled, select.disabled, input.disabled { color:#000000; border:2px solid transparent; background:none; }
+input.error { border:2px solid #FF0000; color:#FF0000; background:#FFB9B9 }
+input.warning { border:2px solid #FF9900; color:#FF9900; background:#FFE3B9 }
+input.notice { border:2px solid #01D758; color:#01D758; background:#B9F4D1 }
+input.info { border:2px solid #6633CC; color:#6633CC; background:#D5C7F1 }
+input.voo_date input.voo_time { text-align:center; }
+
+div.vzn-row, div.cell { float:left; padding-right:1em; }
+div.vzn-row { width:100%}
+div.statictext,
+div.vzn-label,
+div.field,
+.radio-inline,
+.checkbox-inline,
+label.control-label {
+	font-family: Arial,Helvetica,Geneva,Sans-serif;
+	font-size: 1em;
+	font-weight: normal;
+	line-height: 1.42857; /* Same as Bootstrap definition */
+}
+div.statictext { display: inline-block; position: relative; padding: 0 1em; cursor: default; }
+div.group, fieldset.group { margin:1em 0; border:1px solid #6EABC7; background:#F1F7F9; color:#000000; }
+
+div.disabled-background {
+	width: 100%;
+	height: 100%;
+	position: fixed;
+	top: 0;
+	left: 0;
+	background-color: rgba( 60, 60, 60, 0.6 );
+	z-index: 100;
+}
+div.groupdialog, fieldset.groupdialog {
+	margin: 0;
+	top: 20%;
+	left: 50%;
+	margin-left: -250px;
+	border-radius: 10px;
+	background-color: #fcfcfc;
+	z-index: 101;
+	/* Attention ces trois paramètres doivent rester à la fin */
+	width: 500px;
+	position: fixed;
+	padding: 30px;
+}
+
+div.groupdialog .dialog-header, fieldset.groupdialog .dialog-header {
+	margin-top: 0;
+	margin-bottom: 25px;
+}
+
+div.groupdialog .dialog-footer, fieldset.groupdialog .dialog-footer {
+	margin-top: 30px;
+}
+
+div.tabs {
+	margin-bottom:1em;
+}
+
+div.tabs {
+	margin-bottom: 10px;
+}
+div.tabs-panel {
+	/* border:1px solid #6EABC7; */
+	background:#F1F7F9;
+	padding:0.5em;
+}
+div.tabs div.tabs-rm {
+	text-align: right;
+	padding: 0.1em 0.1em 0 0;
+}
+fieldset.group legend  { font:bold 120% Arial,Helvetica,Geneva,Sans-serif; /*font-variant:small-caps;*/ color:#324D5A; background:#F1F7F9; border:1px solid #6EABC7; padding:0 1em; }
+ul.form-tabs { margin:0; padding:0; list-style:none; }
+ul.form-tabs li {
+	float:left;
+	list-style:none;
+	background:#F1F7F9;
+	color: #324D5A;
+	font:bold 100% Arial,Helvetica,Geneva,Sans-serif;
+	/*border:1px solid #324D5A; */
+	/*border-left:none; */
+	text-transform:uppercase;
+	border-bottom:none;
+}
+ul.form-tabs li a {
+	text-decoration:none;
+	color: #324D5A;
+	padding:0.5em 1em;
+	display:block;
+}
+ul.form-tabs li.first-tab {
+	/* border:1px solid #324D5A; */
+	border-bottom:none;
+}
+ul.form-tabs li.selected-tab { background:#BDD8E5; }
+ul.form-tabs li.new-tab {
+	/*float:right; */
+	/*border:1px solid #324D5A; */
+	margin:0 0 -1px;
+}
+ul.form-tabs li.rm-tab {
+	background: none;
+	float:right;
+	margin:0 0 -1px;
+}
+ul.form-tabs li:hover, a.listing-new-row:hover { background:#D7E8EF; color: #1E2E36; }
+
+a.listing-new-row { display:block; float:left; padding:0.2em 1em; border:1px solid #324D5A; margin:0 0 -1px; }
+div.yui-dt caption { display:none; }
+a.form-button { display:block; float:left; background:#CAE0EA; color: #324D5A; font:bold 100% Arial,Helvetica,Geneva,Sans-serif; border:1px solid #324D5A; text-transform:uppercase; text-decoration:none; padding:0.2em 1em; margin:0 0.2em 0 0; }
+a.form-button:hover { background:#F1F7F9; }
+div.group-button.edit { float:right; }
+div.group-button.save-cancel { float:right; }
+
+.yui3-avpanellogger-content { padding:2px;margin-right:15px;margin-top:5px; }
+.yui3-avpanellogger-hidden { visibility:hidden; }
+.yui3-avpanellogger-error { width:15px;height:15px;background-color:#FF0000;float:left;margin-right:5px;margin-bottom:1px;}
+.yui3-avpanellogger-warning { width:15px;height:15px;background-color:#FF9900;float:left;margin-right:5px;margin-bottom:1px;}
+.yui3-avpanellogger-notice { width:15px;height:15px;background-color:#01D758;float:left;margin-right:5px;margin-bottom:1px;}
+.yui3-avpanellogger-info { width:15px;height:15px;background-color:#6633CC;float:left;margin-right:5px;margin-bottom:1px;}
+
+div.readonly-field
+{
+	padding-top: 7px;
+}
+
+/*
+WebKit is using a pseudo-element: ::-webkit-input-placeholder.
+Mozilla Firefox 4 to 18 is using a pseudo-class: :-moz-placeholder (one colon).
+Mozilla Firefox 19+ is using a pseudo-element: ::-moz-placeholder, but the old selector will still work for a while.
+Internet Explorer 10 is using a pseudo-class: :-ms-input-placeholder
+We need separate rules for each browser. Otherwise the whole group would be ignored by all browsers
+*/
+::-webkit-input-placeholder { font-style: italic; }
+:-moz-placeholder { font-style: italic; }
+::-moz-placeholder { font-style: italic; }
+:-ms-input-placeholder { font-style: italic; }
+
+/*
+**
+**	AUTO COMPLETE
+**
+*/
+
+/***************************************
+Spécifique pour le fonctionnement du module
+****************************************
+.yui3-skin-sam .yui3-aclist-item { background:#DDDDFF; }
+.yui3-skin-sam .yui3-aclist-item-active { background:#BFDAFF; }
+.yui3-skin-sam .yui3-aclist-item { padding:0; }
+
+/**********************************
+Espace entre les lignes de résultat
+**********************************/
+.result { margin: 1px; zoom: 1; }
+
+.result:after {
+  clear: both;
+  content: '.';
+  display: block;
+  height: 0;
+  visibility: hidden;
+}
+
+/***************************************
+Exemple pour la mise en page du résultat
+***************************************/
+.result .title { font-weight:bold; }
+.result .detail { font-style:italic; }
+
+/*********************************
+Formulaire ajouter nouveau patient
+*********************************/
+.new { text-align: right; margin:1em; }
+
+/*******************************************************************************************
+Modifie la position du résultat (effet "listing" au lieu d'un effet "drop down" (par défaut)
+*******************************************************************************************/
+.yui3-skin-sam .yui3-aclist { position:static !important; width:auto !important; margin-top:1em; }
+
+/***************************************************************************************
+Le résultat est toujours visible (évite la disparition du listing quand on tape sur tab)
+***************************************************************************************/
+.yui3-skin-sam .yui3-aclist-hidden { visibility:visible; }
+/*****************************************************************************************************
+Le résultat disparaît quand on sélectionne une ligne mais aussi quand on tape sur la touche tabulation
+*****************************************************************************************************/
+.yui3-skin-sam .yui3-aclist-hidden { display:none; }
+
+/*********************************************************
+Supprime l'effet d'ombre (utilisé pour le style drop down)
+*********************************************************/
+.yui3-skin-sam .yui3-aclist-content { box-shadow:none !important; }
+
+div.green { color:green; font-weight:bold; }
+div.red { color:red; font-weight:bold; }
+div.bold { font-weight:bold; }
+div.dmcp_nomprenom { font-weight:bold; margin:0 30px 0 5px ; }
+input[type=button].dmcp_changepatient { float: right; }
+input[type=button].dmcp_demande { margin-right:10px; width: 250px; }
+
+
+/**** Module Listing ****/
+
+	/**** Listing.GroupBy ***/
+.yui3-listing-grpby-panel dt, .yui3-listing-grpby-panel dd {
+	display: inline-block;
+	float: none;
+}
+
+.yui3-listing-grpby-panel dt {
+	width: 150px;
+	text-align: right;
+}
+
+.yui3-listing-grpby-panel dd {
+	text-align: left;
+}
+
+.yui3-listing-grpby-panel select[disabled] {
+	opacity: 0.4;
+}
+
+.yui3-listing-grpby-panel .yui3-listing-grpby-divGroupBy select {
+}
+
+.yui3-listing-grpby-panel .yui3-listing-grpby-fieldsList {
+	list-style-type: none;
+	padding: 0;
+}
+
+.yui3-listing-grpby-panel .yui3-listing-grpby-divGroupBy .yui3-listing-grpby-divGroupByFormat,
+.yui3-listing-grpby-panel .yui3-listing-grpby-field .yui3-listing-grpby-divFieldFormat {
+	display: inline-block;
+	margin-left: 10px;
+}
+
+
+/******************************************************************************
+ File Upload Progress bar
+******************************************************************************/
+.uploadHTML5 {
+	/*background-color: #F1F7F9;*/
+
+}
+
+button.stopupload {
+	margin-left: 10px;
+	vertical-align: top;
+}
+
+.progress {
+	width: 250px;
+	border: 1px solid black;
+	position: relative;
+	padding: 1px;
+	border-radius : 4px;
+	margin-bottom: 0;
+	margin-top: 0;
+	display: inline-block;
+}
+
+.percent {
+	position: absolute;
+	font-size : 10pt;
+	font-weight:bold;
+	left: 50%;
+}
+
+.progressBar {
+	height: 14px;
+	background-color: #00ff00;
+	width: 0%;
+	border-radius : 7px;
+	background: #6EABC7; /* Old browsers */
+		background: -moz-linear-gradient(top,#324D5A 0%, #BDD8E5 50%, #324D5A 100%); /* FF3.6+ */
+	background: -moz-linear-gradient(top, #324D5A 0%, #BDD8E5 50%, #324D5A 100%); /* FF3.6+ */
+	background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#BDD8E5), color-stop(50%,#61c419), color-stop(100%,#324D5A)); /* Chrome,Safari4+ */
+	background: -webkit-linear-gradient(top, #324D5A 0%,#BDD8E5 50%,#324D5A 100%); /* Chrome10+,Safari5.1+ */
+	background: -o-linear-gradient(top, #324D5A 0%,#BDD8E5 50%,#324D5A 100%); /* Opera 11.10+ */
+	background: -ms-linear-gradient(top, #324D5A 0%,#BDD8E5 50%,#324D5A 100%); /* IE10+ */
+	background: linear-gradient(to bottom, #324D5A 0%,#BDD8E5 50%,#324D5A 100%); /* W3C */
+}
+
+.listing {
+	padding-bottom: 10px;
+	overflow-x: auto;
+}
+
+
+	/**** Listing.Colorize ***/
+
+.yui3-listing-colorize-panel .yui3-listing-colorize-btnAdd {
+	margin: 0 5px;
+}
+
+.yui3-listing-colorize-panel .yui3-listing-colorize-btnAdd span {
+	background: transparent url("/VooLibAssets/images/add.png") no-repeat left center;
+	height: 16px;
+	width: 16px;
+	margin-right: 5px;
+	display: inline-block;
+	vertical-align: top;
+}
+
+
+/* List of Rules */
+.yui3-listing-colorize-panel .yui3-listing-colorize-rules {
+	list-style-type: none;
+	padding: 0;
+	margin: 10px;
+}
+
+/* One Rule */
+.yui3-listing-colorize-panel .yui3-listing-colorize-rules .yui3-listing-colorize-rule {
+	margin: 5px 0;
+}
+
+.yui3-listing-colorize-panel .yui3-listing-colorize-rules .yui3-listing-colorize-rule-error {
+	border: 1px solid #c00;
+	background-color: #fee;
+}
+
+/* Each box containing selectors/input */
+.yui3-listing-colorize-panel .yui3-listing-colorize-rule > span {
+	padding-left: 10px;
+	vertical-align: middle;
+}
+
+/* The first box */
+.yui3-listing-colorize-panel .yui3-listing-colorize-rule > span:first-child {
+	padding-left: 0;
+}
+
+/* The list of operators to compare */
+.yui3-listing-colorize-panel .yui3-listing-colorize-rule .yui3-listing-colorize-rule-compare {
+	width: 175px;
+}
+
+.yui3-listing-colorize-panel .yui3-listing-colorize-rule .yui3-listing-colorize-rule-valueBox {
+	min-width: 150px;
+	display: inline-block;
+	vertical-align: middle;
+}
+
+/* The value entered (input) or selected (select) by user */
+.yui3-listing-colorize-panel .yui3-listing-colorize-rule .listing-colorize-field-text,
+.yui3-listing-colorize-panel .yui3-listing-colorize-rule .listing-colorize-field-dico {
+	width: 100%;
+}
+
+/* The Day and Month field of the Date component */
+/* The Hour, Minute and Second fields of the DateTime component */
+.yui3-listing-colorize-panel .yui3-listing-colorize-rule .listing-colorize-field-date-d,
+.yui3-listing-colorize-panel .yui3-listing-colorize-rule .listing-colorize-field-date-m,
+.yui3-listing-colorize-panel .yui3-listing-colorize-rule .listing-colorize-field-datetime-h,
+.yui3-listing-colorize-panel .yui3-listing-colorize-rule .listing-colorize-field-datetime-i,
+.yui3-listing-colorize-panel .yui3-listing-colorize-rule .listing-colorize-field-datetime-s {
+	width: 1.9em;
+}
+
+/* The Year field of the Date component */
+.yui3-listing-colorize-panel .yui3-listing-colorize-rule .listing-colorize-field-date-y {
+	width: 2.9em;
+}
+
+/* The component DicoExt */
+.yui3-listing-colorize-panel .yui3-listing-colorize-rule .listing-colorize-field-dicoext {
+	background-color: #fff;
+	border: 1px solid #bbb;
+	border-radius: 2px;
+	height: 19px;
+}
+
+.yui3-listing-colorize-panel .yui3-listing-colorize-rule .listing-colorize-field-dicoext .listing-colorize-field-dicoext-select {
+	display: block;
+	position: relative;
+	height: 19px;
+}
+
+.yui3-listing-colorize-panel .yui3-listing-colorize-rule .listing-colorize-field-dicoext .listing-colorize-field-dicoext-value {
+	display: block;
+	height: 19px;
+	padding-left: 3px;
+}
+
+.yui3-listing-colorize-panel .yui3-listing-colorize-rule .listing-colorize-field-dicoext .listing-colorize-field-dicoext-arrow {
+	position: absolute;
+	right: 0;
+	top: 0;
+	display: block;
+	width: 20px;
+	height: 19px;
+	text-align: center;
+	cursor: pointer;
+	border-left: 1px solid #bbb;
+}
+
+.yui3-listing-colorize-panel .yui3-listing-colorize-rule .listing-colorize-field-dicoext .listing-colorize-field-dicoext-arrow:hover {
+	background-color: #bbb;
+}
+
+.yui3-listing-colorize-panel .yui3-listing-colorize-rule .listing-colorize-field-dicoext ul.listing-colorize-field-dicoext-items {
+	list-style-type: none;
+	padding: 0;
+}
+
+.yui3-listing-colorize-panel .yui3-listing-colorize-rule .listing-colorize-field-dicoext ul.listing-colorize-field-dicoext-items li:hover {
+	background-color: #CAE0EA;
+}
+
+/* The container containing the colorWheel icon and the current color */
+.yui3-listing-colorize-panel .yui3-listing-colorize-rule .yui3-listing-colorize-colorwheel {
+	display: inline-block;
+	margin-left: 10px;
+	vertical-align: middle;
+}
+
+/* The icon to show/hide the color overlay */
+.yui3-listing-colorize-panel .yui3-listing-colorize-rule .yui3-listing-colorize-colorwheel-icon {
+	background: transparent url("/VooLibAssets/images/color_wheel.png") no-repeat center center;
+	display: inline-block;
+	width: 16px;
+	height: 16px;
+	cursor: pointer;
+}
+
+/* The current selected color */
+.yui3-listing-colorize-panel .yui3-listing-colorize-rule .yui3-listing-colorize-colorwheel-currentColor {
+	display: inline-block;
+	border: 1px solid #000;
+	box-shadow: 1px 1px 2px #666;
+	-webkit-box-shadow: 1px 1px 2px #666;
+	-moz-box-shadow: 1px 1px 2px #666;
+	width: 32px;
+	height: 16px;
+	margin-left: 10px;
+}
+
+/* Each span present in overlay to choice a color */
+.yui3-listing-colorize-panel .yui3-listing-colorize-rule .yui3-listing-colorize-colorwheel-color {
+	display: inline-block;
+	width: 16px;
+	height: 16px;
+	margin: 5px;
+	border: 1px solid #000;
+	box-shadow: 1px 1px 2px #666;
+	-webkit-box-shadow: 1px 1px 2px #666;
+	-moz-box-shadow: 1px 1px 2px #666;
+	cursor: pointer;
+}
+
+/* The delete button to remove a rule */
+.yui3-listing-colorize-panel .yui3-listing-colorize-rule .yui3-listing-colorize-rule-btnDelete {
+	margin-left: 10px;
+}
+
+.yui3-listing-colorize-panel .yui3-listing-colorize-rule .yui3-listing-colorize-rule-btnDelete span {
+	padding-left: 16px;
+	background: url('/VooLibAssets/images/delete.png') no-repeat 0 0;
+}
+
+/* The body of the overlay containing the colors available */
+.yui3-listing-colorize-panel .yui3-listing-colorize-rule .yui3-widget-bd {
+	border: 1px solid #000;
+	background-color: #fff;
+}
+
+
+.yui3-skin-sam tr.yui-dt-rec td.yui-dt-col-action {
+	padding: 5px;
+}
+
+.yui3-skin-sam tr.yui-dt-rec td.yui-dt-col-action div.liner-action {
+	/*background-color: #FF8C00;*/
+	background-color: #283E48;
+	border-radius: 4px;
+	/*color: #fff;*/
+	color: #E4EFF4;
+	margin: 2px 0;
+	text-align: center;
+	padding: 2px 0;
+}
+
+/* ----- Intégration de la couleur dominante dans Yui3 et Yui2 ----- */
+/* Background du titre d'un panel Yui3 */
+.yui3-skin-sam .yui3-panel .yui3-widget-hd {
+	background: none !important;
+	background-color: #507C90 !important;
+}
+
+/* Background du footer d'un panel Yui3 */
+.yui3-skin-sam .yui3-panel .yui3-widget-ft {
+	background: none !important;
+	background-color: #E4EFF4 !important;
+}
+
+/* Tabulations Yui3 */
+.yui3-skin-sam #page .yui3-tab .yui3-tab-label {
+	background-image: none;
+	background-color: #fff;
+	border-radius: 3px 3px 0 0;
+	-moz-border-radius: 3px 3px 0 0;
+	-webkit-border-radius: 3px 3px 0 0;
+}
+
+/* Skin le bordure épaisse sous les onglets */
+.yui3-skin-sam #page .yui3-tabview-list {
+	border-color: #6EABC7;
+}
+
+/* Pour un onglet selectionné le background ne change pas, quelque soit son
+état : même teinte que la bordure épaisse sous les onglets */
+.yui3-skin-sam #page .yui3-tab-selected .yui3-tab-label,
+.yui3-skin-sam #page .yui3-tab-selected .yui3-tab-label:focus,
+.yui3-skin-sam #page .yui3-tab-selected .yui3-tab-label:hover {
+	background-color: #6EABC7;
+}
+
+/* Teinte clair lorsque la souris survol l'onglet */
+.yui3-skin-sam #page .yui3-tab-label:hover,
+.yui3-skin-sam #page .yui3-tab-label:focus {
+	background-image: none;
+	background-color: #E4EFF4;
+}
+
+/* Bordure foncée */
+.yui3-skin-sam #page .yui3-tab-selected .yui3-tab-label {
+	background-image: none;
+	border-color: #3C5D6C;
+}
+
+/* Arrière plan du contenu de l'onglet */
+.yui3-skin-sam #page .yui3-tabview-panel {
+	background-color: #F1F7F9;
+	/* Padding left and right must be the same as negative margin-left and negative margin-right of bootstrap row */
+	padding-left: 15px;
+	padding-right: 15px;
+}
+
+.yui3-tabview {
+	margin-bottom: 15px;
+}
+
+/* Yui2 Datatable : conservation de la font familly déclarée précédement */
+.yui-skin-sam #page .yui-dt table {
+	font-family: inherit;
+}
+
+/* Styles liés au gestionnaire de ressources */
+/* On force la hauteur et la largeur de l'éditeur généré par CodeMirror */
+.field .create-res-highlight, .field .update-res-highlight,
+.create-res-highlight .CodeMirror, .update-res-highlight .CodeMirror { min-height: 600px; }
+
+/* Css lorsque codemirror est en mode fullscreen */
+.CodeMirror-fullscreen {
+  position: fixed !important;
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 9;
+}
+.CodeMirror-dialog {
+  position: absolute;
+  left: 0; right: 0;
+  background: white;
+  z-index: 15;
+  padding: .1em .8em;
+  overflow: hidden;
+  color: #333;
+}
+.CodeMirror-dialog-top {
+  border-bottom: 1px solid #eee;
+  top: 0;
+}
+.CodeMirror-dialog-bottom {
+  border-top: 1px solid #eee;
+  bottom: 0;
+}
+.CodeMirror-dialog input {
+  border: none;
+  outline: none;
+  background: transparent;
+  width: 20em;
+  color: inherit;
+  font-family: monospace;
+}
+.CodeMirror-dialog button {
+  font-size: 70%;
+}
+.CodeMirror-hints {
+  position: absolute;
+  z-index: 10;
+  overflow: hidden;
+  list-style: none;
+
+  margin: 0;
+  padding: 2px;
+
+  -webkit-box-shadow: 2px 3px 5px rgba(0,0,0,.2);
+  -moz-box-shadow: 2px 3px 5px rgba(0,0,0,.2);
+  box-shadow: 2px 3px 5px rgba(0,0,0,.2);
+  border-radius: 3px;
+  border: 1px solid silver;
+
+  background: white;
+  font-size: 90%;
+  font-family: monospace;
+
+  max-height: 20em;
+  overflow-y: auto;
+}
+.CodeMirror-hint {
+  margin: 0;
+  padding: 0 4px;
+  border-radius: 2px;
+  max-width: 19em;
+  overflow: hidden;
+  white-space: pre;
+  color: black;
+  cursor: pointer;
+}
+.CodeMirror-hint-active {
+  background: #08f;
+  color: white;
+}
+
+
+
+
+/* To force a static text to be in "inline" mode */
+div.statictext-inline {
+	float: left;
+}
+
+div.statictext-nopadding {
+	padding: 0;
+}
+
+/* Bootstrap customization */
+
+/* Ré-initialisation du style appliqué par bootstrap */
+fieldset > legend {
+	width: auto;
+	margin: 0;
+}
+
+/* Padding fieldset "groupe" */
+fieldset.group {
+	/*
+	Important : La valeur pour padding-left et padding-right *doit* être égale aux margins
+	des "gutters" du système de grid de bootstrap, sans quoi des décallages disgracieux
+	peuvent appraitrent
+	*/
+	padding: 15px;
+}
+
+/* Même remarque que fieldset.group concernant le padding, il doit être équivalent aux "gutters" margins d'une grid bootstrap */
+.vzn-form {
+	padding-left: 15px;
+	padding-right: 15px;
+}
+
+div.vzn-label > label {
+	font-weight: normal;
+}
+
+/* Bootstrap force les inputs à 100% de largeur, dans le cas d'un form-inline on doit mettre la width en dur */
+input.voo_date_day, input.voo_date_month { width: 4em; }
+input.voo_date_year { width: 4.5em; }
+
+input.time-field-hour, input.time-field-minute, input.time-field-second { width: 4em; }
+
+/* Plus joli sans le '/' entre les fields non ? */
+.date-fields .separator { visibility: hidden; }
+.calendar-img { padding-left: 0.5em; }
+
+.yui3-skin-sam #page .yui3-tab .yui3-tab-label,
+.yui3-skin-sam #page .yui3-tab-selected .yui3-tab-label {
+	padding: 0.7em 0.8em;
+}
+
+
+/*
+ * @see https://github.com/twbs/bootstrap/issues/9433
+ * Une maj de Bootstrap empeche les small device d'utiliser des form-inline
+ */
+.form-inline .form-control,
+.form-inline .radio,
+.form-inline .checkbox {
+  display: inline-block;
+}
+
+.form-inline .radio,
+.form-inline .checkbox {
+  padding-left: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.form-inline .radio input[type="radio"],
+.form-inline .checkbox input[type="checkbox"] {
+  float: none;
+  margin-left: 0;
+}
+
+/* Special skin for a tooltip of a field label */
+.statictext span[data-toggle='tooltip'], label span[data-toggle='tooltip'] {
+	text-decoration: none;
+	border-bottom: 1px dotted #000;
+}
+
+/* Question mark after the label */
+.statictext span[data-toggle='tooltip']:after, label span[data-toggle='tooltip']:after {
+	content: " ?";
+	font-size: 0.8em;
+	position: absolute;
+	top: -1px;
+	background-color: #88BAD1;
+	color: #F1F7F9;
+	border-radius: 3px;
+	display: inline-block;
+	padding: 0 3px;
+	font-weight: bold;
+	margin-left: 10px;
+}
+
+@media (max-width: 768px) {
+	.statictext span[data-toggle='tooltip']:after, label span[data-toggle='tooltip']:after {
+		right: -4px;
+		margin-left: 0;
+	}
+}
+
+
+/* Specific position for the question mark of a statictext */
+.statictext span[data-toggle='tooltip']:after {
+	top: -8px;
+}
+
+/* Propre au WidgetTooltip */
+.vzn-tooltip {
+	font-size: 1.2em;
+	background-color: #88BAD1;
+	color: #F1F7F9;
+	border-radius: 3px;
+	display: inline-block;
+	padding: 1px 5px;
+	font-weight: bold;
+	cursor: help;
+}
+
+/* Colorisation de la tooltip selon la couleur dominante */
+.tooltip-inner { background-color: #7BB2CC; }
+.tooltip.top .tooltip-arrow { border-top-color: #7BB2CC; }
+.tooltip.top-left .tooltip-arrow { border-top-color: #7BB2CC; }
+.tooltip.top-right .tooltip-arrow { border-top-color: #7BB2CC; }
+.tooltip.right .tooltip-arrow { border-right-color: #7BB2CC; }
+.tooltip.left .tooltip-arrow { border-left-color: #7BB2CC; }
+.tooltip.bottom .tooltip-arrow { border-bottom-color: #7BB2CC; }
+.tooltip.bottom-left .tooltip-arrow { border-bottom-color: #7BB2CC; }
+.tooltip.bottom-right .tooltip-arrow { border-bottom-color: #7BB2CC; }
+
+/* Container for buttons related to a WidgetListing in Read/Write mode */
+div.listing-rw-buttons { margin-bottom: 5px; }
+
+/* Style pour une cellule d'un DataTable marquée comme "éditable" */
+.yui-skin-sam .yui-dt tr td.yui-dt-editable {
+	background-image: url('/VooLibAssets/images/pencil.png');
+	background-position: 99% 20%;
+	background-repeat: no-repeat;
+}
+
+/******************************************************************************
+ Table
+******************************************************************************/
+
+/* Action button used to edit or delete a record */
+table button.btn-action-table {
+	background: none;
+	border: none;
+}
+
+table td.text-noRecordFound {
+	text-align: center;
+	font-style : italic;
+}
+
+/******************************************************************************
+ Widget ordered list & simple list
+******************************************************************************/
+.list-group-item:not(.active), .list-group-item:not(.active) label{
+    cursor: pointer;
+}
+.ordered-list .icon-up, .ordered-list .icon-down {
+	font-size: 28px;
+}
+
+.ordered-list label, .simple-list label {
+	padding-left: 5px;
+	display: inline;
+}
+
+.ordered-list li:not(.active):hover, .simple-list li:not(.active):hover,
+.ordered-list li.hover, .simple-list li.hover
+{
+	background-color: #d9edf7 !important;
+    color: #31708f !important;
+}
+
+
+/******************************************************************************
+ Forms
+******************************************************************************/
+.form-horizontal label.text-left {
+	text-align: left;
+}
+
+.form-horizontal label.text-right {
+	text-align: right;
+}
+
+input.field-rightMargin, select.field-rightMargin, label.label-rightMargin, div.label-rightMargin {
+	margin-right:4px;
+}
+
+div.div-inline {
+	display: inline-block;
+}
+
+.label.label-default {
+	background-color: #6EABC7;
+	color: #F1F7F9;
+}
+
+.tag-list {
+	z-index: 0;
+}
+
+/* Boite de dialogue sur la liste des utilisateurs pour l'import */
+#import-users-groupdialog-dialog {
+	top: 5%;
+}
+
+.table td.actionColumn {
+	width: 50px;
+	text-align: center;
+}
+
+.widget-stat,
+.widget-carto {
+	height: auto;
+	width: 100%;
+}
+
+.widget-stat .result .legend,
+.widget-carto .result .legend {
+	padding: 6px 8px;
+	font: 14px/16px Arial, Helvetica, sans-serif;
+	background: white;
+	background: rgba(255,255,255,0.8);
+	box-shadow: 0 0 15px rgba(0,0,0,0.2);
+	border-radius: 5px;
+	line-height: 18px;
+	color: #555;
+}
+
+.widget-stat .result .legend i,
+.widget-carto .result .legend i {
+	width: 18px;
+	height: 18px;
+	float: left;
+	margin-right: 8px;
+}
+
+.widget-stat .result .legend table, .legend td,
+.widget-carto .result .legend table, .legend td {
+	border: none;
+}
+
+.widget-stat .loading,
+.widget-carto .loading {
+	background: transparent url("/VooLibAssets/images/busy.gif") no-repeat scroll 0 0;
+	padding-left: 22px;
+	margin: 8px 0;
+}
+
+// KGR : Table bootstraper pour le widget stat
+
+.widget-stat table {
+    border-spacing: 0;
+    border-collapse: collapse;
+}
+
+.widget-stat table {
+border-collapse: collapse !important;
+}
+
+.widget-stat table {
+background-color: transparent;
+}
+
+.widget-stat table {
+width: 100%;
+max-width: 100%;
+margin-bottom: 20px;
+border: medium none;
+}
+
+.widget-stat table > thead > tr > th,
+.widget-stat table > tbody > tr > th,
+.widget-stat table > tfoot > tr > th,
+.widget-stat table > thead > tr > td,
+.widget-stat table > tbody > tr > td,
+.widget-stat table > tfoot > tr > td {
+padding: 8px;
+line-height: 1.42857143;
+vertical-align: top;
+border-color: #dddddd rgba(0, 0, 0, 0) rgba(0, 0, 0, 0);
+border-style: solid;
+border-width: 1px 0 0;
+}
+
+.widget-stat table > thead > tr > th {
+vertical-align: bottom;
+border-bottom: 2px solid #ddd;
+}
+.widget-stat table > caption + thead > tr:first-child > th,
+.widget-stat table > colgroup + thead > tr:first-child > th,
+.widget-stat table > thead:first-child > tr:first-child > th,
+.widget-stat table > caption + thead > tr:first-child > td,
+.widget-stat table > colgroup + thead > tr:first-child > td,
+.widget-stat table > thead:first-child > tr:first-child > td {
+border-top: 0;
+}
+.widget-stat table > tbody + tbody {
+border-top: 2px solid #ddd;
+}
+
+.widget-stat table > thead > tr > th,
+.widget-stat table > tbody > tr > th,
+.widget-stat table > tfoot > tr > th,
+.widget-stat table > thead > tr > td,
+.widget-stat table > tbody > tr > td,
+.widget-stat table > tfoot > tr > td {
+padding: 5px;
+}
+
+.widget-stat table > thead > tr > th[align="right"] {
+	text-align: right !important;
+}
+
+.widget-stat table > thead > tr > th[align="left"] {
+	text-align: left !important;
+}
+
+.widget-stat table > tbody > tr:nth-of-type(odd) {
+background-color: #f9f9f9;
+}
+
+table col[class*="col-"] {
+position: static;
+display: table-column;
+float: none;
+}
+table td[class*="col-"],
+table th[class*="col-"] {
+position: static;
+display: table-cell;
+float: none;
+}
+.widget-stat table > thead > tr > td.active,
+.widget-stat table > tbody > tr > td.active,
+.widget-stat table > tfoot > tr > td.active,
+.widget-stat table > thead > tr > th.active,
+.widget-stat table > tbody > tr > th.active,
+.widget-stat table > tfoot > tr > th.active,
+.widget-stat table > thead > tr.active > td,
+.widget-stat table > tbody > tr.active > td,
+.widget-stat table > tfoot > tr.active > td,
+.widget-stat table > thead > tr.active > th,
+.widget-stat table > tbody > tr.active > th,
+.widget-stat table > tfoot > tr.active > th {
+background-color: #f5f5f5;
+}
+
+.widget-stat table > thead > tr > td.success,
+.widget-stat table > tbody > tr > td.success,
+.widget-stat table > tfoot > tr > td.success,
+.widget-stat table > thead > tr > th.success,
+.widget-stat table > tbody > tr > th.success,
+.widget-stat table > tfoot > tr > th.success,
+.widget-stat table > thead > tr.success > td,
+.widget-stat table > tbody > tr.success > td,
+.widget-stat table > tfoot > tr.success > td,
+.widget-stat table > thead > tr.success > th,
+.widget-stat table > tbody > tr.success > th,
+.widget-stat table > tfoot > tr.success > th {
+background-color: #dff0d8;
+}
+
+.widget-stat table > thead > tr > td.info,
+.widget-stat table > tbody > tr > td.info,
+.widget-stat table > tfoot > tr > td.info,
+.widget-stat table > thead > tr > th.info,
+.widget-stat table > tbody > tr > th.info,
+.widget-stat table > tfoot > tr > th.info,
+.widget-stat table > thead > tr.info > td,
+.widget-stat table > tbody > tr.info > td,
+.widget-stat table > tfoot > tr.info > td,
+.widget-stat table > thead > tr.info > th,
+.widget-stat table > tbody > tr.info > th,
+.widget-stat table > tfoot > tr.info > th {
+background-color: #d9edf7;
+}
+
+.widget-stat table > thead > tr > td.warning,
+.widget-stat table > tbody > tr > td.warning,
+.widget-stat table > tfoot > tr > td.warning,
+.widget-stat table > thead > tr > th.warning,
+.widget-stat table > tbody > tr > th.warning,
+.widget-stat table > tfoot > tr > th.warning,
+.widget-stat table > thead > tr.warning > td,
+.widget-stat table > tbody > tr.warning > td,
+.widget-stat table > tfoot > tr.warning > td,
+.widget-stat table > thead > tr.warning > th,
+.widget-stat table > tbody > tr.warning > th,
+.widget-stat table > tfoot > tr.warning > th {
+background-color: #fcf8e3;
+}
+
+.widget-stat table > thead > tr > td.danger,
+.widget-stat table > tbody > tr > td.danger,
+.widget-stat table > tfoot > tr > td.danger,
+.widget-stat table > thead > tr > th.danger,
+.widget-stat table > tbody > tr > th.danger,
+.widget-stat table > tfoot > tr > th.danger,
+.widget-stat table > thead > tr.danger > td,
+.widget-stat table > tbody > tr.danger > td,
+.widget-stat table > tfoot > tr.danger > td,
+.widget-stat table > thead > tr.danger > th,
+.widget-stat table > tbody > tr.danger > th,
+.widget-stat table > tfoot > tr.danger > th {
+background-color: #f2dede;
+}
+
+.listing-buttons .btn {
+	margin-left: 2px;
+}
+
+div.listingBuilderTable ul {
+	overflow-x: auto;
+	overflow-y: hidden;
+	width: 100%;
+	white-space: nowrap;
+	padding: 0;
+}
+
+div.listingBuilderTable li.column {
+	display: inline-block;
+	margin-right: 6px;
+	vertical-align: top;
+}
+
+div.listingBuilderTable li.column .cell {
+	padding: 5px;
+	min-width: 150px;
+	float: none;
+}
+
+div.listingBuilderTable li.column .headCell {
+	background-color: #d9edf7;
+    border-color: #bce8f1;
+    color: #31708f;
+    border-radius: 4px;
+    height: 110px;
+}
+
+div.listingBuilderTable li.column .headCell .actions {
+	text-align: right;
+}
+
+div.listingBuilderTable li.column .headCell .title {
+	padding: 5px 0 10px 2px;
+	font-weight: bold;
+}
+
+div.listingBuilderTable li.column .titleCell {
+	/*
+	background-color: #d9edf7;
+    border-color: #bce8f1;
+    color: #31708f;
+	*/
+
+	margin-top: 5px;
+	height: 30px;
+	border-bottom: 1px solid #ddd;
+	padding: 8px;
+	font-weight: bold;
+}
+
+div.listingBuilderTable li.column .dataCell {
+	/*
+	background-color: #d9edf7;
+    border-color: #bce8f1;
+    color: #31708f;
+	margin-top: 5px;
+	*/
+
+	border-top: 1px solid #ddd;
+	height: 38px;
+	padding: 8px;
+	vertical-align: top;
+}
+
+div.listingBuilderTable li.column .dataCell.action {
+	text-align: center;
+}
+
+div.listingBuilderTable li.column .titleCell.hiddenCol,
+div.listingBuilderTable li.column .dataCell.hiddenCol,
+div.listingBuilderTable li.column .dataCell.hiddenCol button {
+	color: #cdcdcd;
+}
+
+div.listingBuilderTable li.column .dataCell.one {
+	background-color: #f9f9f9;
+}
+
+div.listingBuilderTable li.column .dataCell.two {
+	background-color: #fff;
+}
+
+div.listingBuilderTable li.column.ondrag {
+	opacity: 0.6;
+}
+
+.find_variables_results.row {
+	margin: 10px 0;
+}
+
+/* Panel Bootstrap */
+/* Intégration de la couleur dominante du projet au btn-primary de bootstrap */
+
+.panel-danger {
+border-color: #ebccd1;
+}
+
+.panel-warning {
+border-color: #faebcc;
+}
+
+.panel-info {
+border-color: #bce8f1;
+}
+
+.panel-success {
+border-color: #d6e9c6;
+}
+
+.panel {
+    background-color: rgba(110,171,199,0.075);
+}
+
+.bg-white{
+    background-color: white;
+}
+
+.group-transparent > .panel-body {
+    padding: 0;
+}
+
+.btn-primary {
+    background-color: #7BB2CC;
+    background-image: none;
+    border-color: #95C1D6;
+}
+
+.btn-primary:hover {
+    background-color: #6EABC7;
+    background-image: none;
+    border-color: #7BB2CC;
+}
+
+.btn-primary:focus,
+.btn-primary:active,
+.btn-primary.active {
+    background-color: #7BB2CC;
+    border-color: #7BB2CC;
+}
+
+div.vzn-row, div.cell{
+    padding-right: 0;
+}
+
+/* Overlay */
+#replaceframe-overlay {
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    z-index:1;
+}
+
+/* Barre de chargement de l'overlay */
+#replaceframe-overlay div {
+	background:url("/VooLibAssets/images/loading_bar.gif") 50% 50% no-repeat;
+	position:fixed;
+	z-index:9999;
+	top:0px;
+	left:0px;
+	height:100%;
+	width:100%;
+	cursor:wait;
+}
+
+.migration-status {
+	background:url("/VooLibAssets/images/fwk.jpg") #FFF right no-repeat;
+	border-radius: 10px;
+	border:solid #7BB2CC 1px;
+	padding:5px;
+	margin-top:15px;
+	margin-bottom:15px;
+}
+
+.listing-field-center {
+	text-align:center;
+}
+
+.alerte {
+    background: #ffd8d8 none repeat scroll 0 0;
+    border: 2px solid #B14848;
+    color: #B14848;
+    font: bold 100% Arial,Helvetica,Geneva,sans-serif;
+}
+
+.alert-alerte {
+    background-color: #ffd8d8;
+    border-color: #B14848;
+    color: #B14848;
+}
+
+.alert-notice {
+    background-color: #f1ffb9;
+    border-color: #faebcc;
+    color: #8a6d3b;
+}
+
+/*
+** Widget user group
+*/
+.widget-userGroup {
+
+}
+
+.widget-userGroup .groups-selected {
+    
+}
+
+.widget-userGroup .groups-selected div {
+    float: left;
+    margin: 6px 2px 6px 0;
+}
+
+.widget-userGroup .groups-selected .label {
+    font-size: 1.2em;
+}
+
+.modal-userGroup span.indent {
+    margin: 0 10px;
+}
+
+.modal-userGroup .list-group-item,
+.modal-userGroup .list-group-item .toggle-display {
+    cursor: pointer;
+}
+
+.modal-userGroup .list-group-item.disabled {
+    cursor: initial;
+}
+
+.widget-userGroup button {
+    margin-top: 5px;
+}
+
+.yui3-skin-sam .widget-slider .yui3-slider-x .yui3-slider-thumb {
+	width:25px;
+}
+
+.widget-slider-value {
+	float:left;
+	font-weight:bold;
+	width:20px;
+	margin-left: 10px;
+	margin-right: 10px;
+}
+

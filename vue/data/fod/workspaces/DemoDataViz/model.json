@@ -3,11 +3,17 @@
   [{"name":"myDb"}
   ]
   ,"groups":[
-    "Varsets", "Data Queries", "Plans d'exécution"
+    "Varsets", "Data Queries", "Plans d'analyse"
+  ]
+  ,"reports":
+    [
+     {"name":"Malaria evolution by Region", "order":1, "visible":true, "Source":"myDb", "group":"Reports", "collapsed":"true"}
+     ,{"name":"Vaccination coverage analysis", "order":1, "visible":true, "Source":"myDb", "group":"Reports", "collapsed":"true"}
+     ,{"name":"Poverty & weather correlation", "order":1, "visible":true, "Source":"myDb", "group":"Reports", "collapsed":"true"}
+     ,{"name":"Infectious diseases evolution ", "order":1, "visible":true, "Source":"myDb", "group":"Reports", "collapsed":"true"}
   ]
   ,"tables":
-    [
-     {"name":"Patient", "order":1, "visible":true, "Source":"myDb", "group":"Varsets", "collapsed":"true"
+     [{"name":"Patient", "order":1, "visible":true, "Source":"myDb", "group":"Varsets", "collapsed":"true"
       ,"fields": [
          {"name":"IdPatient","type":"column", "dataType":"string", "formule":"IdPatient","format":null, "visible":false, "order":0, "level":1, "table":"Patient"}
         ,{"name":"Nom","type":"column", "dataType":"string", "formule":"Nom","format":null, "visible":true, "order":1, "level":1, "table":"Patient"}
@@ -67,7 +73,7 @@
         ,{"name":"Nb Patients","type":"column", "dataType":"int", "formule":"","format":null, "visible":true, "order":6, "level":1, "table":"Visite"}
         ]
     }
-    ,{"name":"Time Series Malaria", "order":1, "visible":true, "Source":"myDb", "group":"Plans'dexécution", "collapsed":"true"
+    ,{"name":"Time Series Malaria", "order":1, "visible":true, "Source":"myDb", "group":"Plans d'Analyse", "collapsed":"true"
       ,"fields": [
          {"name":"IdPatient","type":"column", "dataType":"string", "formule":"IdPatient","format":null, "visible":false, "order":0, "level":1, "table":"Visite"}
         ,{"name":"Age Patient","type":"column", "dataType":"int", "formule":"DateDiff(Date, Now(), 'yyyy')","format":null,"visible":true, "order":1, "level":1, "table":"Visite"}

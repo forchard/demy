@@ -17,10 +17,21 @@ var addingToVisualId = null;
 var keepOptionsOpen=false;
 var currentVisualOptionIndex=-1;
 
+function get(name){
+   if(name=(new RegExp('[?&]'+encodeURIComponent(name)+'=([^&]*)')).exec(location.search))
+      return decodeURIComponent(name[1]);
+}
+
 window.onload = function() {
- storage.getWorkspaces((err, wks)=> changeWorkspace(wks[0]));
+
+ if(get("showProjects"))
+   showAvailableProjects();
+ else
+   storage.getWorkspaces((err, wks)=> changeWorkspace(wks[0]));
+ 
  d3.select("img.switch-icon").on("click", showAvailableProjects);
  d3.select("div.epilogo").on("click", toggleApps);
+ showActionButtons();
  showProperties();
 }
 
@@ -33,24 +44,6 @@ function toggleApps() {
 }
 
 function showProperties() {
-  const properties = [
-    {"title":"Filtres", "elements":[
-            {"name":"Age", "type":"object" 
-             , "properties":[
-                 {"type":"dropdownlist", "label":"Display as", "values":["Textbox", "List"], "value":"List"}
-                 ,{"type":"input", "label":"Prompt", "value":"Select Age"}
-                 ,{"type":"input", "label":"Default", "value":"max(age)"}
-                 ,{"type":"input", "label":"Source", "value":"Patient[\"age\"]"}
-                 ,{"type":"list", "label":"Connections", "values":["Table 1[\"age\#]", " Table 2[\"age\#]"]}
-             ]}
-            ,{"name":"Pays","type":"object"
-             , "properties":[
-             ]}
-            ,{"name":"Region","type":"object"
-             , "properties":[
-             ]}
-         ]}
-  ];
   const uGroup = d3.select("div.pane-properties").selectAll("div.property-grop").data(properties, d => d.title);
   uGroup.exit().remove();
   const eGroup = uGroup.enter().append("div").classed("property-group", true);
@@ -58,15 +51,33 @@ function showProperties() {
   eGroup.append("div").classed("property-group-title", true).text(d => d.title);
   eGroup.append("div").classed("property-group-content", true);
 
-  const uProperty = aGroup.selectAll("div.property-group-content > div.property-item").data(d => d.elements, d => d.name);
+  const uProperty = aGroup.selectAll("div.property-group-content").selectAll("div.property-item").data(d => d.elements, d => d.name);
   uProperty.exit().remove();
   const eProperty = uProperty.enter().append("div").classed("property-item", "true")
-  eProperty.filter(d => d.type === "object").append("div").classed("object-name", true);
+  //Object Property Name
+  const ePropertyName = eProperty.filter(d => d.type === "object").append("div").classed("object-name", true);
+  ePropertyName.append("span");
+  ePropertyName.append("img").classed("triangle-button", true)
+     .attr("src", "img/invertedTriangle.png")
+     .on("click", toggleObjectProperties);
+  //Object Value
+  const eObjectValue = eProperty.filter(d => d.type === "object" && d.renderAs).append("div").classed("object-value", true);
+  //Object Value type text
+  eObjectValue.filter(d => d.type === "object" && d.renderAs === "textbox").append("input").classed("object-value", true).property("value", d => d.value);
+  //Object Value type select
+  const uObjectValues = eObjectValue.filter(d => d.type === "object" && d.renderAs === "list").append("select").classed("object-value", true)
+           .selectAll("option").data(d => d.values);
+  const eObjectValues = uObjectValues.enter().append("option");
+  const aObjectValues = uObjectValues.merge(eObjectValues)
+           .property("value", d => d).text(d => d).property("selected", function(d) { return d === d3.select(this.parentNode).datum().value;});
+  
+
+  //Object properties
   eProperty.filter(d => d.type === "object").append("div").classed("object-properties", true);
   const aProperty = uProperty.merge(eProperty);
-  aProperty.filter(d => d.type === "object").selectAll("div.object-name").text(d => d.name);
+  aProperty.filter(d => d.type === "object").selectAll("div.object-name > span").text(d => d.name);
 
-  const uOProperty = aProperty.filter(d => d.type === "object").selectAll("div.object-properties > div.object-property").data(d => d.properties);
+  const uOProperty = aProperty.filter(d => d.type === "object").selectAll("div.object-properties").selectAll("div.object-property").data(d => d.properties);
   uOProperty.exit().remove();
   const eOProperty = uOProperty.enter().append("div").classed("object-property", true);
   const eOPropertyInput = eOProperty.filter(d => d.type === "input");
@@ -108,7 +119,29 @@ function showProperties() {
 
 
 }
+function toggleObjectProperties() {
+  const img = d3.select(this);
+  const properties = d3.select(this.parentNode.parentNode).select("div.object-properties");
+  const value =  d3.select(this.parentNode.parentNode).select("div.object-value"); 
+  if(properties.style("display") === "block") {
+     properties.style("display", null);
+     value.style("display", null);
+     img.attr("src", "img/invertedTriangle.png");
+  } else {
+     properties.style("display", "block");
+     value.style("display", "none");
+     img.attr("src", "img/triangle.png");
+  }
 
+}
+
+function showActionButtons() {
+  const uButtons = d3.select("div.actionButtons").selectAll("div.actionButton").data(["New Report", "New Query"]);
+  const eButtons = uButtons.enter().append("div").classed("actionButton", true);
+  uButtons.exit().remove();
+  const aButtons = uButtons.merge(eButtons);
+  aButtons.text(d => d);
+}
 function showAvailableProjects() {
   showModal("Select Epicraft Project", "Hello", [], ()=>{},(div)=>{ storage.getWorkspaces((err, wks)=> {drawWorkspaces(err, wks, div)});});
 }
@@ -119,7 +152,7 @@ function drawWorkspaces(err, workspaces, div) {
     update.enter()
       .append("div").classed("project-list", true)
       .property("text", d => d).text(d => d)
-      .on("click", (d) => {changeWorkspace(d);d3.select("span.workspace-name").text(d);d3.select("div.modal").style("display", null);});
+      .on("click", (d) => {changeWorkspace(d);d3.select("div.modal").style("display", null);});
     update.exit().remove();
   }
 }
@@ -127,6 +160,7 @@ function drawWorkspaces(err, workspaces, div) {
 function changeWorkspace(ws) {
   storage.getWorkspace(ws, (err, data) => {
   if(err == null);
+    d3.select("span.workspace-name").text(ws);
     applyWorkspace(data); 
   });
 }
@@ -134,6 +168,7 @@ function changeWorkspace(ws) {
 
 function applyWorkspace(data) {
  model = data;
+ setupReports();
  setupFields();
  setupGrid();
 }
@@ -144,6 +179,15 @@ function setupGrid() {
    .on("mouseover", selectCell)
    .on("mouseout", unselectCell) 
  d3.select("div.pane-resizer").call(paneDraggable);
+}
+
+function setupReports() {
+  d3.select("div.reports").selectAll("span.reports").data(["Reports"]).enter().append("span").classed("reports", true).text(d=>d);
+  const uReports = d3.select("div.reports").selectAll("div.report").data(model.reports);
+  const eReports = uReports.enter().append("div").classed("report", true);
+  uReports.exit().remove();
+  uReports.merge(eReports)
+    .text(d => d.name);
 }
 
 function setupFields() {

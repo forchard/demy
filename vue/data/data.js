@@ -45,7 +45,7 @@ var cells = [];
 for(var i=0;i<cellCount;i++) {cells.push(i); }
 var visuals = [];
 
-var visualGallery = [
+const visualGallery = [
   {"name":"Bars", "icon":"barChart.png", "alt":"Bar Chart"
     ,"fields":[
       {"name":"Title", "type":"string", "arity":"1", "group":"data"}
@@ -78,7 +78,7 @@ var visualGallery = [
     ]}
 ]
 
-var measureFunctions = [
+const measureFunctions = [
   {"name":"Sum", "types":["int", "numeric"]}
   ,{"name":"Count", "types":[]}
   ,{"name":"Distinct Count", "types":[]}
@@ -86,12 +86,50 @@ var measureFunctions = [
   ,{"name":"Other", "types":[], "isOther":true}
 ]
 
-var transformationFunctions = [
+const transformationFunctions = [
   {"name":"Other", "types":[], "isOther":true}
 ] 
 
-var actionButtons = [
-  {"name":"2DataQuery", "title":"Save as Epicraft Data Query", "icon":"dataExport.png"}
-  ,{"name":"DownloadData", "title":"Download data locally", "icon":"dataDownload.png"}
+const actionButtons = [
+  {"name":"2DataQuery", "title":"Save as Query", "icon":"dataExport.png"}
+  ,{"name":"DownloadData", "title":"Download data", "icon":"dataDownload.png"}
 ]
+
+const properties = [
+    {"title":"Filtres", "elements":[
+            {"name":"Age From", "type":"object", "renderAs":"textbox", "value":"90"
+             , "properties":[
+                 {"type":"dropdownlist", "label":"Display as", "values":["Textbox", "List"], "value":"List"}
+                 ,{"type":"input", "label":"Prompt", "value":"Age From"}
+                 ,{"type":"input", "label":"Default", "value":"min(age)"}
+                 ,{"type":"input", "label":"Source", "value":"Patient[\"age\"]"}
+                 ,{"type":"list", "label":"Connections", "values":["Table 1[\"age\"]", " Table 2[\"age\"]"]}
+             ]}
+            ,{"name":"Age To", "type":"object", "renderAs":"textbox", "value":"90"
+             , "properties":[
+                 {"type":"dropdownlist", "label":"Display as", "values":["Textbox", "List"], "value":"List"}
+                 ,{"type":"input", "label":"Prompt", "value":"Age To"}
+                 ,{"type":"input", "label":"Default", "value":"max(age)"}
+                 ,{"type":"input", "label":"Source", "value":"Patient[\"age\"]"}
+                 ,{"type":"list", "label":"Connections", "values":["Table 1[\"age\"]", " Table 2[\"age\"]"]}
+             ]}
+            ,{"name":"Pays","type":"object", "renderAs":"list", "value":"France", "values":["France", "Chili", "Espagne", "Catalogne"]
+             , "properties":[
+                 {"type":"dropdownlist", "label":"Display as", "values":["Textbox", "List"], "value":"List"}
+                 ,{"type":"input", "label":"Prompt", "value":"Country"}
+                 ,{"type":"input", "label":"Default", "value":"France"}
+                 ,{"type":"input", "label":"Source", "value":"Patient[\"country\"]"}
+                 ,{"type":"list", "label":"Connections", "values":["Table 1[\"countrycode\"]", " Table 2[\"countrycode\"]"]}
+             ]}
+            ,{"name":"Region","type":"object", "renderAs":"list" ,"value":"Bretagne", "values":[ "Ile-de-France", "Bretagne","Bourgogne-Franche-Comté","Aquitaine-Limousin-Poitou-Charentes","Normandy","Alsace-Champagne-Ardenne-Lorraine","Languedoc-Roussillon-Midi-Pyrénées","Nord-Pas-de-Calais-Picardie","Auvergne-Rhône-Alpes","Centre-Val de Loire","Corsica","French Guiana","Guadeloupe","Martinique","Mayotte","Pays de la Loire","Provence-Alpes-Côte d'Azur","Réunion"].sort()
+             , "properties":[
+                 {"type":"dropdownlist", "label":"Display as", "values":["Textbox", "List"], "value":"List"}
+                 ,{"type":"input", "label":"Prompt", "value":"Region"}
+                 ,{"type":"input", "label":"Default", "value":"Gretagne"}
+                 ,{"type":"input", "label":"Source", "value":"Patient[\"Region\"]"}
+                 ,{"type":"list", "label":"Connections", "values":["Table 1[\"regioncode\"]", " Table 2[\"regioncode\"]"]}
+             ]}
+         ]}
+  ];
+
 

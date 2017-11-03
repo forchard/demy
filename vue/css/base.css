@@ -35,6 +35,32 @@ div.logo {
 div.logo:hover {
   color:#777;
 }
+div.actionButtons {
+  margin-left:20px;
+  margin-right:20px;
+  padding:3px;
+  display:inline-block;
+  vertical-align:top;
+  float:right;
+}
+div.actionButton {
+  margin-left:5px;
+  background-color:#5cb85c;
+  color:white;
+  border-radius:3px;
+  display:inline-block;
+  cursor:pointer;
+  padding: 5px 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  margin-top:5px;
+  border:1px black solid;
+  font-family:Helvetica Neue,Helvetica,Arial,sans-serif;
+}
+div.actionButton:hover {
+  background-color:white;
+  color:gray;
+}
 div.epilogo:hover {
   background-image:url(../img/logo-white.png);
   background-color: rgba(40, 157, 195, 1);
@@ -49,11 +75,20 @@ div.object-name {
   font-size:13px;
   color:#888800
 }
+input.object-value {
+  width: calc(100% - 14px);
+}
+select.object-value {
+  width: 100%;
+}
+div.object-properties {
+  display:none;
+}
 div.property-item {
-  border:1px solid darkblue;
   border-radius:3px;
-  margin-top:3px;
+  margin-top:5px;
   padding:5px;
+  background-color:#CCDDFF;
 }
 span.property-label {
   display:inline-block;
@@ -61,7 +96,11 @@ span.property-label {
 }
 input.property-value {
   display:inline-block;
-  width:45%;
+  width:calc(50% - 14px);
+}
+select.property-values {
+  display:inline-block;
+  width:50%;
 }
 
 div.property-list-value {
@@ -101,6 +140,27 @@ img.switch-icon {
   width:20px;
   height:auto;
 }
+
+div.reports {
+  background-color: #CCDDFF;
+  border-radius: 5px;
+  padding-top:5px;
+  padding-bottom:5px;
+  margin-top:5px
+
+}
+span.reports {
+  color:#888800;
+  margin:2px;
+}
+
+div.report {
+  cursor:grab;
+  margin: 2px;
+  padding-left: 4px;
+  padding-top: 1px;
+  padding-bottom: 1px;
+}
 div.header {
 /*  margin: 10px;*/
   background:linear-gradient(rgba(40,157,195,.3),rgba(40,157,195,.2)),url(../img/header_grey.png);
@@ -139,9 +199,10 @@ div.pane-properties {
 }
 div.fields{
   vertical-align:top;
-  display: table-cell;
   width:200px;
-  /*background-color:#222222;*/
+  background-color:#CCDDFF;
+  border-radius:5px;
+  margin-top:5px;
 }
 div.fields-collapsed {
   display:none;  

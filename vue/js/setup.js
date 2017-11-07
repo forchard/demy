@@ -186,7 +186,9 @@ function setupReports() {
   const uReports = d3.select("div.reports").selectAll("div.report").data(model.reports);
   const eReports = uReports.enter().append("div").classed("report", true);
   uReports.exit().remove();
-  uReports.merge(eReports)
+  eReports.append("i").classed("fa fa-play-circle", true)
+  eReports.append("span").classed("report-label", true)
+  uReports.merge(eReports).selectAll("span.report-label")
     .text(d => d.name);
 }
 

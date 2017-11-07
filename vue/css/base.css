@@ -154,6 +154,9 @@ span.reports {
   margin:2px;
 }
 
+span.report-label {
+  margin-left:3px;
+}
 div.report {
   cursor:grab;
   margin: 2px;

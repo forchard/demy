@@ -105,6 +105,14 @@ function setFocus(node, root) {
     .text(d => d.name);
     
 }
+
+function isTextVisible(d) {
+  return (d === currentFocus && d.children && (d.children[0].children))
+   || d.parent === currentFocus && (!d.children || currentFocus.children.length > 10 || d.children[0].children) 
+   || (d.parent && d.parent.parent === currentFocus && currentFocus.children && currentFocus.children.length <= 10  && (!d.children || d.children[0].children))
+   || (d.parent && d.parent.parent && currentFocus.children && currentFocus.children.length <= 10 && d.parent.parent.parent === currentFocus)
+}
+
 function init(focus) {
   var transition = d3.transition("in")
       .duration(2000)
@@ -114,11 +122,10 @@ function init(focus) {
         var oldView = view?view:newView;
         return function(t) { move(newView, i(t), oldView); };
       });
-  transition.selectAll("text")
-    .filter(function(d) { return d.parent && ((d.parent === currentFocus && !d.children) || d.parent.parent === currentFocus || this.style.display === "inline"); })
-      .style("fill-opacity", function(d) { return (d.parent === currentFocus &&  !d.children) || d.parent.parent === currentFocus? 1 : 0; })
-      .on("start", function(d) { if ((d.parent === currentFocus &&  !d.children) || d.parent.parent === currentFocus) this.style.display = "inline"; })
-      .on("end", function(d) { if ((d.parent !== currentFocus ||  d.children) && d.parent.parent!==currentFocus) this.style.display = "none"; });
+  transition.selectAll("#wordtree text")
+    .filter(function(d) { return  isTextVisible(d) || this.style.display === "inline"; })
+    .style("fill-opacity", function(d) { return isTextVisible(d)? 1 : 0; })
+    .on("end", function(d) { if(isTextVisible(d)) this.style.display = "inline"; else this.style.display = "none"; });
 
   d3.transition("out")
       .duration(500)
@@ -220,20 +227,22 @@ function zoom(d) {
       });
   drawPhrases(d);
   transition.selectAll("text")
-    .filter(function(d) { return d.parent && ((d.parent === currentFocus && !d.children) || d.parent.parent === currentFocus || this.style.display === "inline"); })
-      .style("fill-opacity", function(d) { return (d.parent === currentFocus &&  !d.children) || d.parent.parent === currentFocus? 1 : 0; })
-      .on("start", function(d) { if ((d.parent === currentFocus &&  !d.children) || d.parent.parent === currentFocus) this.style.display = "inline"; })
-      .on("end", function(d) { if ((d.parent !== currentFocus ||  d.children) && d.parent.parent!==currentFocus) this.style.display = "none"; });
+    .filter(function(d) { return  isTextVisible(d) || this.style.display === "inline"; })
+    .style("fill-opacity", function(d) { return isTextVisible(d)? 1 : 0; })
+    .on("end", function(d) { if(isTextVisible(d)) this.style.display = "inline"; else this.style.display = "none"; });
 
 } 
 
+function isTextCentered(d) {
+ return !d.children || (!isTextVisible(d.children[0]) && (!d.children[0].children || !isTextVisible(d.children[0].children[0])));
+} 
 
 function zoomTo(v) {
   var k = diameter / v[2]; view = v;
   circle
       .attr("transform", function(d) { return "translate(" + (d.x - v[0]) * k + "," + (d.y - v[1]) * k + ")"; })
       .attr("r", function(d) { return d.r * k; });
-  nodeText.attr("transform", function(d) { return "translate(" + (d.x - v[0]) * k + "," + (d.y - v[1]) * k + ")"; });
+  nodeText.attr("transform", function(d) { return "translate(" + (d.x - v[0]) * k + "," + (d.y - v[1] - (isTextCentered(d)?0:d.r*0.8)) * k + ")"; });
 }
 
 function move(v, t, oldV) {
@@ -243,7 +252,12 @@ function move(v, t, oldV) {
       .attr("transform", function(d) { return "translate(" + d3.interpolateNumber((d.from.x - oldV[0]) * oldK, (d.x - v[0]) * k)(t) + "," + d3.interpolateNumber((d.from.y - oldV[1]) * oldK, (d.y - v[1]) * k)(t) + ")"; })
       .attr("r", function(d) { return d3.interpolateNumber(d.from.r * oldK , d.r * k)(t); });
   nodeText
-      .attr("transform", function(d) { return "translate(" + d3.interpolateNumber((d.from.x - oldV[0]) * oldK, (d.x - v[0]) * k)(t) + "," + d3.interpolateNumber((d.from.y - oldV[1]) * oldK, (d.y - v[1]) * k)(t) + ")"; })
+      .attr("transform"
+       , function(d) { 
+          return "translate(" 
+             + d3.interpolateNumber((d.from.x - oldV[0]) * oldK, (d.x - v[0]) * k)(t) + "," 
+             + d3.interpolateNumber((d.from.y - oldV[1] - (isTextCentered(d)?0:d.from.r*0.8)) * oldK, (d.y - v[1] - (isTextCentered(d)?0:d.r*0.8)) * k)(t) 
+       + ")"; })
 }
 
 function leave(v, t) {
@@ -325,8 +339,8 @@ function render() {
   }
   else {
     g = svg.select("g.circle").attr("transform", "translate(" + diameter / 2 + "," + diameter / 2 + ")");
-    gText = svg.select("g.circle").attr("transform", "translate(" + diameter / 2 + "," + diameter / 2 + ")");
-    gAction = svg.select("g.circle").attr("transform", "translate(" + diameter / 2 + "," + diameter / 2 + ")");
+    gText = svg.select("g.text").attr("transform", "translate(" + diameter / 2 + "," + diameter / 2 + ")");
+    gAction = svg.select("g.action").attr("transform", "translate(" + diameter / 2 + "," + diameter / 2 + ")");
 
     pack = d3.pack()
       .size([diameter - margin, diameter - margin])

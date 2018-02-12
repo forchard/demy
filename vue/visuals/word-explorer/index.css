@@ -36,9 +36,10 @@ div.in-filter {
 }
 
 .label {
-  font: 11px "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font: bold 12px "Helvetica Neue", Helvetica, Arial, sans-serif;
   text-anchor: middle;
-  text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff, 0 -1px 0 #fff;
+  text-shadow: 0 2px 2px lightgray, 2px 0 2px lightgray, -2px 0 2px lightgray, 0 -2px 2px lightgray;
+  fill:#222222
 }
 
 .label,

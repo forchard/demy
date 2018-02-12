@@ -18,10 +18,13 @@
          {"name":"IdPatient","type":"column", "dataType":"string", "formule":"IdPatient","format":null, "visible":false, "order":0, "level":1, "table":"Patient"}
         ,{"name":"Nom","type":"column", "dataType":"string", "formule":"Nom","format":null, "visible":true, "order":1, "level":1, "table":"Patient"}
         ,{"name":"Prenom","type":"column", "dataType":"string", "formule":"Prenom","format":null, "visible":true, "order":2, "level":1, "table":"Patient"}
-        ,{"name":"Date Naissance","type":"column", "dataType":"date", "formule":"BirthDate","format":null,"visible":true, "order":3, "level":1, "table":"Patient"}
-        ,{"name":"Date Naissance.Année","type":"column", "dataType":"int", "formule":"GetYear(BirthDate)","format":null,"visible":true, "order":4, "level":2, "table":"Patient"}
-        ,{"name":"Date Naissance.Mois","type":"column","dataType":"string","formule":"Format(BirthDate, 'yyyyMMM')","format":null,"visible":true,"order":5,"level":2,"orderby":"Format(Date, 'yyyyMM')","table":"Patient"}
-        ,{"name":"Date Naissance.Jour","type":"column", "dataType":"int", "formule":"GetDay(BirthDate)","format":null,"visible":true, "order":6, "level":2,"table":"Patient"}
+        ,{"name":"Convocation","type":"column", "dataType":"string", "formule":"Convocation","format":null, "visible":true, "order":3, "level":1, "table":"Patient"}
+        ,{"name":"Convocation-code","type":"column", "dataType":"string", "formule":"Convocation-code","format":null, "visible":true, "order":4, "level":2, "table":"Patient"}
+        ,{"name":"Convocation-libellé","type":"column", "dataType":"string", "formule":"Convocation-libellé","format":null, "visible":true, "order":5, "level":2, "table":"Patient"}
+        ,{"name":"Date Naissance","type":"column", "dataType":"date", "formule":"BirthDate","format":null,"visible":true, "order":6, "level":1, "table":"Patient"}
+        ,{"name":"Date Naissance.Année","type":"column", "dataType":"int", "formule":"GetYear(BirthDate)","format":null,"visible":true, "order":7, "level":2, "table":"Patient"}
+        ,{"name":"Date Naissance.Mois","type":"column","dataType":"string","formule":"Format(BirthDate, 'yyyyMMM')","format":null,"visible":true,"order":8,"level":2,"orderby":"Format(Date, 'yyyyMM')","table":"Patient"}
+        ,{"name":"Date Naissance.Jour","type":"column", "dataType":"int", "formule":"GetDay(BirthDate)","format":null,"visible":true, "order":9, "level":2,"table":"Patient"}
         ]
      }
     ,{"name":"Pays", "order":2, "visible":true, "Source":"myDb", "group":"Varsets", "collapsed":"true"
@@ -75,9 +78,10 @@
     }
     ,{"name":"Time Series Malaria", "order":1, "visible":true, "Source":"myDb", "group":"Plans d'Analyse", "collapsed":"true"
       ,"fields": [
-         {"name":"IdPatient","type":"column", "dataType":"string", "formule":"IdPatient","format":null, "visible":false, "order":0, "level":1, "table":"Visite"}
-        ,{"name":"Age Patient","type":"column", "dataType":"int", "formule":"DateDiff(Date, Now(), 'yyyy')","format":null,"visible":true, "order":1, "level":1, "table":"Visite"}
-        ,{"name":"Date","type":"column", "dataType":"date", "formule":"Date","format":null,"visible":true, "order":2, "level":1, "table":"Visite"}
+         {"name":"Date","type":"column", "dataType":"date", "formule":"IdPatient","format":null, "visible":false, "order":0, "level":1, "table":"Visite"}
+        ,{"name":"Nb de cas","type":"column", "dataType":"int", "formule":"DateDiff(Date, Now(), 'yyyy')","format":null,"visible":true, "order":1, "level":1, "table":"Visite"}
+        ,{"name":"Baseline","type":"column", "dataType":"int", "formule":"Date","format":null,"visible":true, "order":2, "level":1, "table":"Visite"}
+        ,{"name":"Alertes","type":"column", "dataType":"int", "formule":"Date","format":null,"visible":true, "order":3, "level":1, "table":"Visite"}
         ]
     }
   ]

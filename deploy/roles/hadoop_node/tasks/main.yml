@@ -75,7 +75,7 @@
     name: "{{ item }}"
     update_cache: yes
     cache_valid_time: 300
-  with_items: [build-essential, g++, autoconf, automake, libtool, cmake, zlib1g-dev, pkg-config, libssl-dev, xmlstarlet, git, npm, libfontconfig,pandoc, libgdal-dev, libgeos-dev, libproj-dev, proj-data, locales, curl ]
+  with_items: [build-essential, g++, autoconf, automake, libtool, cmake, zlib1g-dev, pkg-config, libssl-dev, xmlstarlet, git, npm, libfontconfig,pandoc, libgdal-dev, libgeos-dev, libproj-dev, proj-data, locales, curl, jq ]
   notify: [ set_npm_proxy, set_cran_mirror ]
 - name: install R packages for Spark
   tags: packages

@@ -13,7 +13,7 @@ java_package: openjdk-8-jdk
 java_package_spark: openjdk-8-jdk
 java_default: java-1.8.0-openjdk-amd64
 protobuf_ver: 2.5.0
-hadoopusers: [hadoop, spark, hive, hdfs,yarn, mapred]
+hadoopusers: [hadoop, spark, hive, hdfs, yarn, mapred]
 crypted_disk: space
 
 #Hadoop
@@ -65,6 +65,7 @@ zeppelin_shiro_config:
 - [users,"stage=","stage={{lookup('keyring', 'epi-servers zeppelin_stage_pass')}},contributor"]
 - [users,"jp=","jp={{lookup('keyring', 'epi-servers zeppelin_jp_pass')}},contributor"]
 - [users,"thomas=","thomas={{lookup('keyring', 'epi-servers zeppelin_thomas_pass')}},contributor"]
+- [users,"pascal=","pascal={{lookup('keyring', 'epi-servers pascal')}},contributor"]
 - [main,"shiro.loginUrl =", "shiro.loginUrl = /api/login"]
 - [main,"securityManager.sessionManager.globalSessionTimeout =", "securityManager.sessionManager.globalSessionTimeout = {{ 1000 * 3600 * 24 }}"]
 - [main,"securityManager.sessionManager =", "securityManager.sessionManager = $sessionManager"]
@@ -75,6 +76,8 @@ zeppelin_shiro_config:
 - [urls,"/api/interpreter/\\*\\* =", "/api/interpreter/** = authc, roles[admin]"]
 - [urls,"/api/configurations/\\*\\* =", "/api/configurations/** = authc, roles[admin]"]
 - [urls,"/api/credential/\\*\\* =", "/api/credential/** = authc, roles[admin]"]
+zeppelin_maven_repository: "http://central.maven.org/maven2/"
+zeppelin_spark_dependencies: ["org.jsoup:jsoup:1.11.2"]
 
 #Head Node
 host_keys_to_insert: []

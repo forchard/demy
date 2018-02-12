@@ -379,6 +379,29 @@
   - {var: "ZEPPELIN_SPARK_MAXRESULT", value: "1500" }
   - {var: "SPARK_SUBMIT_OPTIONS", value: "\"--executor-cores {{ zeppelin_executor_cores }} --num-executors 0 --executor-memory {{ zeppelin_executor_memory_mb }}m\"" }
   notify: restart zeppelin
+- name : zeppelin interpreter repo
+  tags: install_zeppelin
+  become_user: spark
+  shell: |
+    jq '.interpreterRepositories = [.interpreterRepositories[] | if (.id == "demy-proxy") then null else . end | select(. != null)]+[{"id": "demy-proxy","type": "default","url": "{{ zeppelin_maven_repository }}", "releasePolicy": {"enabled": true,"updatePolicy": "daily","checksumPolicy": "warn" }, "snapshotPolicy": {"enabled": true,"updatePolicy": "daily","checksumPolicy": "warn"},"proxy": {"type": "HTTP","host": "{{ proxy_host  }}","port": {{ proxy_port }} } }]' "{{ zeppelin_home }}/conf/interpreter.json" > "{{ zeppelin_home }}/conf/interpreter.json.1"
+
+    if cmp -s "{{ zeppelin_home }}/conf/interpreter.json.1" "{{ zeppelin_home }}/conf/interpreter.json"; then echo "NO-CHANGE"; else cp "{{ zeppelin_home }}/conf/interpreter.json.1" "{{ zeppelin_home }}/conf/interpreter.json"; echo "CHANGED"; fi  
+  register: out
+  changed_when: not out.stdout.startswith('NO-CHANGE')
+  notify: restart zeppelin
+- name : zeppelin spark dependencies
+  tags: install_zeppelin
+  become_user: spark
+  shell: |
+    quotedid=`jq '.interpreterSettings[] | select(.name == "spark") |.id' "{{ zeppelin_home }}/conf/interpreter.json"`
+    sparkid="${quotedid%\"}"
+    sparkid="${sparkid#\"}"
+    jq 'setpath(["interpreterSettings", "'$sparkid'", "dependencies"];[{"groupArtifactVersion": "{{ zeppelin_spark_dependencies | join(' ","local": false},{"groupArtifactVersion": "') }}","local": false}])' "{{ zeppelin_home }}/conf/interpreter.json" > "{{ zeppelin_home }}/conf/interpreter.json.1"
+
+    if cmp -s "{{ zeppelin_home }}/conf/interpreter.json.1" "{{ zeppelin_home }}/conf/interpreter.json"; then echo "NO-CHANGE"; else cp "{{ zeppelin_home }}/conf/interpreter.json.1" "{{ zeppelin_home }}/conf/interpreter.json"; echo "CHANGED"; fi  
+  register: out
+  changed_when: not out.stdout.startswith('NO-CHANGE')
+  notify: restart zeppelin
 - name: zeppelin service installed
   tags: install_zeppelin
   template:

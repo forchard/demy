@@ -1,13 +1,13 @@
 ---
 - name: Users on head node & register worker hosts
-  hosts: namenode 
+  hosts: [namenode, spark_edge] 
   gather_facts: false
   become: true
   roles: 
   - ssh2nodes 
   tasks:
 - name: worker nodes users & passwordless ssh
-  hosts: workernodes
+  hosts: [workernodes, namenode]
   gather_facts: false
   become: true
   roles: 

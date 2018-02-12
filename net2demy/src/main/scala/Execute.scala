@@ -37,6 +37,10 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 import org.apache.http.entity.StringEntity;
 
+import org.jsoup.Jsoup
+import org.jsoup.nodes.Element
+
+
 import demy.geo.GeoManager
 
 object Execute {
@@ -58,17 +62,87 @@ object Execute {
     val url2get = spark.read.json("hdfs:///data/source2demy/web2demy/links-to-import.json")
     url2get.collect.foreach(row => {
       val check = row.getAs[String]("check")
-      val dest = row.getAs[String]("dest")
+      val action_type = row.getAs[String]("type")
+      val conf_dest = row.getAs[String]("dest")
       val name = row.getAs[String]("name")
+      val active = row.getAs[Long]("active")
       val policy = row.getAs[String]("policy")
       val post = row.getAs[String]("post")
-      val raw_url = row.getAs[String]("href")
-      if(policy == "head-check") {
-        val currentFootprint = getCacheFootprint(dest, hadoopConf)
-        val remoteFootprint = getRemoteFootprint(raw_url, dest, proxyHost, proxyPort)
-        if(currentFootprint != remoteFootprint) {
-          println("Cache has changed, downloading file")
-          net2hdfs(raw_url, dest, proxyHost, proxyPort, hadoopConf)          
+      val conf_url = row.getAs[String]("href")
+      val crawling_filter = row.getAs[String]("crawling-filter")
+      val crawling_matching = row.getAs[String]("crawling-matching")
+      val crawling_contentType = row.getAs[String]("crawling-contentType")
+      val crawling_keep_after = row.getAs[String]("crawling-keep-after")
+      val crawling_deflate = row.getAs[String]("crawling-deflate")=="true"
+
+      val links = 
+           if(active > 0 && action_type == "direct-download") Map((conf_url, conf_dest))
+           else if(active > 0){
+             println(s"About to crawl $name")
+             val filter = crawling_filter.r
+             val matching = crawling_matching.r
+             val contentType = crawling_contentType.r
+             val startUrl = conf_url 
+
+             val toVisit = scala.collection.mutable.Set(startUrl)
+             val toDownload = scala.collection.mutable.Set[String]()
+             val visited = scala.collection.mutable.Set[String]()
+             if(toVisit.size > 0) println(s"Going to visit: ${toVisit.head}")
+             while(toVisit.size > 0) {
+                 val url = toVisit.head
+                 if(!visited(url)) {
+                     val resp = Jsoup.connect(url).proxy(proxyHost, proxyPort).timeout(10*1000).ignoreContentType(true).userAgent("Mozilla").execute();
+                     //println(s"${resp.contentType()} ${resp.statusCode()}: ${resp.statusMessage()}")
+                     val foundUrl = (contentType.findFirstIn(resp.contentType()) match {case Some(s) => Some(resp.parse()) case _ => None}).toList
+                         .flatMap(doc => doc.select("a").toArray)
+                         .flatMap(a => a match { case e:Element => Some(e.absUrl("href")) case _ => None })
+                         .filter(a => !visited(a))
+                         .flatMap(a => filter.findFirstIn(a) match { case Some(s) => Some(a) case _ =>None })
+                         .toSet
+                     toDownload ++= foundUrl.flatMap(a => matching.findFirstIn(a) match { case Some(s) => Some(a) case _ =>None })
+                     toVisit ++= (foundUrl) //&~ toDownload) 
+                 }
+                 toVisit -= url
+                 visited += url
+                 println(s"Visited: ${visited.size} ToVisit: ${toVisit.size} ToDownLoad: ${toDownload.size}")
+             }
+             toDownload.map(p => (p, p.replace(conf_url, conf_dest) 
+                                     match { 
+                                       case s => "\\.zip$|\\.7z$|\\.tar$\\.gz|.bz2$".r.findFirstIn(s) 
+                                        match { 
+                                         case Some(ext) => s.slice(0, s.size - (if(crawling_deflate) ext.size else 0))
+                                         case None => s
+                                        }
+                                      }
+                           )).toMap
+           }
+           else {
+              println(s"About to download $name")
+              Map[String, String]()
+           }
+      links.foreach(p => p match { case (raw_url, dest) => {
+        var downloaded = false
+        var remoteFootprint=""
+          if(policy == "head-check") {
+          val currentFootprint = getCacheFootprint(dest, hadoopConf)
+          val remoteFootprint = getRemoteFootprint(raw_url, dest, proxyHost, proxyPort)
+          if(currentFootprint != remoteFootprint) {
+            println("Cache has changed, downloading file")
+            net2hdfs(raw_url, dest, proxyHost, proxyPort, hadoopConf)          
+            downloaded = true
+          } else {
+            println("Cache is the same skipping download")
+          }
+        } else if(policy == "immutable") {
+          if(!fileExists(dest, hadoopConf)) {
+            println("File does no exists, downloading file")
+            net2hdfs(raw_url, dest, proxyHost, proxyPort, hadoopConf)          
+            downloaded = true
+          } else {
+            println("Cache is the same skipping download")
+          }
+        }
+        if(downloaded) {
           if(post == "json2parquet") {
             val json = spark.read.json(dest)
             json.write.mode("Overwrite").parquet(s"$dest.parquet")
@@ -122,12 +196,12 @@ object Execute {
             val filter = new GlobFilter(fileFilter)
             fs.listStatus(destPath, filter).foreach(f => {
               if(f.isFile) {
-		val in = new BufferedReader(new InputStreamReader(fs.open(f.getPath),"UTF-8"));
+        	val in = new BufferedReader(new InputStreamReader(fs.open(f.getPath),"UTF-8"));
                 val out = new BufferedWriter(new OutputStreamWriter(fs.create(f.getPath.suffix(".tmp"), true), "UTF-8"))
                 println(s"Excluding:->${contentExclude}<--")
                 Iterator.continually(in.readLine()).takeWhile(_ != null)
-		  .filter(s => !s.matches(contentExclude)) 
-		  .foreach(s => {out.write(s"$s\n")}) 
+        	  .filter(s => !s.matches(contentExclude)) 
+        	  .foreach(s => {out.write(s"$s\n")}) 
                 out.close()
                 in.close()
                 fs.delete(f.getPath)
@@ -135,16 +209,20 @@ object Execute {
               }
             })
           }
-          setCacheFootprint(dest, remoteFootprint, hadoopConf ) 
-        } else {
-          println("Cache is the same skipping download")
+          if(policy == "head-check") {
+            setCacheFootprint(dest, remoteFootprint, hadoopConf ) 
+          }
         }
-
-      }
+      }})
     })
     spark.stop
   }
 
+  def fileExists(dest:String, conf:org.apache.hadoop.conf.Configuration):Boolean = {
+      val path = new Path(s"hdfs://$dest") 
+      val fs = FileSystem.get( conf )
+      return fs.exists(path)
+  }
   def getCacheFootprint(dest:String, conf:org.apache.hadoop.conf.Configuration):String = {
       val path = new Path(s"hdfs://$dest.cache") 
       //trying to get current cache

@@ -22,7 +22,7 @@ object Execute {
     val accessTokenSecret = sc.textFile("hdfs:///spark/twitter/AccessTokenSecret").collect()(0)
     val proxyHost = sc.textFile("hdfs:///spark/twitter/ProxyHost").collect()(0)
     val proxyPort = sc.textFile("hdfs:///spark/twitter/ProxyPort").collect()(0).toInt
-    val track = sc.textFile("hdfs:///spark/twitter/Track").collect()
+    val track = sql.read.option("sep", ";").csv("hdfs:///spark/twitter/Track").map(r => r.getString(0)).collect
     val langs = sc.textFile("hdfs:///spark/twitter/Language").collect()
     val buffer = Array.fill[String](3000)("")  
     val blength = buffer.length
@@ -85,8 +85,8 @@ object Execute {
         val rdd = sc.parallelize(toWrite, 1)
         var time = LocalDateTime.now;    
         val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH");
-        val fileName = s"diabetes-twitter-${time.format(formatter)}";
-        rdd.toDF.write.mode("append").format("text").option("compression", "gzip").save(s"hdfs:///data/twitter/diabetes/$fileName")
+        val fileName = s"track-twitter-${time.format(formatter)}";
+        rdd.toDF.write.mode("append").format("text").option("compression", "gzip").save(s"hdfs:///data/twitter/track/$fileName")
         println(s"Tweets written to $fileName")
       }    
       Thread.sleep(1000)

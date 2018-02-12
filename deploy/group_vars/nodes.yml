@@ -77,7 +77,7 @@ zeppelin_shiro_config:
 - [urls,"/api/configurations/\\*\\* =", "/api/configurations/** = authc, roles[admin]"]
 - [urls,"/api/credential/\\*\\* =", "/api/credential/** = authc, roles[admin]"]
 zeppelin_maven_repository: "http://central.maven.org/maven2/"
-zeppelin_spark_dependencies: ["org.jsoup:jsoup:1.11.2"]
+zeppelin_spark_dependencies: ["org.jsoup:jsoup:1.11.2", "org.apache.lucene:lucene-core:7.2.1", "org.apache.lucene:lucene-queryparser:7.2.1"]
 
 #Head Node
 host_keys_to_insert: []

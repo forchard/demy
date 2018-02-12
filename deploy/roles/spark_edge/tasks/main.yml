@@ -396,7 +396,7 @@
     quotedid=`jq '.interpreterSettings[] | select(.name == "spark") |.id' "{{ zeppelin_home }}/conf/interpreter.json"`
     sparkid="${quotedid%\"}"
     sparkid="${sparkid#\"}"
-    jq 'setpath(["interpreterSettings", "'$sparkid'", "dependencies"];[{"groupArtifactVersion": "{{ zeppelin_spark_dependencies | join(' ","local": false},{"groupArtifactVersion": "') }}","local": false}])' "{{ zeppelin_home }}/conf/interpreter.json" > "{{ zeppelin_home }}/conf/interpreter.json.1"
+    jq 'setpath(["interpreterSettings", "'$sparkid'", "dependencies"];[{"groupArtifactVersion": "{{ zeppelin_spark_dependencies | join('","local": false},{"groupArtifactVersion":"') }}","local": false}])' "{{ zeppelin_home }}/conf/interpreter.json" > "{{ zeppelin_home }}/conf/interpreter.json.1"
 
     if cmp -s "{{ zeppelin_home }}/conf/interpreter.json.1" "{{ zeppelin_home }}/conf/interpreter.json"; then echo "NO-CHANGE"; else cp "{{ zeppelin_home }}/conf/interpreter.json.1" "{{ zeppelin_home }}/conf/interpreter.json"; echo "CHANGED"; fi  
   register: out

@@ -72,13 +72,13 @@ div.in-filter {
 }
 
 .phrase-bullet {
-  background-image:url("bullet_triangle_grey.png");
+  background-image:url("../img/bullet_triangle_grey.png");
   width:20px;
   background-size: 20px 20px;
   background-repeat:no-repeat;
 }
 .td-bullet {
-  background-image:url("bullet_triangle_grey.png");
+  background-image:url("../img/bullet_triangle_grey.png");
   width:20px;
   background-size: 20px 20px;
   background-repeat:no-repeat;
@@ -99,7 +99,7 @@ th {
 }
 
 .path-part-bullet {
-  background-image:url("next.png");
+  background-image:url("../img/next.png");
   width:20px;
   background-size: 15px 15px;
   background-repeat:no-repeat;
@@ -109,3 +109,31 @@ th {
 .path-part{
   display:inline;
 }
+
+.toolbox-icon {
+  color:#8888BB;
+  cursor:pointer;
+}
+
+.toolbox-icon:hover {
+  color:#555599;
+}
+
+.category-editor {
+  display:block;
+  position:absolute;
+  background-color: #8888BB;
+  border-radius: 3px;
+  padding: 5px;
+  margin-left: 2px;
+
+}
+
+.category-editor-cell {
+  border:none;
+}
+
+.category-editor-button {
+  cursor:pointer;
+}
+

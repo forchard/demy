@@ -10,9 +10,10 @@ function WordTree() {
   this.fromPath = function(jsonPath, callback) {
     var thisWt = this
     d3.json(jsonPath, function(error, root) {
-      if(error)
+      if(error){
         alert(error)
-      else { 
+        console.log(error)
+      } else { 
         thisWt.root = root
         if(callback) callback(thisWt);
       }

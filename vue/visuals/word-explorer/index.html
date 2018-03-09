@@ -1,11 +1,15 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
-<link rel="stylesheet" type="text/css" href="d3.slider.css">
-<link rel="stylesheet" type="text/css" href="index.css">
-<script src="d3.v4.js"></script>
-<script src="d3.slider.js"></script>
-<script src="wordTree.js"></script>
+<head>
+  <link rel="stylesheet" type="text/css" href="css/d3.slider.css">
+  <link rel="stylesheet" type="text/css" href="css/index.css">
+  <link rel="stylesheet" tyoe="text/css" href="css/fontawesome-all.css">
+  <script src="js/d3.v4.js"></script>
+  <script src="js/d3.slider.js"></script>
+  <script src="js/wordTree.js"></script>
+</head>
 
+<body>
 <div class="coldiv">
   <form onsubmit="render();return false;" class="rowdiv-wrap">
   	<div class="celldiv filter"><span class="filter-tittle">Cluster Size:</span><div id="slider-size-div" class="in-filter"></div></div>
@@ -23,43 +27,42 @@
       <svg id="wordtree">
        <defs>
          <pattern id = "selected" height = "100%" width = "100%" patternContentUnits = "objectBoundingBox">
-            <image xlink:href = "selected.png" preserveAspectRatio = "none" 
+            <image xlink:href = "img/selected.png" preserveAspectRatio = "none" 
                    width = "1" height = "1"/>
          </pattern>
          <pattern id = "unselected" height = "100%" width = "100%" patternContentUnits = "objectBoundingBox">
-            <image xlink:href = "unselected.png" preserveAspectRatio = "none" 
+            <image xlink:href = "img/unselected.png" preserveAspectRatio = "none" 
                    width = "1" height = "1"/>
          </pattern>
          <pattern id = "expand" height = "100%" width = "100%" patternContentUnits = "objectBoundingBox">
-            <image xlink:href = "expand.png" preserveAspectRatio = "none" 
+            <image xlink:href = "img/expand.png" preserveAspectRatio = "none" 
                    width = "1" height = "1"/>
          </pattern>
          <pattern id = "collapse" height = "100%" width = "100%" patternContentUnits = "objectBoundingBox">
-            <image xlink:href = "collapse.png" preserveAspectRatio = "none" 
+            <image xlink:href = "img/collapse.png" preserveAspectRatio = "none" 
                    width = "1" height = "1"/>
          </pattern>
        </defs>
      </svg>
     </div>
     <div id="right-column" class="coldiv">
-      <div class="coldiv">
-        <span style="font-size:10px;cursor:pointer" onclick="if(d3.select('#charger').style('display') === 'inline') {d3.select('#charger').style('display','none')} else {d3.select('#charger').style('display','inline')}">Saufgarder/Restaurer Selection:</span><div style="display:none" id="charger"><input id="selection" value=""><img src="refresh.png" style="width:20px;height:20px" id="load" onclick="refreshSelection()"></div></div>
-        <div class="coldiv" id="selectedFrame" style="display:none">
-          <div class="celldiv"><h3>Selected Cluster</h3>
-          <div class="celldiv">
-            <table id="selectedClusterContainer">
-              <tr><th>&nbsp;</th><th>Titre</th><th>Nb Patients</th><th>Mots principales</th></tr>
-            </table>
+      <div class="rowdiv toolbox"></div>
+      <div class="coldiv" id="selectedFrame" style="display:none">
+          <div class="celldiv"><h3>Cluster Classification</h3>
+            <div class="celldiv">
+              <table id="selectedClusterContainer">
+                <tr><th>Tags</th><th>Title</th><th>#</th><th>Main words</th></tr>
+              </table>
+            </div>
           </div>
-        </div>
       </div>
       <div class="coldiv">
         <div class="celldiv"><h3>Top Phrases on Focus Cluster</h3></div>
-        <div id="phrasesContainer" class="coldiv">
-        </div>
+        <div id="phrasesContainer" class="coldiv"></div>
       </div>
     </div>
   </div>
 </div>
-<script src="index.js"></script>
+</body>
+<script src="js/index.js"></script>
 

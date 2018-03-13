@@ -200,15 +200,13 @@ function toggleSelection(d) {
     //adding missing tags if missing
     missingTags.forEach(t => clusterTags.push(t))
     clusterTags.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+    S.selectedNodes[d.data.id] = true;
   }
   else {
     //Removing test tags from cluster
     testTags.forEach(t => clusterTags.splice(clusterTags.indexOf(t), 1))
+    delete S.selectedNodes[d.data.id];
   }
-/* if(S.selectedNodes[d.data.id])
-     delete S.selectedNodes[d.data.id];
- else 
-     S.selectedNodes[d.data.id]= true;*/
  render();
 }
 
@@ -301,10 +299,18 @@ function drawSelectedClusters(tree) {
   var enterCluster = updateCluster.enter().append("tr");
   var exitCluster = updateCluster.exit();
   enterCluster.classed("cluster", true);
-  enterCluster.append("td").classed("td-tag", true).html("&nbsp;&nbsp;");
+  var tags = enterCluster.append("td").classed("td-tag", true);
   enterCluster.append("td").classed("cluster-name", true).text(d => d.name);
   enterCluster.append("td").classed("cluster-size", true).text(d => d.size);
   enterCluster.append("td").classed("cluster-topWOrds", true).text(d => d.words.join(", "));
+  
+  var allRows = updateCluster.merge(enterCluster)
+  var tagsUpd = allRows.selectAll("td.td-tag").selectAll("span.tag").data(n => S.taggedNodes[n.hierarchy.join(",")]
+                                                                     .map(tag => S.tags[tag].color)
+                                                                     .map(c => `rgb(${c[0]},${c[1]},${c[2]})`)
+                                                ,d => d)
+  var tagsEnt = tagsUpd.enter().append("span").classed("tag fas fa-square", true).style("color", d => d).style("margin","1px");
+  tagsUpd.exit().remove();
 
   exitCluster.remove();
   if(clusters.length  == 0)
@@ -406,7 +412,10 @@ function refreshTree(tree, filtersFromStore, defaultFilters) {
        (d3.select("#slider-size-div").datum().from|0)  != S.filters.size.from ||   (d3.select("#slider-size-div").datum().to|0) != S.filters.size.to
     || (d3.select("#slider-ratio-div").datum().from|0) != S.filters.ratio.from || (d3.select("#slider-ratio-div").datum().to|0) != S.filters.ratio.to 
     || (d3.select("#slider-level-div").datum().from|0) != S.filters.level.from || (d3.select("#slider-level-div").datum().to|0) != S.filters.level.to 
-    || d3.select("#filtre").property("value")!=S.filters.search)
+    || d3.select("#filtre").property("value")!=S.filters.search
+    || d3.select("#filter-tag-div").datum().items.filter(t => t.selected != S.tags[t.name].withinSearch).length > 0
+    || d3.select("#filter-tag-div").datum().noTagSelected != S.filters.tags.noTagSelected
+    )
 
   //Setting filters default values
   if(defaultFilters) {
@@ -425,6 +434,8 @@ function refreshTree(tree, filtersFromStore, defaultFilters) {
     S.filters.level.max = 10;
     S.filters.level.from = 3;
     S.filters.level.to = 6;
+
+    S.filters.tags.noTagSelected = true;
     
   }
   //Reloading from D3 datums 
@@ -436,17 +447,38 @@ function refreshTree(tree, filtersFromStore, defaultFilters) {
     S.filters.level.from = d3.select("#slider-level-div").datum().from|0;
     S.filters.level.to = d3.select("#slider-level-div").datum().to|0;
     S.filters.search = d3.select("#filtre").property("value");
+    Object.keys(S.tags).forEach(t => S.tags[t].withinSearch = d3.select("#filter-tag-div").datum().items.filter(tt => tt.name == t)[0].selected);
+    if(!S.filters.tags) S.filters.tags = {}; 
+    S.filters.tags.noTagSelected = d3.select("#filter-tag-div").datum().noTagSelected;
   }
  
+  //updating selected nodes based on selected categories
+  Object.keys(S.selectedNodes).concat([])
+     .filter(nodeId => !Boolean(S.taggedNodes[nodeId]) || S.taggedNodes[nodeId].filter(tag => S.tags[tag].withinSearch).length==0)
+     .forEach(nodeId => delete S.selectedNodes[nodeId]); 
+  Object.keys(S.taggedNodes)
+     .filter(nodeId => S.taggedNodes[nodeId].filter(tag => S.tags[tag].withinSearch).length>0) 
+     .forEach(nodeId => S.selectedNodes[nodeId] = true); 
+
   var toRender = tree.slice(tree.root, tree.root.hierarchy
                      , S.filters.level.from, S.filters.level.to, S.filters.size.from, S.filters.size.to, S.filters.ratio.from/100, S.filters.ratio.to/100, S.filters.search
-                     , Object.keys(S.expandedNodes), Object.keys(S.collapsedNodes), Object.keys(S.selectedNodes)
+                     , Object.keys(S.expandedNodes), Object.keys(S.collapsedNodes), Object.keys(S.selectedNodes), S.taggedNodes, S.tags, S.filters.tags.noTagSelected
                   ); 
   hierarchy = tree.toLeafOnlyHierarchy(toRender);
 
   d3.select("#slider-size-div").call(epislider, [S.filters.size]);
   d3.select("#slider-ratio-div").call(epislider, [S.filters.ratio]);
   d3.select("#slider-level-div").call(epislider, [S.filters.level]);
+
+  var catItems = Object.keys(S.tags).sort((a, b)=> a.toLowerCase().localeCompare(b.toLowerCase())).map(k => { return {"name":S.tags[k].name, "selected":S.tags[k].withinSearch, "color":`rgb(${S.tags[k].color[0]}, ${S.tags[k].color[1]}, ${S.tags[k].color[2]})`}});
+  var catData = {"name":"tags", "noTagSelected":S.filters.tags.noTagSelected, "items":catItems} 
+
+  if(epifilters) {
+    epifilters.refresh(d3.select("#filter-tag-div"), [catData]);
+    epifilters.render();
+  } else {
+    epifilters = new epifilter(d3.select("#filter-tag-div"), [catData]);
+  }
   renderTree(hierarchy);
 }
 
@@ -483,9 +515,6 @@ function toggleCategoryEditor() {
   renderCategories(true)
 }
 function renderCategories(toggle) {
-
-  var rect = d3.select("div.toolbox span.brush-button").node().getBoundingClientRect();
-  
   //Category Editor 
   var updCatEd = d3.select("div.toolbox").selectAll("div.category-editor").data([1])
   var entCatEd = updCatEd.enter().append("div").classed("category-editor", true);
@@ -495,13 +524,14 @@ function renderCategories(toggle) {
     catEd.style("display", "none")
   }
   else {
+    var rect = d3.select("div.toolbox span.brush-button").node().getBoundingClientRect();
     catEd
-     .style("top", rect.bottom+"px")
-     .style("left", rect.left+"px")
+     .style("top", (rect.bottom+ window.scrollY)+"px")
+     .style("left", (rect.left+ window.scrollX)+"px")
      .style("display", "block")
 
     var cats = Object.keys(S.tags).map(s => S.tags[s])
-    cats.push({"name":"","default_on_click":false,"default_on_select":false,"color":[128, 128, 0], "temp":true});
+    cats.push({"name":"","default_on_click":false,"default_on_select":false,"color":randomColor(), "temp":true});
     var rowUpd = catEd.select("table").selectAll("tr.category-row").data(cats, c => c.name);
     var rowEnt = rowUpd.enter().append("tr").classed("category-row", true).attr("name", d => d.name);
     var rowEx = rowUpd.exit().remove();
@@ -525,6 +555,18 @@ function renderCategories(toggle) {
   }
 }
 
+var lastRandom = null;
+function randomColor() {
+  var r = Math.floor(Math.random() * Math.floor(8)) * 16;
+  var g = Math.floor(Math.random() * Math.floor(8)) * 16;
+  var b = Math.floor(Math.random() * Math.floor(8)) * 16;
+  if(r > g && r > b) r = r + 128;
+  if(g > r && g > b) g = g + 128;
+  if(b > g && b > r) b = b + 128;
+  lastRandom =  [r, g, b];
+  return lastRandom;
+}
+
 function categoryChanged(name, action, value) {
   //var row = d3.select(`div.category-editor table tr.category-row[name=${name}]`)
   if(action === "name" && value === "")  {
@@ -537,8 +579,9 @@ function categoryChanged(name, action, value) {
     var i = 1;
     while(S.tags[newName]) {newName = newNameBase+" "+i;i++;}
     name = newName
-    S.tags[newName] = {"name":newName,"default_on_click":false,"default_on_select":false,"color":[128, 128, 0]}
-    if(action === "name") {
+    S.tags[newName] = {"name":newName,"default_on_click":false,"default_on_select":false,"color":lastRandom,"withinSearch":true }
+    if(action === "name"){
+      render(true, false);
       renderCategories(false); 
       return;
     }
@@ -564,8 +607,8 @@ function categoryChanged(name, action, value) {
       delete S.tags[name];
   }
   refreshColors();
+  render(true, false);
   renderCategories(false); 
-  render();
 }
 
 function refreshColors() {
@@ -633,13 +676,14 @@ var circle = null;
 var oldPositions = {};
 var removedCircle;
 var removedText;
+var epifilters;
 var baseS = 
 {"expandedNodes":{}
   , "collapsedNodes":{}
   ,"selectedNodes":{}
   ,"tags":{
-    "selected":{"name":"selected",	"default_on_click":false, 	"default_on_select":true, "color":[128, 128, 128]}
-    ,"visited":{"name":"visited",	"default_on_click":true, 	"default_on_select":false,  "color":[128, 128, 0]}
+    "selected":{"name":"selected",	"default_on_click":false, 	"default_on_select":true, "color":[128, 128, 128], "withinSearch":true}
+    ,"visited":{"name":"visited",	"default_on_click":true, 	"default_on_select":false,  "color":[128, 128, 0], "withinSearch":true}
    }
   ,"taggedNodes":{}
   ,"filters":{
@@ -647,6 +691,7 @@ var baseS =
     ,"size":{"from":null, "to":null, "min":null, "max":null, "width":300, "height":35, "padding":15, "cursorHeight":20, "cursorWidth":7, "axisHeight":17}
     ,"ratio":{"from":null, "to":null, "min":null, "max":null, "width":300, "height":35, "padding":15, "cursorHeight":20, "cursorWidth":7, "axisHeight":17}
     ,"level":{"from":null, "to":null, "min":null, "max":null, "width":300, "height":35, "padding":15, "cursorHeight":20, "cursorWidth":7, "axisHeight":17}
+    ,"tags":{"noTagSelected":true}
   }
 }
 var S = baseS; 

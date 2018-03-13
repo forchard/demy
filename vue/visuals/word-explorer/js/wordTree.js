@@ -65,16 +65,23 @@ function WordTree() {
     ret.children = ret.children.concat(node.children.map(c => this.toFullHierarchy(c)))
     return ret;
   };
-  this.slice = function(node, hierarchy, startLevel, endLevel, minSize, maxSize, minRatio, maxRatio, wordFilter, expandedNodes, collapsedNodes, selectedNodes) {
-    var isSelected = selectedNodes.includes(node.hierarchy.join(","))
-    var isCollapsed = collapsedNodes.includes(node.hierarchy.join(","))
-    var isExpanded = expandedNodes.includes(node.hierarchy.join(","))
-    var isParentExpanded = expandedNodes.includes(node.hierarchy.slice(0, hierarchy.length-1).join(","))
+  this.slice = function(node, hierarchy, startLevel, endLevel, minSize, maxSize, minRatio, maxRatio, wordFilter, expandedNodes, collapsedNodes, selectedNodes, taggedNodes, tags, includeNoTag, parentVisible) {
+    var nodeId = node.hierarchy.join(",");
+    var parentId = node.hierarchy.slice(0, node.hierarchy.length-1).join(",");
+    var isSelected = selectedNodes.includes(nodeId)
+    var isCollapsed = collapsedNodes.includes(nodeId)
+    var isExpanded = expandedNodes.includes(nodeId)
+    var isParentExpanded = expandedNodes.includes(parentId) && parentVisible
+    var removedByTag =
+          (!Boolean(taggedNodes[nodeId]) && !includeNoTag)
+          || (Boolean(taggedNodes[nodeId]) && Object.keys(tags).filter(t => tags[t].withinSearch && taggedNodes[nodeId].includes(t)).length == 0 )
+
     var ignoreLevel = (!isParentExpanded) && 
                       ( node.hierarchy.length<startLevel 
                          || node.size > maxSize 
                          || node.density < minRatio || node.density > maxRatio 
                          || Boolean(wordFilter) && node.words.filter(p => p.match(wordFilter)).length == 0
+                         || removedByTag
                       )
     var canSplit = node.children.length>1 
                    && !isCollapsed
@@ -84,20 +91,20 @@ function WordTree() {
     //Looking for focus node
     if(node.hierarchy.length < hierarchy.length) {
       var child = node.children.filter(c => c.hierarchy.slice(0, node.hierarchy.length+1).join(",") === hierarchy.slice(0, node.hierarchy.length+1).join(","))[0]
-      return this.slice(child, hierarchy, startLevel, endLevel, minSize, maxSize, minRatio, maxRatio, wordFilter, expandedNodes, collapsedNodes, selectedNodes);
+      return this.slice(child, hierarchy, startLevel, endLevel, minSize, maxSize, minRatio, maxRatio, wordFilter, expandedNodes, collapsedNodes, selectedNodes, taggedNodes, tags, includeNoTag, false);
     }
     //focus node found
     else if(node.hierarchy.length==hierarchy.length && node.hierarchy.length<startLevel)
       return {"hierarchy":node.hierarchy, "name":node.name, "size":node.size, "words":[]
-              , "children":node.children.flatMap(c => this.slice(c, hierarchy, startLevel, endLevel, minSize, maxSize, minRatio, maxRatio, wordFilter, expandedNodes, collapsedNodes, selectedNodes))
+              , "children":node.children.flatMap(c => this.slice(c, hierarchy, startLevel, endLevel, minSize, maxSize, minRatio, maxRatio, wordFilter, expandedNodes, collapsedNodes, selectedNodes, taggedNodes, tags, includeNoTag, true))
               , "phrases":node.phrases, "childrenHidden":false, "leaf":node.children.length==0, "selected":isSelected}
-    //Ignoring nodes out of limits higher than limits but giving a chance to children 
+    //Ignoring nodes out of limits but giving a chance to children 
     else if(ignoreLevel && canSplit)
-      return node.children.flatMap(c => this.slice(c, hierarchy, startLevel, endLevel, minSize, maxSize, minRatio, maxRatio, wordFilter, expandedNodes, collapsedNodes, selectedNodes))
+      return node.children.flatMap(c => this.slice(c, hierarchy, startLevel, endLevel, minSize, maxSize, minRatio, maxRatio, wordFilter, expandedNodes, collapsedNodes, selectedNodes, taggedNodes, tags, includeNoTag, false))
     else if(!ignoreLevel)
     {
       return {"hierarchy":node.hierarchy, "name":node.name, "size":node.size, "words":node.words
-              , "children": canSplit?node.children.flatMap(c => [].concat(this.slice(c, hierarchy, startLevel, endLevel, minSize, maxSize, minRatio, maxRatio, wordFilter, expandedNodes, collapsedNodes, selectedNodes))):[]
+              , "children": canSplit?node.children.flatMap(c => [].concat(this.slice(c, hierarchy, startLevel, endLevel, minSize, maxSize, minRatio, maxRatio, wordFilter, expandedNodes, collapsedNodes, selectedNodes, taggedNodes, tags, includeNoTag, true))):[]
               , "phrases":node.phrases, "childrenHidden":(node.children.length>0 && !canSplit), "leaf":node.children.length==0, "selected":isSelected}
     }
     return [];

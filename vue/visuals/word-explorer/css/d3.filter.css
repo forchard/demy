@@ -1,0 +1,31 @@
+.epifilter-item {
+  /*font: bold 12px "Helvetica Neue", Helvetica, Arial, sans-serif;*/
+  text-anchor: middle;
+  text-shadow: 0 2px 2px lightgray, 2px 0 2px lightgray, -2px 0 2px lightgray, 0 -2px 2px lightgray;
+  fill:#222222
+}
+
+.epifilter-elem {
+  margin: 1px 2px 1px 2px;
+  padding: 2px 4px 2px 4px;
+  border-radius: 5px;
+  cursor:pointer; 
+  flex-grow: 1;
+  flex-basis: 100px;
+  flex-shrink: 1;
+}
+
+.epifilter-check {
+  margin-right:1px;
+}
+
+.epifilter-canvas {
+  display:flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  /*width:300px;*/
+}
+
+.epifilter-nocat,.epifilter-all {
+  background-color:#CCCCCC
+}

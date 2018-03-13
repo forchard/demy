@@ -72,9 +72,10 @@ function WordTree() {
     var isCollapsed = collapsedNodes.includes(nodeId)
     var isExpanded = expandedNodes.includes(nodeId)
     var isParentExpanded = expandedNodes.includes(parentId) && parentVisible
+    var isTagged = Boolean(taggedNodes[nodeId]) && taggedNodes[nodeId].length > 0
     var removedByTag =
-          (!Boolean(taggedNodes[nodeId]) && !includeNoTag)
-          || (Boolean(taggedNodes[nodeId]) && Object.keys(tags).filter(t => tags[t].withinSearch && taggedNodes[nodeId].includes(t)).length == 0 )
+          (!isTagged && !includeNoTag)
+          | ( isTagged && Object.keys(tags).filter(t => tags[t].withinSearch && taggedNodes[nodeId].includes(t)).length == 0 )
 
     var ignoreLevel = (!isParentExpanded) && 
                       ( node.hierarchy.length<startLevel 

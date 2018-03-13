@@ -505,7 +505,7 @@ function saveContext() {
 }
 
 function clearAll() {
-  S = baseS;
+  S = JSON.parse(JSON.stringify(baseS)); 
   hierarchy = null;
   currentFocus = null;
   render(false, true);
@@ -682,8 +682,9 @@ var baseS =
   , "collapsedNodes":{}
   ,"selectedNodes":{}
   ,"tags":{
-    "selected":{"name":"selected",	"default_on_click":false, 	"default_on_select":true, "color":[128, 128, 128], "withinSearch":true}
-    ,"visited":{"name":"visited",	"default_on_click":true, 	"default_on_select":false,  "color":[128, 128, 0], "withinSearch":true}
+    "selected":{"name":"selected",		"default_on_click":false, 	"default_on_select":true, "color":[30, 30, 224], "withinSearch":true}
+    ,"visited":{"name":"visited",		"default_on_click":true, 	"default_on_select":false,  "color":[0, 224, 224], "withinSearch":true}
+    ,"sans intêret":{"name":"sans intêret",	"default_on_click":true, 	"default_on_select":false,  "color":[200, 200, 200], "withinSearch":true}
    }
   ,"taggedNodes":{}
   ,"filters":{
@@ -694,16 +695,18 @@ var baseS =
     ,"tags":{"noTagSelected":true}
   }
 }
-var S = baseS; 
+var S = JSON.parse(JSON.stringify(baseS)); 
 initLayout();
 loadContext((context, error) => {
-  var loadFromStore = false
+  var loadFromStore = false;
+  var loadDefaults = true;
   if(!error) {
     S = context;
     loadFromStore  = true;
+    loadDefaults = false;
   }
   refreshColors(); 
-  render(loadFromStore, false);
+  render(loadFromStore, loadDefaults);
 });
 d3.select(window).on("resize", initLayout);
 

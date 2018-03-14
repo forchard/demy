@@ -198,13 +198,21 @@ function toggleSelection(d) {
   var missingTags = testTags.filter(t => !clusterTags.includes(t));
   if(missingTags.length>0) {
     //adding missing tags if missing
-    missingTags.forEach(t => clusterTags.push(t))
+    missingTags.forEach(t => {
+      clusterTags.push(t)
+      if(!S.taggedNodesReverse[t]) S.taggedNodesReverse[t]=[];
+      S.taggedNodesReverse[t].push(d.data.id);
+    });
     clusterTags.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
     S.selectedNodes[d.data.id] = true;
   }
   else {
     //Removing test tags from cluster
-    testTags.forEach(t => clusterTags.splice(clusterTags.indexOf(t), 1))
+    testTags.forEach(t => {
+      clusterTags.splice(clusterTags.indexOf(t), 1)
+      S.taggedNodesReverse[t].splice(S.taggedNodesReverse[t].indexOf(d.data.id), 1);
+      if(!S.taggedNodesReverse[t].length == 0) delete S.taggedNodesReverse[t];
+    });
     delete S.selectedNodes[d.data.id];
   }
  render();
@@ -609,6 +617,13 @@ function categoryChanged(name, action, value) {
       S.tags[value] = S.tags[name];
       delete S.tags[name];
       S.tags[value].name = value;
+      //renaming tagged Nodes
+      S.taggedNodesReverse[value]=S.taggedNodesReverse[name];
+      delete S.taggedNodesReverse[name];
+      S.taggedNodesReverse[value].forEach(n => {
+           S.taggedNodes[n].splice(S.taggedNodes[n].indexOf(name), 1);
+           S.taggedNodes[n].push(value);
+      });
     }
   } else if(action === "color") {
     S.tags[name].color[0] = d3.rgb(value).r
@@ -626,6 +641,16 @@ function categoryChanged(name, action, value) {
   renderCategories(false); 
 }
 
+function refreshTaggedNodesInverse() {
+  if(!S.taggedNodesReverse) S.taggedNodesReverse = {};
+  Object.keys(S.taggedNodesReverse).map(k=>k).forEach(k => delete S.taggedNodesReverse[k]) 
+  Object.keys(S.taggedNodes).forEach(nodeId => {
+    S.taggedNodes[nodeId].forEach(tag => {
+      if(!S.taggedNodesReverse[tag]) S.taggedNodesReverse[tag] = [];
+      S.taggedNodesReverse[tag].push(nodeId);
+    })
+  })
+}
 function refreshColors() {
    Object.keys(colors).forEach(k => delete colors);
    Object.keys(S.tags).map(k => S.tags[k]).forEach(t => {
@@ -702,6 +727,7 @@ var baseS =
     ,"sans intêret":{"name":"sans intêret",	"default_on_click":true, 	"default_on_select":false,  "color":[200, 200, 200], "withinSearch":true}
    }
   ,"taggedNodes":{}
+  ,"taggedNodesReverse":{}
   ,"filters":{
     "search":""
     ,"size":{"from":null, "to":null, "min":null, "max":null, "width":300, "height":35, "padding":15, "cursorHeight":20, "cursorWidth":7, "axisHeight":17}
@@ -717,6 +743,7 @@ loadContext((context, error) => {
   var loadDefaults = true;
   if(!error) {
     S = context;
+    refreshTaggedNodesInverse();
     loadFromStore  = true;
     loadDefaults = false;
   }

@@ -349,10 +349,10 @@ function initLayout() {
   var clearButton = d3.select("div.toolbox").selectAll("span.clear-button").data([1]).enter().append("span").classed("clear-button", true);
   clearButton.classed("fa-stack", true).classed("fa-1x", true)
     .classed("toolbox-icon", true).classed("celldiv", true).style("margin", "0px -1px 0px -1px")
-    .attr("title", "Clear changes")
+    .attr("title", "Reset View")
   clearButton.append("i").classed("fas fa-square fa-stack-2x", true)
   clearButton.append("i").classed("fas fa-eraser fa-stack-1x fa-inverse", true)
-  clearButton.on("click", clearAll)
+  clearButton.on("click", resetView)
   //Category Selector 
   var brushButton = d3.select("div.toolbox").selectAll("span.brush-button").data([1]).enter().append("span").classed("brush-button", true);
   brushButton.classed("fa-stack", true).classed("fa-1x", true)
@@ -392,10 +392,6 @@ function render(filtersFromStore, defaultFilters) {
   var gActionEnt = gActionUpd.enter().append("g").classed("action", true);
   gAction = gActionUpd.merge(gActionEnt).attr("transform", "translate(" + diameter / 2 + "," + diameter / 2 + ")");
 
-  //gText = svg.append("g").classed("text", true).attr("transform", "translate(" + diameter / 2 + "," + diameter / 2 + ")");
-  //gAction = svg.append("g").classed("action", true).attr("transform", "translate(" + diameter / 2 + "," + diameter / 2 + ")");
-
- 
   if(!raw)
       raw = new WordTree().fromPath("data/phrase_clusters.json", (tree) => {refreshTree(tree, filtersFromStore, defaultFilters);drawSelectedClusters(tree);});
   else {
@@ -435,6 +431,8 @@ function refreshTree(tree, filtersFromStore, defaultFilters) {
     S.filters.level.from = 3;
     S.filters.level.to = 6;
 
+    S.filters.search = "";
+
     S.filters.tags.noTagSelected = true;
     
   }
@@ -461,7 +459,8 @@ function refreshTree(tree, filtersFromStore, defaultFilters) {
      .forEach(nodeId => S.selectedNodes[nodeId] = true); 
 
   var toRender = tree.slice(tree.root, tree.root.hierarchy
-                     , S.filters.level.from, S.filters.level.to, S.filters.size.from, S.filters.size.to, S.filters.ratio.from/100, S.filters.ratio.to/100, S.filters.search
+                     , S.filters.level.from, S.filters.level.to, S.filters.size.from, S.filters.size.to, S.filters.ratio.from/100, S.filters.ratio.to/100
+                     , S.filters.search===""?null:S.filters.search
                      , Object.keys(S.expandedNodes), Object.keys(S.collapsedNodes), Object.keys(S.selectedNodes), S.taggedNodes, S.tags, S.filters.tags.noTagSelected
                   ); 
   hierarchy = tree.toLeafOnlyHierarchy(toRender);
@@ -469,6 +468,7 @@ function refreshTree(tree, filtersFromStore, defaultFilters) {
   d3.select("#slider-size-div").call(epislider, [S.filters.size]);
   d3.select("#slider-ratio-div").call(epislider, [S.filters.ratio]);
   d3.select("#slider-level-div").call(epislider, [S.filters.level]);
+  d3.select("#filtre").property("value", S.filters.search);
 
   var catItems = Object.keys(S.tags).sort((a, b)=> a.toLowerCase().localeCompare(b.toLowerCase())).map(k => { return {"name":S.tags[k].name, "selected":S.tags[k].withinSearch, "color":`rgb(${S.tags[k].color[0]}, ${S.tags[k].color[1]}, ${S.tags[k].color[2]})`}});
   var catData = {"name":"tags", "noTagSelected":S.filters.tags.noTagSelected, "items":catItems} 
@@ -504,11 +504,26 @@ function saveContext() {
   download("context.json", JSON.stringify(S));
 }
 
-function clearAll() {
-  S = JSON.parse(JSON.stringify(baseS)); 
-  hierarchy = null;
+function resetFiltersData() {
+  S.filters = JSON.parse(JSON.stringify(baseS.filters));
+}
+function resetViewData() {
+  S.expandedNodes = JSON.parse(JSON.stringify(baseS.expandedNodes));
+  S.collapsedNodes = JSON.parse(JSON.stringify(baseS.collapsedNodes));
+  S.selectedNodes = JSON.parse(JSON.stringify(baseS.selectedNodes));
   currentFocus = null;
+}
+
+function resetView() {
+  resetViewData()
+  resetFiltersData()
   render(false, true);
+}
+
+function search() {
+  resetViewData()
+  render();
+
 }
 
 function toggleCategoryEditor() {
@@ -688,7 +703,7 @@ var baseS =
    }
   ,"taggedNodes":{}
   ,"filters":{
-    "search":null
+    "search":""
     ,"size":{"from":null, "to":null, "min":null, "max":null, "width":300, "height":35, "padding":15, "cursorHeight":20, "cursorWidth":7, "axisHeight":17}
     ,"ratio":{"from":null, "to":null, "min":null, "max":null, "width":300, "height":35, "padding":15, "cursorHeight":20, "cursorWidth":7, "axisHeight":17}
     ,"level":{"from":null, "to":null, "min":null, "max":null, "width":300, "height":35, "padding":15, "cursorHeight":20, "cursorWidth":7, "axisHeight":17}

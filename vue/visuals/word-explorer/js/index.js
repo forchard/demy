@@ -752,3 +752,5 @@ loadContext((context, error) => {
 });
 d3.select(window).on("resize", initLayout);
 
+var p = new phrase();
+p.getFile();

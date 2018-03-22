@@ -60,7 +60,7 @@ function renderTree(r) {
         .on("click", function() { zoom(root); });
 
     init(currentFocus); 
-    drawPhrases(currentFocus);
+    drawPhrases(currentFocus.data.id);
 }
 
 function visibleParentOf(id, node) {
@@ -245,7 +245,7 @@ function zoom(d) {
         var i = d3.interpolateZoom(view, [currentFocus.x, currentFocus.y, currentFocus.r * 2 + margin]);
         return function(t) { zoomTo(i(t)); };
       });
-  drawPhrases(d);
+  drawPhrases(d.data.id);
   transition.selectAll("text")
     .filter(function(d) { return  isTextVisible(d) || this.style.display === "inline"; })
     .style("fill-opacity", function(d) { return isTextVisible(d)? 1 : 0; })
@@ -288,8 +288,15 @@ function leave(v, t) {
 }
 
 
-function drawPhrases(d) {
-  var updatePhrase = d3.select("#phrasesContainer").selectAll("div.phrase").data(d.data.phrases);
+function drawPhrases(clusterId, page) {
+  var pageToLoad = (typeof page == 'undefined' || page == null)?0:page; 
+  if(!phrases) {
+    phrases = new PhraseGrid("#phrasesContainer", "data/phrases/index.json", "data/phrases")
+    phrases.init(clusterId);
+  } else {
+    phrases.loadPage(clusterId, pageToLoad);
+  }
+/*  var updatePhrase = d3.select("#phrasesContainer").selectAll("div.phrase").data(d.data.phrases);
   var enterPhrase = updatePhrase.enter().append("div");
   var exitPhrase = updatePhrase.exit();
   enterPhrase.classed("rowdiv phrase", true).style("display","flex");
@@ -299,6 +306,7 @@ function drawPhrases(d) {
     .style("display", "flex").select("div.phrase-text").text(d => d+"...")
 
   exitPhrase.style("display", "none");
+*/
 }
 
 function drawSelectedClusters(tree) {
@@ -717,6 +725,7 @@ var oldPositions = {};
 var removedCircle;
 var removedText;
 var epifilters;
+var phrases;
 var baseS = 
 {"expandedNodes":{}
   , "collapsedNodes":{}
@@ -752,5 +761,3 @@ loadContext((context, error) => {
 });
 d3.select(window).on("resize", initLayout);
 
-var p = new phrase();
-p.getFile();

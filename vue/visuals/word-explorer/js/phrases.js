@@ -40,7 +40,7 @@ function PhraseGrid(selector, indexPath, phrasesPath, tagsByClusters, tags) {
      var hRowUpdate = table.selectAll("tr.phrase-header").data([1]);
      var hRowEnter = hRowUpdate.enter().append("tr").classed("phrase-header", true);
      var hRow = hRowUpdate.merge(hRowEnter);
-     var hUpdate = hRow.selectAll("td.phrase-header").data(["N°", "Tags",  "Phrase", "%match"]);
+     var hUpdate = hRow.selectAll("th.phrase-header").data(["N°", "Tags",  "Phrase", "%match"]);
      var hEnter = hUpdate.enter().append("th").classed("phrase-header", true).text(d => d);
      var header = hUpdate.merge(hEnter);
      
@@ -94,7 +94,7 @@ function PhraseGrid(selector, indexPath, phrasesPath, tagsByClusters, tags) {
         .text("...").style("display", d => Boolean(d.after)?"inline":"none").on("click", this.toggleAfterPhrase);
      trs.select("td.phrase-match").text(d => (d.similarity*100).toFixed(2)+"%");
 
-     var tagsEnt = tagsUpd.enter().append("span").classed("tag", true).classed("tag fas fa-square", true).style("margin","1px");
+     var tagsEnt = tagsUpd.enter().append("span").classed("tag fas fa-square", true).style("margin","1px");
      tagsUpd.exit().remove();
      var allTags = tagsUpd.merge(tagsEnt)
                .style("color", d => [d.color].map(c => `rgb(${c[0]},${c[1]},${c[2]})`)[0]); 

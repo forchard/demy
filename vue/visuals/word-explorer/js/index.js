@@ -291,7 +291,7 @@ function leave(v, t) {
 function drawPhrases(clusterId, page) {
   var pageToLoad = (typeof page == 'undefined' || page == null)?0:page; 
   if(!phrases) {
-    phrases = new PhraseGrid("#phrasesContainer", "data/phrases/index.json", "data/phrases", S.taggedNodes, S.tags);
+    phrases = new PhraseGrid("#phrasesContainer", "data/phrases/index.json", "data/phrases", S.taggedNodes, S.tags, S.taggedPhrases);
     phrases.init(clusterId);
   } else {
     phrases.loadPage(clusterId, pageToLoad);
@@ -738,6 +738,7 @@ var baseS =
    }
   ,"taggedNodes":{}
   ,"taggedNodesReverse":{}
+  ,"taggedPhrases":{}
   ,"filters":{
     "search":""
     ,"size":{"from":null, "to":null, "min":null, "max":null, "width":300, "height":35, "padding":15, "cursorHeight":20, "cursorWidth":7, "axisHeight":17}

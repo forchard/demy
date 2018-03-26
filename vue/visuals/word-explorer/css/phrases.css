@@ -16,3 +16,49 @@
   border-radius: 3px;
   padding: 0px 3px 0px 3px;
 }
+
+.phrase-tags {
+  cursor:pointer;
+}
+
+.phrase-tags-selected {
+  background-color:#CCCCFF;
+}
+.phrase-tags:hover {
+  background-color:#CCCCFF;
+}
+
+.tag-editor {
+  position:absolute;
+  background-color:#CCCCFF;
+  border-radius: 3px;
+  padding: 5px;
+}
+.tag-editor-label {
+  margin-left:3px;
+}
+
+.tag-editor-elem {
+  text-shadow: 0 2px 2px lightgray, 2px 0 2px lightgray, -2px 0 2px lightgray, 0 -2px 2px lightgray;
+  margin: 5px 2px 5px 2px;
+  padding: 2px 4px 2px 4px;
+  border-radius: 5px;
+  cursor:pointer; 
+
+}
+
+span.tag-editor-close {
+  cursor:pointer;
+  border-radius: 5px;
+  background-color:#668;
+  /*border:solid 1px #336;*/
+  padding:3px;
+  color:#EEF
+}
+
+div.tag-editor-close {
+  text-align:right;
+  margin-top:2px;
+  margin-bottom:2px;
+}
+

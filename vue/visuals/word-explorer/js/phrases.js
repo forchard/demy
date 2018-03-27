@@ -167,7 +167,10 @@ function PhraseGrid(selector, indexPath, phrasesPath, tagsByClusters, tags, phra
          if(typeof current[steps[i]] == "undefined") stop = true;
          else {
            if(typeof current["tags"] != "undefined") {
-             current["tags"].forEach(tag => phrase.tags[tag] = this.tags[tag]);
+             current["tags"].forEach(tag => {
+               phrase.tags[tag] = this.tags[tag];
+               thisGrid.undoOverrideIfPossible(phrase, tag); 
+             });
            }
            current = current[steps[i]];
            i = i + 1;
@@ -287,23 +290,33 @@ function PhraseGrid(selector, indexPath, phrasesPath, tagsByClusters, tags, phra
    }
 
    this.currentTagStatus = function(phrase, tag) {
-      return  ((typeof thisGrid.phraseTags[`${phrase.docId}@${phrase.phraseId}@${tag}`]==="undefined")?
+      return  ((typeof thisGrid.phraseTags[thisGrid.phraseTagKey(phrase, tag)]==="undefined")?
                               Boolean(phrase.tags[tag]):
                               !Boolean(phrase.tags[tag])
                          );
    };
 
+   this.undoOverrideIfPossible = function(phrase, tag) {
+     var currentOverride =  thisGrid.phraseTags[thisGrid.phraseTagKey(phrase, tag)];
+     if(typeof currentOverride === "boolean" && currentOverride == Boolean(phrase.tags[tag])) {
+       delete thisGrid.phraseTags[thisGrid.phraseTagKey(phrase, tag)]; 
+     }
+   };
+
    this.currentTags = function(phrase) {
       return Object.keys(thisGrid.tags).filter(tag => this.currentTagStatus(phrase, tag));
-   } 
+   }; 
    this.tagPhrase = function(tag, phrase, newChoice) {
      //Case 1: New choice is same as cluster inheritance >> we delete customisation
      if(Boolean(phrase.tags[tag]) == newChoice)
-        delete thisGrid.phraseTags[`${phrase.docId}@${phrase.phraseId}@${tag}`];
+        delete thisGrid.phraseTags[thisGrid.phraseTagKey(phrase, tag)];
      //Case 2: New Choice differs from cluster inheritabce >> we make customisation
      else
-        thisGrid.phraseTags[`${phrase.docId}@${phrase.phraseId}@${tag}`] = newChoice;
+        thisGrid.phraseTags[thisGrid.phraseTagKey(phrase, tag)] = newChoice;
      
+   };
+   this.phraseTagKey = function(phrase, tag) {
+     return `${phrase.docId}@${phrase.phraseId}@${tag}`;
    };
    
 }

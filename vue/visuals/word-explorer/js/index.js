@@ -627,12 +627,27 @@ function categoryChanged(name, action, value) {
       delete S.tags[name];
       S.tags[value].name = value;
       //renaming tagged Nodes
-      S.taggedNodesReverse[value]=S.taggedNodesReverse[name];
-      delete S.taggedNodesReverse[name];
-      S.taggedNodesReverse[value].forEach(n => {
-           S.taggedNodes[n].splice(S.taggedNodes[n].indexOf(name), 1);
-           S.taggedNodes[n].push(value);
+      if(Boolean(S.taggedNodesReverse[name])) {
+        S.taggedNodesReverse[value]=S.taggedNodesReverse[name];
+        delete S.taggedNodesReverse[name];
+        S.taggedNodesReverse[value].forEach(n => {
+          S.taggedNodes[n].splice(S.taggedNodes[n].indexOf(name), 1);
+          S.taggedNodes[n].push(value);
+        });
+      }
+      Object.keys(S.taggedPhrases).map(k => k).forEach(k => {
+        //renaming tagged phrases
+        var s1 = k.indexOf("@");
+        var s2 = k.indexOf("@", s1+1);
+        var phraseId = k.substring(0, s2); 
+        var tag = k.substring(s2+1, k.length);
+        if(tag === name) {
+          var newKey = phraseId+"@"+value;
+          S.taggedPhrases[newKey] = S.taggedPhrases[k];
+          delete S.taggedPhrases[k];
+        }
       });
+
     }
   } else if(action === "color") {
     S.tags[name].color[0] = d3.rgb(value).r
@@ -644,6 +659,25 @@ function categoryChanged(name, action, value) {
     S.tags[name].default_on_select = value    
   } else if(action === "delete") {
       delete S.tags[name];
+      //deleting tagged Nodes
+      if(Boolean(S.taggedNodesReverse[name])) {
+        S.taggedNodesReverse[name].forEach(n => {
+          S.taggedNodes[n].splice(S.taggedNodes[n].indexOf(name), 1);
+          if(S.taggedNodes[n].length == 0) delete S.taggedNodes[n];
+        });
+        delete S.taggedNodesReverse[name];
+      }
+      Object.keys(S.taggedPhrases).map(k => k).forEach(k => {
+        //deletting tagged phrases
+        var s1 = k.indexOf("@");
+        var s2 = k.indexOf("@", s1+1);
+        var phraseId = k.substring(0, s2); 
+        var tag = k.substring(s2+1, k.length);
+        if(tag === name) {
+          var newKey = phraseId+"@"+value;
+          delete S.taggedPhrases[k];
+        }
+      });
   }
   refreshColors();
   render(true, false);

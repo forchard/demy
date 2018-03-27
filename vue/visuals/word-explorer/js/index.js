@@ -755,6 +755,7 @@ loadContext((context, error) => {
   if(!error) {
     S = context;
     refreshTaggedNodesInverse();
+    if(typeof S.taggedPhrases == "undefined") S.taggedPhrases = baseS.taggedPhrases;
     loadFromStore  = true;
     loadDefaults = false;
   }

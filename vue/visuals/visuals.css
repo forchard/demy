@@ -9,7 +9,11 @@
   font: 10px sans-serif;
 }
 
-
+.line {
+  fill: none;
+  stroke: steelblue;
+  stroke-width: 2px;
+}
 
 .point {
   fill: #000;
@@ -35,5 +39,3 @@
   stroke: #ccc;
   shape-rendering: crispEdges;
 }
-
-

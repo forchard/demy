@@ -4,7 +4,7 @@ vRender["Bars"] = {};
 vRender["Scatter"] = {};
 vRender["Filter"] = {};
 vRender["Table"] = {};
-
+vRender["Lines"] = {};
 
 vRender["Scatter"].brushed = function() {
   var point = vRender["Scatter"].point;
@@ -47,7 +47,7 @@ var  width = +svg.attr("width"),
     selected;
 
 var random = Math.random,
-    data = d3.range(500).map(function() { return [random() * width, random() * height]; });
+    data = d3.range(50).map(function() { return [random() * width, random() * height]; });
 
 this.quadtree = d3.quadtree()
     .extent([[-1, -1], [width + 1, height + 1]])
@@ -77,8 +77,6 @@ svg.append("g")
     .attr("class", "brush")
     .call(brush)
     .call(brush.move, [[100, 100], [200, 200]]);
-
-
 }
 
 
@@ -129,7 +127,51 @@ g.append("g")
 
 
 }
+// Line chart
+vRender["Lines"].render = function(svg, data){
+var data = d3.range(20).map(d3.randomBates(10));
 
+var formatCount = d3.format(",.0f");
+
+var margin = {top: 10, right: 30, bottom: 30, left: 30},
+    width = +svg.attr("width") - margin.left - margin.right,
+    height = +svg.attr("height") - margin.top - margin.bottom,
+    g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")"); // issue
+
+var x = d3.scaleLinear()
+    .domain([0, data.length])
+    .rangeRound([0, width]);
+
+var y = d3.scaleLinear()
+    .domain([0, d3.max(data,function(d) { return d; })])
+    .range([height, 0]);
+
+var line = d3.line()
+    .x(function(d, i) { return x(i); })
+    .y(function(d) { return y(d); })
+    .curve(d3.curveCatmullRom.alpha(0.5));
+
+x.domain([0,data.length])
+y.domain(d3.extent(data, function(d) { return d; }))
+
+g.append("path")
+        .datum(data)
+          .attr("class", "line")
+          .attr("d", line);
+
+g.selectAll('dot')
+      .data(data)
+      .enter().append('circle')
+        .attr('r', 2)
+        .attr('cx', function(d, i) { return x(i); })
+        .attr('cy', function(d) { return y(d); });
+
+g.append("g")
+        .attr("transform", "translate(0," + height + ")")
+      .call(d3.axisBottom(x));
+g.append("g")
+      .call(d3.axisLeft(y));
+}
 vRender["Filter"].render = function(svg, data) {
   var data = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Aout", "Septembre", "Octobre", "Novembre", "Decembre"];
   var margin = {top: 10, right: 10, bottom: 10, left: 10},
@@ -144,7 +186,7 @@ vRender["Filter"].render = function(svg, data) {
         .attr('y', function(d, i) {return i*(20+1)})
         .attr('width', width)
         .attr('height', 20)
-        .style('fill', "#333333");  
+        .style('fill', "#333333");
    addTo.append('text')
         .attr("class", "area").attr("clip-path", "url(#clip)")
         .attr('x', width/2)
@@ -153,7 +195,7 @@ vRender["Filter"].render = function(svg, data) {
         .attr('fill', "#DDDDDD")
         .attr('alignment-baseline',"middle")
         .attr("text-anchor","middle")
-        .text(function (d) {return d;});  
+        .text(function (d) {return d;});
 
 
 }
@@ -175,7 +217,7 @@ vRender["Table"].render = function(svg, data) {
                ,"background-color":"#FFFFFF"
                ,"background-color-inter":"#F3F3F3"
                }
-  
+
   const margin = {top: 10, right: 10, bottom: 10, left: 10},
     width = +svg.attr("width") - margin.left - margin.right,
     height = +svg.attr("height") - margin.top - margin.bottom,

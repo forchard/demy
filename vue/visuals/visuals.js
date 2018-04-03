@@ -1,11 +1,10 @@
 var vRender = {};
 
 vRender["Bars"] = {};
-vRender["Lines"] = {}
 vRender["Scatter"] = {};
 vRender["Filter"] = {};
 vRender["Table"] = {};
-
+vRender["Lines"] = {};
 
 vRender["Scatter"].brushed = function() {
   var point = vRender["Scatter"].point;
@@ -48,7 +47,7 @@ var  width = +svg.attr("width"),
     selected;
 
 var random = Math.random,
-    data = d3.range(500).map(function() { return [random() * width, random() * height]; });
+    data = d3.range(50).map(function() { return [random() * width, random() * height]; });
 
 this.quadtree = d3.quadtree()
     .extent([[-1, -1], [width + 1, height + 1]])
@@ -78,8 +77,6 @@ svg.append("g")
     .attr("class", "brush")
     .call(brush)
     .call(brush.move, [[100, 100], [200, 200]]);
-
-
 }
 
 
@@ -130,8 +127,6 @@ g.append("g")
 
 
 }
-
-
 // Line chart
 vRender["Lines"].render = function(svg, data){
 var data = d3.range(20).map(d3.randomBates(10));
@@ -177,8 +172,6 @@ g.append("g")
 g.append("g")
       .call(d3.axisLeft(y));
 }
-
-
 vRender["Filter"].render = function(svg, data) {
   var data = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Aout", "Septembre", "Octobre", "Novembre", "Decembre"];
   var margin = {top: 10, right: 10, bottom: 10, left: 10},

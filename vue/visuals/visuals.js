@@ -6,7 +6,6 @@ vRender["Filter"] = {};
 vRender["Table"] = {};
 vRender["Lines"] = {};
 
-
 vRender["Scatter"].render = function(svg, data) {
 // var data = d3.range(100).map(d3.randomBates(10));
 var margin = {top: 10, right: 30, bottom: 30, left: 30},
@@ -48,6 +47,8 @@ g.append("g")
       .call(d3.axisLeft(y));
 
 }
+
+
 
 
 vRender["Bars"].render = function(svg, data) {

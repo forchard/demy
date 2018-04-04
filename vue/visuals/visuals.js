@@ -102,28 +102,35 @@ g.append("g")
 vRender["Lines"].render = function(svg, data){
 var data = d3.range(20).map(d3.randomBates(10));
 
-var formatCount = d3.format(",.0f");
 
-var margin = {top: 10, right: 30, bottom: 30, left: 30},
+var margin = {top: 10, right: 30, bottom: 30, left: 40},
     width = +svg.attr("width") - margin.left - margin.right,
     height = +svg.attr("height") - margin.top - margin.bottom,
-    g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")"); // issue
+    g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+var totalWidth = +svg.attr("width"); //test
+var totalHeight = +svg.attr("height");//test
 
 var x = d3.scaleLinear()
-    .domain([0, data.length])
+    .domain([0, d3.max(data,function(d,i) { return i*1000000; })])
     .rangeRound([0, width]);
 
 var y = d3.scaleLinear()
-    .domain([0, d3.max(data,function(d) { return d; })])
+    .domain(d3.extent(data,function(d) { return d; }))
     .range([height, 0]);
 
 var line = d3.line()
-    .x(function(d, i) { return x(i); })
+    .x(function(d, i) { return x(i*1000000); })
     .y(function(d) { return y(d); })
     .curve(d3.curveCatmullRom.alpha(0.5));
 
-x.domain([0,data.length])
-y.domain(d3.extent(data, function(d) { return d; }))
+
+var xAxis = d3.axisBottom(x)
+    .ticks(NbTicksX(data,width),"s")
+
+var yAxis = d3.axisLeft(y)
+    .ticks(width/30)
+
 
 g.append("path")
         .datum(data)
@@ -134,14 +141,48 @@ g.selectAll('dot')
       .data(data)
       .enter().append('circle')
         .attr('r', 2)
-        .attr('cx', function(d, i) { return x(i); })
+        .attr('cx', function(d, i) { return x(i*1000000); })
         .attr('cy', function(d) { return y(d); });
 
 g.append("g")
         .attr("transform", "translate(0," + height + ")")
-      .call(d3.axisBottom(x));
+      .call(xAxis);
 g.append("g")
-      .call(d3.axisLeft(y));
+      .call(yAxis);
+
+function NbTicksX(data, width){
+  var valMax = d3.format(".2s")(d3.max(data,function(d,i) { return i*1000000}));
+  var valMin = d3.format(".2s")(d3.min(data,function(d,i) {return i*10000}));
+  var lengthValMax = valMax.toString().length;
+  var lengthValMin = valMin.toString().length;
+  var lengthMax;
+  if (lengthValMin <= lengthValMax){
+    lengthMax = lengthValMax + 1 ;
+  }
+  if (lengthValMin <= lengthValMax){
+    lengthMax = lengthValMin + 1 ;
+  }
+  var tickSize = 6*lengthMax + 10 ;
+  var nbTick = Math.floor(width / tickSize) ;
+  console.log(nbTick)
+  return nbTick ;
+}
+function NbTicksY(width){
+  var tickSize = 6 + 10 ;
+  var nbTick = Math.round(width / tickSize) ;
+  console.log(nbTick)
+  return nbTick ;
+}
+
+// format = d3.formatPrefix(",.0", 10e3)
+
+// if valMax >= valMin
+
+// getBBox return an objet with the text area
+// text = g.selectAll('text')
+// text.each(function() {
+//       console.log(this.getBBox());
+//     });
 }
 
 vRender["Filter"].render = function(svg, data) {

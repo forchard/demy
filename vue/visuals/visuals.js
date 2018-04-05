@@ -7,6 +7,7 @@ vRender["Table"] = {};
 vRender["Lines"] = {};
 
 vRender["Scatter"].render = function(svg, data) {
+  svg.html("")
 // var data = d3.range(100).map(d3.randomBates(10));
 var margin = {top: 10, right: 30, bottom: 30, left: 30},
     width = +svg.attr("width") - margin.left - margin.right,
@@ -51,7 +52,9 @@ g.append("g")
 
 
 
-vRender["Bars"].render = function(svg, data) {
+vRender["Bars"].render = function(svg, data, properties) {
+  svg.html("")
+
 var data = d3.range(1000).map(d3.randomBates(10));
 
 var formatCount = d3.format(",.0f");
@@ -99,60 +102,101 @@ g.append("g")
 
 }
 // Line chart
-vRender["Lines"].render = function(svg, data){
-var data = d3.range(20).map(d3.randomBates(10));
+vRender["Lines"].render = function(svg, data, properties){
+  svg.html("")
 
+var data = [
+  d3.range(20).map(d3.randomBates(10))
+  ,d3.range(20).map(d3.randomBates(10))
+]
+var properties =
+  {"series_colors":["#66CDAA", "#ff7500"]
+      , "series_names":["serie 1", "serie 2"]
+      , "axis_format":"0?.2"
+      , "show_legend":true
+      , "show_labels":true
+      , "labels_format":true
+  }
 
-var margin = {top: 10, right: 30, bottom: 30, left: 40},
+var i = 0;
+var graphData = data.map(d => {
+  var ret = {"values":d, color:properties.series_colors[i],names:properties.series_names[i]}
+  i++;
+  return ret;
+})
+
+console.log(graphData)
+
+var margin = {top: 10, right: 20, bottom: 20, left: 30},
     width = +svg.attr("width") - margin.left - margin.right,
     height = +svg.attr("height") - margin.top - margin.bottom,
-    g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+    vis = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-var totalWidth = +svg.attr("width"); //test
-var totalHeight = +svg.attr("height");//test
+// var random = Math.random,
+//     data = d3.range(4).map(function() { return [random() * width, random() * height]; });
+
+max = d3.max(graphData,function(c){ return d3.max(c.values)})
+min = d3.min(graphData,function(c){ return d3.min(c.values)})
+
 
 var x = d3.scaleLinear()
-    .domain([0, d3.max(data,function(d,i) { return i*1000000; })])
+    .domain([0, graphData[0].values.length])
     .rangeRound([0, width]);
 
 var y = d3.scaleLinear()
-    .domain(d3.extent(data,function(d) { return d; }))
+    .domain([min,max])
     .range([height, 0]);
 
-var line = d3.line()
-    .x(function(d, i) { return x(i*1000000); })
+var valueline = d3.line()
+    .x(function(d, i) { return x(i); })
     .y(function(d) { return y(d); })
     .curve(d3.curveCatmullRom.alpha(0.5));
 
 
+
 var xAxis = d3.axisBottom(x)
-    .ticks(NbTicksX(data,width),"s")
+    .ticks(NbTicksX(graphData,width),"s");
 
 var yAxis = d3.axisLeft(y)
-    .ticks(width/30)
+    .ticks(Math.round(height/50));
 
+graphData.forEach(d => {
+  vis.append("path")
+          .datum(d.values)
+            .attr("class", "line")
+            .style('stroke',d.color)
+            .attr("d", valueline)
+})
+graphData.forEach((d,i) => {
+  var namesLength = d.names.length*4
 
-g.append("path")
-        .datum(data)
-          .attr("class", "line")
-          .attr("d", line);
+  var legend = vis.append('g').attr('class','legend')
+                  .attr('transform','translate(' + (width - namesLength) + ',' + i*15 + ')')
 
-g.selectAll('dot')
-      .data(data)
-      .enter().append('circle')
-        .attr('r', 2)
-        .attr('cx', function(d, i) { return x(i*1000000); })
-        .attr('cy', function(d) { return y(d); });
+      legend.append('text').text(d.names)
+        .style('fill',d.color)
+      legend.append('circle')
+        .attr('r',3)
+        .attr('cx',-6)
+        .attr('cy',-3)
+        .style('fill',d.color)
+})
+// g.selectAll('dot')
+//       .data(data)
+//       .enter().append('circle')
+//         .attr('r', 2)
+//         .attr('cx', function(d, i) { return x(i*1000000); })
+//         .attr('cy', function(d) { return y(d); });
 
-g.append("g")
+vis.append("g")
         .attr("transform", "translate(0," + height + ")")
       .call(xAxis);
-g.append("g")
+vis.append("g")
       .call(yAxis);
 
 function NbTicksX(data, width){
-  var valMax = d3.format(".2s")(d3.max(data,function(d,i) { return i*1000000}));
-  var valMin = d3.format(".2s")(d3.min(data,function(d,i) {return i*10000}));
+  var valMax = d3.format(".2s")(d3.max(data,function(d,i) { return i}));
+  var valMin = d3.format(".2s")(d3.min(data,function(d,i) {return i}));
   var lengthValMax = valMax.toString().length;
   var lengthValMin = valMin.toString().length;
   var lengthMax;
@@ -162,16 +206,9 @@ function NbTicksX(data, width){
   if (lengthValMin <= lengthValMax){
     lengthMax = lengthValMin + 1 ;
   }
-  var tickSize = 6*lengthMax + 10 ;
+  var tickSize = 6*lengthMax + 25 ;
   var nbTick = Math.floor(width / tickSize) ;
-  console.log(nbTick)
-  return nbTick ;
-}
-function NbTicksY(width){
-  var tickSize = 6 + 10 ;
-  var nbTick = Math.round(width / tickSize) ;
-  console.log(nbTick)
-  return nbTick ;
+  return nbTick<1?1:nbTick ;
 }
 
 // format = d3.formatPrefix(",.0", 10e3)

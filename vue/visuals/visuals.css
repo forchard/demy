@@ -15,6 +15,11 @@
   stroke-width: 2px;
 }
 
+.line2 {
+  fill: none;
+  stroke: red;
+  stroke-width: 2px;
+}
 
 .node {
   fill: none;

@@ -21,6 +21,16 @@
   stroke-width: 2px;
 }
 
+.tooltip {
+  position: absolute;
+  z-index: 3;
+  cursor:default;
+  pointer-events: none;
+  stroke-width: 15px;
+  stroke:black;
+  stroke-opacity:0;
+}
+
 .node {
   fill: none;
   stroke: #ccc;

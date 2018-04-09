@@ -126,8 +126,8 @@ var properties =
 
 var i = 0;
 var graphData = data.map(d => {
-  var ret = {"values":d, color:properties.series_colors[i]
-  ,names:properties.series_names[i]
+  var ret = {"values":d, "color":properties.series_colors[i]
+  ,"names":properties.series_names[i]
   ,xAxis_format:properties.xAxis_format[0]
   ,tooltip_format:properties.tooltip_format[i]}
   i++;
@@ -137,10 +137,10 @@ var graphData = data.map(d => {
 var margin = {top: 10, right: 20, bottom: 20, left: 30},
     width = +svg.attr("width") - margin.left - margin.right,
     height = +svg.attr("height") - margin.top - margin.bottom,
-    vis = svg.append("g").attr('class','lineChart').attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+    visUpd = svg.selectAll("g.lineChart").data([1]);
+var  visEnt = visUpd.enter().append("g").classed('lineChart', true),
+    vis = visUpd.merge(visEnt).attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-// var random = Math.random,
-//     data = d3.range(4).map(function() { return [random() * width, random() * height]; });
 
 var max = d3.max(graphData,function(c){ return d3.max(c.values)})
 var min = d3.min(graphData,function(c){ return d3.min(c.values)})
@@ -160,99 +160,133 @@ var valueline = d3.line()
     .y(function(d) { return y(d); })
     .curve(d3.curveCatmullRom.alpha(0.5));
 
-var xAxis = d3.axisBottom(x)
-    .ticks(NbTicksX(graphData,width),"s");
+//////////// PATH ////////////
+var pathUpd =  vis.selectAll("path.v-line-line").data(graphData)
+var pathEnt = pathUpd.enter().append("path").classed("v-line-line",true)
+          .style('stroke',d => d.color)
+          .attr("d", (d) => valueline(d.values.map(d => 0)))
 
-var yAxis = d3.axisLeft(y)
-    .ticks(Math.round(height/50));
+var path = pathUpd.merge(pathEnt).style('stroke',d => d.color)
+             .transition()
+             .duration(1000)
+             .attr("d", (d) => valueline(d.values))
 
-var line0 = d3.line()
-    .x(function(d, i) { return x(i); })
-    .y(function(d) { return y(d*0); })
-    .curve(d3.curveCatmullRom.alpha(0.5));
+pathUpd.exit().remove()
 
-graphData.forEach((d,i) => {
-  vis.append("path")
-          .datum(d.values)
-            // .attr("d",line0)
-            .attr("class", "line")
-              .style('stroke',d.color)
-            .transition()
-            .duration(1000)
-            .attr("d", valueline)
 
-  vis.selectAll('.line').exit().remove()
-})
 
+//////////// Legend ////////////
 if (width > 100 && height>100){
-  graphData.forEach((d,i) => {
+
+var legendUpd = vis.selectAll('g.v-line-legend').data(graphData)
+var legendEnt = legendUpd.enter().append('g').attr('class','v-line-legend')
 
 
-    var legend = vis.append('g').attr('class','legend')
-                    .attr('transform','translate(' + (width - namesLength*4) + ',' + i*15 + ')')
+legendEnt.append('text')
+legendEnt.append('circle')
+          .attr('r',3)
+          .attr('cx',-6)
+          .attr('cy',-3)
 
-    legend.append('text').text(d.names)
-      .style('fill', d.color)
+var legend = legendUpd.merge(legendEnt)
+      .attr('transform',(d,i) => 'translate(' + (width - namesLength*4) + ',' + i*15 + ')')
 
-    legend.append('circle')
-      .attr('r',3)
-      .attr('cx',-6)
-      .attr('cy',-3)
-      .style('fill', d.color)
-    })
+legend.select('text').text(d => d.names).style('fill', d => d.color)
+legend.select('circle').style('fill', d => d.color)
+
 }
 
+//////////// Dot on Line ////////////
+var dotUpd = vis.selectAll('g.v-line-dots').data(graphData)
+var dotEnt = dotUpd.enter().append('g').classed('v-line-dots',true)
+var dot = dotUpd.merge(dotEnt).style('fill', d => d.color)
+// data(d => d.values)
+var circUpd = dot.selectAll('circle').data(d => d.values)
+var circEnt = circUpd.enter().append('circle')
+    .attr('class','v-line-dots-dot')
+    .attr('r', 3)
+    .attr('cx', function(d, i) { return x(i); })
+    .attr('cy', height)
 
-graphData.forEach((d,i) => {
+circEnt.on("mouseover",function(d){
+    var pos = this.getBoundingClientRect()
+        , y = window.scrollY
+        , x = window.scrollX
+        , tooltip = d3.select('body').append('div')
+            .attr('class','tooltip')
 
-var circles = vis.append('g')
-        .attr('class','dot')
-        .selectAll('.dot')
-        .data(d.values)
-        .enter().append('circle')
-          .attr('class','dot')
-          .attr('r', 3)
-          .attr('cx', function(d, i) { return x(i); })
-          .attr('cy', height)
-          .style('fill',d.color);
-
-    circles.transition()
-        .duration(1000)
-          .attr('cy', function(d) { return y(d); })
-
-    circles.on("mouseover",function(d){
-          var pos = this.getBoundingClientRect()
-              , y = window.scrollY
-              , x = window.scrollX
-              , tooltip = d3.select('body').append('div')
-                  .attr('class','tooltip')
-
-            tooltip.style('left', (pos.left + x)+"px")
-            .style('top', (pos.top + y - 15)+"px")
-            .text(d3.format(".4s")(d))
+      tooltip.style('left', (pos.left + x)+"px")
+      .style('top', (pos.top + y - 15)+"px")
+      .text(d3.format(".4s")(d))
 
 
-          })
+    })
+circEnt.on("mouseout",function(d){
+      d3.selectAll('.tooltip')
+        .transition()
+        .duration(500)
+        .style('opacity',0.5)
+        .remove()
 
-      circles.on("mouseout",function(d){
-            d3.selectAll('.tooltip')
-              .transition()
-              .duration(500)
-              .style('opacity',0.5)
-              .remove()
+  })
 
-        })
+var circ = circUpd.merge(circEnt)
+    .style('fill', d => d.color)
+    .attr('cx', function(d, i) { return x(i); })
+    .transition().duration(1000)
+    .attr('cy', function(d) { return y(d); })
+
+//////////// Value on Dot ////////////
+// var valueUpd = vis.selectAll('g.v-line-values').data(graphData)
+// var valueEnt = valueUpd.enter().append('g').classed('v-line-values',true)
+// var value = valueUpd.merge(valueEnt)
+//
+// // data(d => d.values)
+// var textValueUpd = value.selectAll('text.v-line-values-text').data(d => d.values)
+// var textValueEnt =textValueUpd.enter().append('text').classed('v-line-values-text',true).style('text-anchor','middle')
+//
+// var textValue = textValueUpd.merge(textValueEnt)
+//     .text(d => d3.format(".4s")(d))
+//     .attr('x', ((d,i) =>  x(i)))
+//     .attr('y',(d => y(d)));
+//
+//
+//
+// function textValueYpos(height,data,value){
+//   var tab = []
+// console.log(value)
+//
+// if (value > height - 20){
+//   return y(value) - 10
+// }
+// if (value < 20){
+//   return y(value) + 10
+// }
+//
+// }
+//////////// xAxis ////////////
+var xAxisDef = d3.axisBottom(x)
+  .ticks(NbTicksX(graphData,width),"s");
+
+var xAxisUpd = vis.selectAll('g.v-line-xAxis').data([1])
+var xAxisEnt = xAxisUpd.enter().append('g')
+  .classed('v-line-xAxis',true)
+var xAxis = xAxisUpd.merge(xAxisEnt)
+  .transition().duration(500)
+  .attr("transform", "translate(0," + height + ")")
+  .call(xAxisDef)
 
 
-})
+//////////// yAxis ////////////
+var yAxisDef = d3.axisLeft(y)
+    .ticks(Math.round(height/50));
 
-vis.append("g")
-        .attr("transform", "translate(0," + height + ")")
-        .attr("class","xAxis")
-      .call(xAxis);
-vis.append("g")
-      .attr("class","yAxis")
-      .call(yAxis);
+var yAxisUpd = vis.selectAll('g.v-line-yAxis').data([1])
+var yAxisEnt = yAxisUpd.enter().append('g')
+  .classed('v-line-yAxis',true)
+var yAxis = yAxisUpd.merge(yAxisEnt)
+  .transition().duration(500)
+  .call(yAxisDef)
 
 
 

@@ -9,15 +9,9 @@
   font: 10px sans-serif;
 }
 
-.line {
+.v-line-line {
   fill: none;
   stroke: steelblue;
-  stroke-width: 2px;
-}
-
-.line2 {
-  fill: none;
-  stroke: red;
   stroke-width: 2px;
 }
 

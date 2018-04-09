@@ -98,14 +98,21 @@ g.append("g")
 
 
 }
-// ///////////////////////////////////////////////////////Line chart
+/////////////////////Line chart////////////////////////////
 vRender["Lines"].render = function(svg, data, properties){
+
+
+if (d3.select('svg').select("g.lineChart").empty()){
+
   svg.html("")
+
+}
 
 var data = [
   d3.range(20).map(d3.randomBates(10))
   ,d3.range(20).map(d3.randomBates(10))
 ]
+
 var properties =
   {"series_colors":["#66CDAA", "#ff7500"]
       , "series_names":["serie 1", "serie 2"]
@@ -126,12 +133,11 @@ var graphData = data.map(d => {
   i++;
   return ret;
 })
-console.log(graphData)
 
 var margin = {top: 10, right: 20, bottom: 20, left: 30},
     width = +svg.attr("width") - margin.left - margin.right,
     height = +svg.attr("height") - margin.top - margin.bottom,
-    vis = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+    vis = svg.append("g").attr('class','lineChart').attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
 // var random = Math.random,
 //     data = d3.range(4).map(function() { return [random() * width, random() * height]; });
@@ -165,15 +171,17 @@ var line0 = d3.line()
     .y(function(d) { return y(d*0); })
     .curve(d3.curveCatmullRom.alpha(0.5));
 
-graphData.forEach(d => {
+graphData.forEach((d,i) => {
   vis.append("path")
           .datum(d.values)
-            .attr("d",line0)
+            // .attr("d",line0)
             .attr("class", "line")
-            .style('stroke',d.color)
+              .style('stroke',d.color)
             .transition()
             .duration(1000)
             .attr("d", valueline)
+
+  vis.selectAll('.line').exit().remove()
 })
 
 if (width > 100 && height>100){
@@ -218,7 +226,7 @@ var circles = vis.append('g')
               , x = window.scrollX
               , tooltip = d3.select('body').append('div')
                   .attr('class','tooltip')
-                  
+
             tooltip.style('left', (pos.left + x)+"px")
             .style('top', (pos.top + y - 15)+"px")
             .text(d3.format(".4s")(d))
@@ -229,7 +237,7 @@ var circles = vis.append('g')
       circles.on("mouseout",function(d){
             d3.selectAll('.tooltip')
               .transition()
-              .duration(1000)
+              .duration(500)
               .style('opacity',0.5)
               .remove()
 
@@ -240,9 +248,13 @@ var circles = vis.append('g')
 
 vis.append("g")
         .attr("transform", "translate(0," + height + ")")
+        .attr("class","xAxis")
       .call(xAxis);
 vis.append("g")
+      .attr("class","yAxis")
       .call(yAxis);
+
+
 
 function NbTicksX(data, width){
     var valMax = d3.format(".2s")(d3.max(data,function(d,i) { return i}));

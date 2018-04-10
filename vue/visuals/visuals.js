@@ -7,12 +7,18 @@ vRender["Table"] = {};
 vRender["Lines"] = {};
 
 vRender["Scatter"].render = function(svg, data) {
-  svg.html("")
-// var data = d3.range(100).map(d3.randomBates(10));
+  if (d3.select('svg').select("g.scatterPlot").empty()){
+
+    svg.html("")
+
+  }
+
 var margin = {top: 10, right: 30, bottom: 30, left: 30},
     width = +svg.attr("width") - margin.left - margin.right,
     height = +svg.attr("height") - margin.top - margin.bottom,
-    g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+    visUpd = svg.selectAll('g.v-scatterPlot').data([1])
+    visEnt = visUpd.enter().append('g').attr('class','v-scatterPlot')
+    vis = visUpd.merge(visEnt).attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
 var random = Math.random,
 data = d3.range(50).map(function() { return [random() * width, random() * height]; });
@@ -26,26 +32,61 @@ var y = d3.scaleLinear()
     .domain([0, d3.max(data,function(d) { return d[1]; })])
     .range([height, 0]);
 
-x.domain(d3.extent(data, function(d) { return d[0]; }))
-y.domain(d3.extent(data, function(d) { return d[1]; }))
 
-g.selectAll(".dot")
-      .data(data)
-    .enter().append("circle")
-      .attr("class", "dot")
-      .attr("r", 3)
-      .attr("cx", function(d) { return x(d[0]); })
-      .attr("cy", function(d) { return y(d[1]); })
-      .style('fill', function(d) {
-        return (x(d[0]) <= width/2 && y(d[1]) <= height/2) ? 'red' : 'blue';
-      })
+var dotUpd = vis.selectAll("circle.v-scatterPlot-dot").data(data)
+var dotEnt = dotUpd.enter()
+  .append("circle")
+  .attr("class", "v-scatterPlot-dot")
+  .attr("r", 3)
+  .attr("cx", function(d,i) { return i%2 == 0 ? 0 : width; })
+  .attr("cy", function(d,i) { return i%2 == 0 ? height : 0; })
+var catDot = dotUpd.merge(dotEnt)
+  .transition().duration(500)
+  .attr("cx", function(d) { return x(d[0]); })
+  .attr("cy", function(d) { return y(d[1]); })
+  .style('fill', function(d) {
+    return (x(d[0]) <= width/2 && y(d[1]) <= height/2) ? 'red' : 'blue';
+  })
+
+var xAxisDef = d3.axisBottom(x)
+    .ticks(NbTicksX(data[0],width),"s");
+var xAxisUpd = vis.selectAll("g.v-scatterPlot-xAxis").data([1])
+var xAxisEnt = xAxisUpd.enter()
+        .append("g")
+        .attr("class","v-scatterPlot-xAxis")
+var xAxis = xAxisUpd.merge(xAxisEnt)
+      .transition().duration(500)
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxisDef);
 
 
-g.append("g")
-        .attr("transform", "translate(0," + height + ")")
-      .call(d3.axisBottom(x));
-g.append("g")
-      .call(d3.axisLeft(y));
+var yAxisDef = d3.axisLeft(y)
+      .ticks(Math.round(height/50));
+var yAxisUpd = vis.selectAll("g.v-scatterPlot-yAxis").data([1])
+var yAxisEnt = yAxisUpd.enter()
+        .append("g").attr('class','v-scatterPlot-yAxis')
+var yAxis = yAxisUpd.merge(yAxisEnt)
+      .transition().duration(500)
+      .call(yAxisDef);
+
+
+
+function NbTicksX(data, width){
+    var valMax = d3.format(".2s")(d3.max(data,function(d,i) { return i}));
+    var valMin = d3.format(".2s")(d3.min(data,function(d,i) {return i}));
+    var lengthValMax = valMax.toString().length;
+    var lengthValMin = valMin.toString().length;
+    var lengthMax;
+    if (lengthValMin <= lengthValMax){
+      lengthMax = lengthValMax + 1 ;
+    }
+    if (lengthValMin <= lengthValMax){
+      lengthMax = lengthValMin + 1 ;
+    }
+    var tickSize = 6*lengthMax + 25 ;
+    var nbTick = Math.floor(width / tickSize) ;
+    return nbTick<1?1:nbTick ;
+  }
 
 }
 
@@ -137,9 +178,9 @@ var graphData = data.map(d => {
 var margin = {top: 10, right: 20, bottom: 20, left: 30},
     width = +svg.attr("width") - margin.left - margin.right,
     height = +svg.attr("height") - margin.top - margin.bottom,
-    visUpd = svg.selectAll("g.lineChart").data([1]);
-var  visEnt = visUpd.enter().append("g").classed('lineChart', true),
-    vis = visUpd.merge(visEnt).attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+    lineVisUpd = svg.selectAll("g.lineChart").data([1]);
+var  lineVisEnt = lineVisUpd.enter().append("g").classed('lineChart', true),
+    lineVis = lineVisUpd.merge(lineVisEnt).attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
 
 var max = d3.max(graphData,function(c){ return d3.max(c.values)})
@@ -161,7 +202,7 @@ var valueline = d3.line()
     .curve(d3.curveCatmullRom.alpha(0.5));
 
 //////////// PATH ////////////
-var pathUpd =  vis.selectAll("path.v-line-line").data(graphData)
+var pathUpd =  lineVis.selectAll("path.v-line-line").data(graphData)
 var pathEnt = pathUpd.enter().append("path").classed("v-line-line",true)
           .style('stroke',d => d.color)
           .attr("d", (d) => valueline(d.values.map(d => 0)))
@@ -178,7 +219,7 @@ pathUpd.exit().remove()
 //////////// Legend ////////////
 if (width > 100 && height>100){
 
-var legendUpd = vis.selectAll('g.v-line-legend').data(graphData)
+var legendUpd = lineVis.selectAll('g.v-line-legend').data(graphData)
 var legendEnt = legendUpd.enter().append('g').attr('class','v-line-legend')
 
 
@@ -197,9 +238,9 @@ legend.select('circle').style('fill', d => d.color)
 }
 
 //////////// Dot on Line ////////////
-var dotUpd = vis.selectAll('g.v-line-dots').data(graphData)
+var dotUpd = lineVis.selectAll('g.v-line-dots').data(graphData)
 var dotEnt = dotUpd.enter().append('g').classed('v-line-dots',true)
-var dot = dotUpd.merge(dotEnt).style('fill', d => d.color)
+var dot = dotUpd.merge(dotEnt).style('fill', d => d.color) // How to fill with color every circle when the data used is only d.values
 // data(d => d.values)
 var circUpd = dot.selectAll('circle').data(d => d.values)
 var circEnt = circUpd.enter().append('circle')
@@ -219,7 +260,6 @@ circEnt.on("mouseover",function(d){
       .style('top', (pos.top + y - 15)+"px")
       .text(d3.format(".4s")(d))
 
-
     })
 circEnt.on("mouseout",function(d){
       d3.selectAll('.tooltip')
@@ -237,56 +277,68 @@ var circ = circUpd.merge(circEnt)
     .attr('cy', function(d) { return y(d); })
 
 //////////// Value on Dot ////////////
-// var valueUpd = vis.selectAll('g.v-line-values').data(graphData)
-// var valueEnt = valueUpd.enter().append('g').classed('v-line-values',true)
-// var value = valueUpd.merge(valueEnt)
-//
-// // data(d => d.values)
-// var textValueUpd = value.selectAll('text.v-line-values-text').data(d => d.values)
-// var textValueEnt =textValueUpd.enter().append('text').classed('v-line-values-text',true).style('text-anchor','middle')
-//
-// var textValue = textValueUpd.merge(textValueEnt)
-//     .text(d => d3.format(".4s")(d))
-//     .attr('x', ((d,i) =>  x(i)))
-//     .attr('y',(d => y(d)));
-//
-//
-//
-// function textValueYpos(height,data,value){
-//   var tab = []
-// console.log(value)
-//
-// if (value > height - 20){
-//   return y(value) - 10
-// }
-// if (value < 20){
-//   return y(value) + 10
-// }
-//
-// }
+
+var valueUpd = lineVis.selectAll('g.v-line-values').data(graphData)
+var valueEnt = valueUpd.enter().append('g').classed('v-line-values',true)
+var value = valueUpd.merge(valueEnt)
+
+// data(d => d.values)
+var textValueUpd = value.selectAll('text.v-line-values-text').data(d => d.values)
+var textValueEnt =textValueUpd.enter().append('text').classed('v-line-values-text',true).attr('x',0).style('text-anchor','middle')
+var tab = []
+graphData.forEach(d => (d.values).forEach(d => tab.push(y(d))))
+
+var textValue = textValueUpd.merge(textValueEnt)
+    .text(d => d3.format(".4s")(d))
+    .transition()
+    .duration(500)
+    .attr('x', ((d,i) =>  x(i)))
+    .attr('y', function(d){
+      value = y(d)
+      var valueInd = tab.indexOf(value)
+      var yRef = (tab[valueInd - 1] + tab[valueInd +1])/2
+      if (value < 20){
+        return value + 10
+      }
+      if (value > height - 20){
+        return value - 10
+
+      }
+      if (yRef > value){
+        return value - 10
+
+      }
+      if (yRef < value){
+        return value + 20
+
+      }
+      return value
+    })
+
+
 //////////// xAxis ////////////
-var xAxisDef = d3.axisBottom(x)
+var line_xAxisDef = d3.axisBottom(x)
   .ticks(NbTicksX(graphData,width),"s");
 
-var xAxisUpd = vis.selectAll('g.v-line-xAxis').data([1])
-var xAxisEnt = xAxisUpd.enter().append('g')
+var line_xAxisUpd = lineVis.selectAll('g.v-line-xAxis').data([1])
+var line_xAxisEnt = line_xAxisUpd.enter().append('g')
   .classed('v-line-xAxis',true)
-var xAxis = xAxisUpd.merge(xAxisEnt)
+var line_xAxis = line_xAxisUpd.merge(line_xAxisEnt)
   .transition().duration(500)
   .attr("transform", "translate(0," + height + ")")
-  .call(xAxisDef)
+  .call(line_xAxisDef)
 
 
 //////////// yAxis ////////////
-var yAxisDef = d3.axisLeft(y)
+var line_yAxisDef = d3.axisLeft(y)
     .ticks(Math.round(height/50));
 
-var yAxisUpd = vis.selectAll('g.v-line-yAxis').data([1])
-var yAxisEnt = yAxisUpd.enter().append('g')
+var line_yAxisUpd = lineVis.selectAll('g.v-line-yAxis').data([1])
+var line_yAxisEnt = line_yAxisUpd.enter().append('g')
   .classed('v-line-yAxis',true)
-var yAxis = yAxisUpd.merge(yAxisEnt)
+var line_yAxis = line_yAxisUpd.merge(line_yAxisEnt)
   .transition().duration(500)
-  .call(yAxisDef)
+  .call(line_yAxisDef)
 
 
 

@@ -14,7 +14,9 @@
   stroke: steelblue;
   stroke-width: 2px;
 }
-
+.v-line-values-text {
+  text-shadow: #ffffff
+}
 .tooltip {
   position: absolute;
   z-index: 3;

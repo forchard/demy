@@ -15,7 +15,8 @@
   stroke-width: 2px;
 }
 .v-line-values-text {
-  text-shadow: #ffffff
+  text-shadow: 0 2px 2px white, 2px 0 2px white, -2px 0 2px white, 0 -2px 2px white;
+  font-size: 0.75em
 }
 .tooltip {
   position: absolute;

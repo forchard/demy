@@ -6,8 +6,12 @@ const storage = {
   ,getWorkspace: function(ws, cb) {
     this.jsonRequest(`/workspaces/${ws}/model`, cb);
   }
-
-  ,jsonRequest: function(path, cb) { 
+  //added by me
+  ,getRefresh: function(ws, cb){
+    this.jsonRequest(`/workspaces/${ws}/refresh`, cb);
+  }
+  //added by me
+  ,jsonRequest: function(path, cb) {
     request = new XMLHttpRequest()
     request.onreadystatechange = function() {
       if (request.readyState === XMLHttpRequest.DONE) {
@@ -28,5 +32,3 @@ const storage = {
 
 
 }
-
-

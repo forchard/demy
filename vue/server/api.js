@@ -5,6 +5,7 @@ var http = require('http')
     ,conf = require('./conf')
     ,storage = require('./storage')
     ,workspace = require('./workspace')
+    ,model = require('./model')
 
 exports.server = () => {
   return http.createServer((req, res) => {
@@ -20,7 +21,7 @@ exports.server = () => {
       query = query + "&"+post;
     else if(post)
       query = post
-     query = querystring.parse(query);
+      query = querystring.parse(query);
 
     if(path==="/workspaces") {
       console.log(`${login} is asking listing workspaces`)
@@ -50,15 +51,15 @@ exports.server = () => {
     }
     else if(path.startsWith("/workspaces/") && path.endsWith("/refresh")) {
       path = path.substring("/workspaces/".length);
-      path = path.substring(0, path.length - "/visuals".length)
+      path = path.substring(0, path.length - "/refresh".length)
       if(!storage.soundFileName(path))
         return notFound(res);
       console.log(`${login} is asking for refresh on: ${ path }`)
-      return res.end("{REFRESH}");
+      return res.end("{}");
       }
     else if(path.startsWith("/workspaces/") && path.endsWith("/visuals")) {
       path = path.substring("/workspaces/".length);
-      path = path.substring(0, path.length - "/refresh".length)
+      path = path.substring(0, path.length - "/visuals".length)
       if(!storage.soundFileName(path))
         return notFound(res);
       console.log(`${login} is asking for refresh on: ${ path }`)

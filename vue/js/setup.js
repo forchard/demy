@@ -23,18 +23,24 @@ function get(name){
 }
 
 window.onload = function() {
-
  if(get("showProjects"))
    showAvailableProjects();
  else
    storage.getWorkspaces((err, wks)=> changeWorkspace(wks[0]));
-
+// add be me
+ d3.select("img.refresh-icon").on("click", refresh)
+// add be me
  d3.select("img.switch-icon").on("click", showAvailableProjects);
  d3.select("div.epilogo").on("click", toggleApps);
  showActionButtons();
  showProperties();
 }
 
+//add Be me
+function refresh(ws) {
+  return storage.getRefresh(ws)
+}
+//add Be me
 function toggleApps() {
   if(d3.select("div.app-list").style("display")==="none") {
     d3.select("div.app-list").style("display", "block");
@@ -142,8 +148,10 @@ function showActionButtons() {
   const aButtons = uButtons.merge(eButtons);
   aButtons.text(d => d);
 }
+
 function showAvailableProjects() {
   showModal("Select Epicraft Project", "Hello", [], ()=>{},(div)=>{ storage.getWorkspaces((err, wks)=> {drawWorkspaces(err, wks, div)});});
+
 }
 
 function drawWorkspaces(err, workspaces, div) {

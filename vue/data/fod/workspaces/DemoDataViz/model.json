@@ -59,7 +59,7 @@
         ]
     }
     ,{"name":"Alertes par code Postal", "order":5, "visible":true, "Source":"myDb", "group":"Data Queries", "collapsed":"true"
-      ,"fields":[ 
+      ,"fields":[
         {"name":"Code Pays","type":"column", "dataType":"string", "formule":"Code Pays","format":null, "visible":false, "order":5, "level":1, "table":"Visite"}
         ,{"name":"Code Postale","type":"column", "dataType":"string", "formule":"Code Postale","format":null, "visible":true, "order":6, "level":1, "table":"Visite"}
         ,{"name":"Date","type":"column", "dataType":"date", "formule":"Date","format":null,"visible":true, "order":2, "level":1, "table":"Visite"}

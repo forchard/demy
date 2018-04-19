@@ -52,11 +52,15 @@ exports.server = () => {
     else if(path.startsWith("/workspaces/") && path.endsWith("/refresh")) {
       path = path.substring("/workspaces/".length);
       path = path.substring(0, path.length - "/refresh".length)
-      if(!storage.soundFileName(path))
-        return notFound(res);
       console.log(`${login} is asking for refresh on: ${ path }`)
-      return res.end("{}");
-      }
+        model.modelCreate.then(()=>{
+          console.log('model created')
+          res.statusCode = 200;
+          return res.end("{refresh}")
+
+        })
+
+    }
     else if(path.startsWith("/workspaces/") && path.endsWith("/visuals")) {
       path = path.substring("/workspaces/".length);
       path = path.substring(0, path.length - "/visuals".length)

@@ -37,8 +37,41 @@ window.onload = function() {
 }
 
 //add Be me
-function refresh(ws) {
-  return storage.getRefresh(ws)
+function refresh() {
+  // ws = storage.getWorkspaces((err, wks)=> wks[0])
+  // console.log(ws)
+    appendHide()
+    storage.getRefresh("DemoDataViz").then(()=>{
+      changeWorkspace('DemoDataViz')
+      d3.select('div.hidePage').remove()
+      d3.select('img.loadGif').remove()
+    }).catch(console.error)
+
+}
+function appendHide(){
+  d3.select('div.hidePage').remove()
+  d3.select('img.loadGif').remove()
+  d3.select('body')
+  .append('div').classed('hidePage',true)
+    .style('height','100%')
+    .style('width','100%')
+    .style('top',0)
+    .style('left',0)
+    .style('background','#333333')
+    .style('z-index',5000)
+    .style('position','fixed')
+    .style('opacity',0.3)
+  d3.select('div.hidePage')
+    .append('img').classed('loadGif',true)
+    .attr('src','../img/loading.gif')
+      .style('z-index',10000)
+      .style('opactiy',1)
+      .style('position','absolute')
+      .style('left',0)
+      .style('right',0)
+      .style('top',0)
+      .style('bottom',0)
+      .style('margin','auto')
 }
 //add Be me
 function toggleApps() {

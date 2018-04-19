@@ -1,8 +1,9 @@
-exports.modelCreate = function(){
+exports.modelCreate = new Promise(function(resolved1,reject1){
 
   const req = require('request')
-        ,parser = require('xml2json')
-        ,fs = require('fs');
+  ,parser = require('xml2json')
+  ,fs = require('fs')
+  ,progress = require('request-progress');
   const url = 'https://root:root@respe-decl.preprod.voozanoo.net/decl/ws/dataset'
   const model = {
     "sources":
@@ -55,26 +56,17 @@ exports.modelCreate = function(){
       }]
   }
 
-  // fs.readdir('./', (err, files) => {
-  //   files.forEach(file => {
-  //     if ('model.json' === file)
-  //       fs.unlink('dataset.json', function (err) {
-  //         if (err) throw err;
-  //         console.log('File deleted!');
-  //       });
-  //     });
-  // })
   req.get(url, (error, res, body) => {
     datasetXml = body
     const datasetJson = JSON.parse(parser.toJson(datasetXml))
     const dataset = datasetJson.root.response.dataset
-    const test = dataset.slice(0,2)
-
-  Promise.all(
-    test.map((oItem, iIndex) => new Promise(function(resolve, reject) {
+    const test = dataset.slice(0,3)
+Promise.all(
+    dataset.map((oItem, iIndex) => new Promise(function(resolve, reject) {
       const url = 'https://root:root@respe-decl.preprod.voozanoo.net/decl/ws/dataset/id/'+ oItem.id +'/format/json/'
       req.get(url, (error, res, body) => {
         const dataQuerie = JSON.parse(body)
+      if(Object.keys(dataQuerie).indexOf('metadata') != -1){
         const fields = dataQuerie.metadata.fields
         const table = {"name":dataQuerie.id, "order":iIndex, "visible":true, "Source":"varset", "group":"Data Queries", "collapsed":"true"
           ,"fields":[]}
@@ -85,6 +77,7 @@ exports.modelCreate = function(){
           index++
         }
         model.tables.push(table)
+      }
 
   if (error) {
     return resolve({error});
@@ -106,8 +99,9 @@ exports.modelCreate = function(){
     fs.writeFile('../data/fod/workspaces/DemoDataViz/model.json', modelJSON, (err) => {
         if (err) throw err;
         console.log('The file has been saved!');
+        resolved1()
     });
   })
   .catch(console.error);
   })
-}
+})

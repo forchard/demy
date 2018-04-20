@@ -6,78 +6,49 @@ vRender["Filter"] = {};
 vRender["Table"] = {};
 vRender["Lines"] = {};
 
-vRender["Scatter"].brushed = function() {
-  var point = vRender["Scatter"].point;
-  var quadtree = vRender["Scatter"].quadtree;
-  var extent = d3.event.selection;
-  point.each(function(d) { d.scanned = d.selected = false; });
-  vRender["Scatter"].search(quadtree, extent[0][0], extent[0][1], extent[1][0], extent[1][1]);
-  point.classed("point--scanned", function(d) { return d.scanned; });
-  point.classed("point--selected", function(d) { return d.selected; });
-}
-
-// Find the nodes within the specified rectangle.
-vRender["Scatter"].search = function(quadtree, x0, y0, x3, y3) {
-  quadtree.visit(function(node, x1, y1, x2, y2) {
-    if (!node.length) {
-      do {
-        var d = node.data;
-        d.scanned = true;
-        d.selected = (d[0] >= x0) && (d[0] < x3) && (d[1] >= y0) && (d[1] < y3);
-      } while (node = node.next);
-    }
-    return x1 >= x3 || y1 >= y3 || x2 < x0 || y2 < y0;
-  });
-}
-
-// Collapse the quadtree into an array of rectangles.
-vRender["Scatter"].nodes = function(quadtree) {
-  var inodes = [];
-  quadtree.visit(function(node, x0, y0, x1, y1) {
-    node.x0 = x0, node.y0 = y0;
-    node.x1 = x1, node.y1 = y1;
-    inodes.push(node);
-  });
-  return inodes;
-}
-
 vRender["Scatter"].render = function(svg, data) {
-var  width = +svg.attr("width"),
-    height = +svg.attr("height"),
-    selected;
+// var data = d3.range(100).map(d3.randomBates(10));
+var margin = {top: 10, right: 30, bottom: 30, left: 30},
+    width = +svg.attr("width") - margin.left - margin.right,
+    height = +svg.attr("height") - margin.top - margin.bottom,
+    g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
 var random = Math.random,
-    data = d3.range(50).map(function() { return [random() * width, random() * height]; });
+data = d3.range(50).map(function() { return [random() * width, random() * height]; });
 
-this.quadtree = d3.quadtree()
-    .extent([[-1, -1], [width + 1, height + 1]])
-    .addAll(data);
 
-var brush = d3.brush()
-    .on("brush", this.brushed);
+var x = d3.scaleLinear()
+    .domain([0, d3.max(data, function(d){ return d[0]; })])
+    .range([0, width]);
 
-svg.selectAll(".node")
-  .data(this.nodes(this.quadtree))
-  .enter().append("rect")
-    .attr("class", "node")
-    .attr("x", function(d) { return d.x0; })
-    .attr("y", function(d) { return d.y0; })
-    .attr("width", function(d) { return d.y1 - d.y0; })
-    .attr("height", function(d) { return d.x1 - d.x0; });
+var y = d3.scaleLinear()
+    .domain([0, d3.max(data,function(d) { return d[1]; })])
+    .range([height, 0]);
 
-this.point = svg.selectAll(".point")
-  .data(data)
-  .enter().append("circle")
-    .attr("class", "point")
-    .attr("cx", function(d) { return d[0]; })
-    .attr("cy", function(d) { return d[1]; })
-    .attr("r", 2);
+x.domain(d3.extent(data, function(d) { return d[0]; }))
+y.domain(d3.extent(data, function(d) { return d[1]; }))
 
-svg.append("g")
-    .attr("class", "brush")
-    .call(brush)
-    .call(brush.move, [[100, 100], [200, 200]]);
+g.selectAll(".dot")
+      .data(data)
+    .enter().append("circle")
+      .attr("class", "dot")
+      .attr("r", 3)
+      .attr("cx", function(d) { return x(d[0]); })
+      .attr("cy", function(d) { return y(d[1]); })
+      .style('fill', function(d) {
+        return (x(d[0]) <= width/2 && y(d[1]) <= height/2) ? 'red' : 'blue';
+      })
+
+
+g.append("g")
+        .attr("transform", "translate(0," + height + ")")
+      .call(d3.axisBottom(x));
+g.append("g")
+      .call(d3.axisLeft(y));
+
 }
+
+
 
 
 vRender["Bars"].render = function(svg, data) {
@@ -172,6 +143,7 @@ g.append("g")
 g.append("g")
       .call(d3.axisLeft(y));
 }
+
 vRender["Filter"].render = function(svg, data) {
   var data = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Aout", "Septembre", "Octobre", "Novembre", "Decembre"];
   var margin = {top: 10, right: 10, bottom: 10, left: 10},

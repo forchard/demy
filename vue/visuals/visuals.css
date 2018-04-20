@@ -9,12 +9,24 @@
   font: 10px sans-serif;
 }
 
-.line {
+.v-line-line {
   fill: none;
   stroke: steelblue;
   stroke-width: 2px;
 }
-
+.v-line-values-text {
+  text-shadow: 0 2px 2px white, 2px 0 2px white, -2px 0 2px white, 0 -2px 2px white;
+  font-size: 0.75em
+}
+.tooltip {
+  position: absolute;
+  z-index: 3;
+  cursor:default;
+  pointer-events: none;
+  stroke-width: 15px;
+  stroke:black;
+  stroke-opacity:0;
+}
 
 .node {
   fill: none;

@@ -5,12 +5,13 @@ var http = require('http')
     ,conf = require('./conf')
     ,storage = require('./storage')
     ,workspace = require('./workspace')
+    ,model = require('./model')
 
 exports.server = () => {
   return http.createServer((req, res) => {
     var login = conf.user.login;
     var url_parts = url.parse(req.url);
-    var path = decodeURIComponent((url_parts.pathname+'').replace(/\+/g, '%20')); 
+    var path = decodeURIComponent((url_parts.pathname+'').replace(/\+/g, '%20'));
     var query = url_parts.query;
     console.log(`New Request from ${login}:${path} from ${req.connection.remoteAddress} > ${req.headers['x-forwarded-for'] || ' (no proxy)'}`);
     streamToString(req, conf.http.max_post_bytes, (post, err) => {
@@ -18,9 +19,9 @@ exports.server = () => {
       return unexpectedError(res, err);
     if(query && post)
       query = query + "&"+post;
-    else if(post) 
+    else if(post)
       query = post
-     query = querystring.parse(query);
+      query = querystring.parse(query);
 
     if(path==="/workspaces") {
       console.log(`${login} is asking listing workspaces`)
@@ -44,23 +45,41 @@ exports.server = () => {
       workspace.getModel(login, path, (err, fd) => {
       if(err) return badRequest(res, err);
       res.statusCode = 200;
-      if(!fd)  return res.end("{}");
+      if(!fd) return res.end("{}");
       fd.pipe(res);
       });
-    } 
+    }
+    else if(path.startsWith("/workspaces/") && path.endsWith("/refresh")) {
+      path = path.substring("/workspaces/".length);
+      path = path.substring(0, path.length - "/refresh".length)
+      console.log(`${login} is asking for refresh on: ${ path }`)
+        model.modelCreate().then(()=>{
+          console.log('model created')
+          res.statusCode = 200;
+          return res.end("{refresh}")
+        }).catch(console.error())
+    }
+
+    else if(path.startsWith("/workspaces/") && path.endsWith("/addWks")) {
+      console.log(`${login} is asking for adding a new workspace`)
+          res.statusCode = 200;
+          res.writeHead(302, { "Location": "http://" + req.headers['host'] + '/index.html' });
+          return res.end()
+    }
+
     else if(path.startsWith("/workspaces/") && path.endsWith("/visuals")) {
       path = path.substring("/workspaces/".length);
       path = path.substring(0, path.length - "/visuals".length)
       if(!storage.soundFileName(path))
         return notFound(res);
-      console.log(`${login} is asking for visuals on: ${ path }`)
+      console.log(`${login} is asking for refresh on: ${ path }`)
       workspace.getVisuals(login, path, (err, fd) => {
       if(err) return badRequest(res, err);
       res.statusCode = 200;
       if(!fd)  return res.end("{}");
       fd.pipe(res);
       });
-    } 
+    }
     else if(path.startsWith("/workspaces/") && path.endsWith("/window")) {
       path = path.substring("/workspaces/".length);
       path = path.substring(0, path.length - "/window".length)
@@ -110,7 +129,7 @@ exports.server = () => {
         if(query.query){
           res.write(query.query)
         }
-        
+
         res.end(/*JSON.stringify("")*/);
       })});
     }
@@ -118,9 +137,9 @@ exports.server = () => {
       //static web server ignoring server folder
       if(path.startsWith("/server"))
       	return notFound(res);
-     
+
       fs.readFile(conf.http.root+path, "binary", function(err, file) {
-      if(err) {        
+      if(err) {
         res.writeHead(500, {"Content-Type": "text/plain"});
         res.write(err + "\n");
         res.end();
@@ -134,10 +153,10 @@ exports.server = () => {
       else if(path.endsWith(".css"))
         res.writeHead(500, {"Content-Type": "text/css"});
       res.writeHead(200);
- 
+
       res.write(file, "binary");
       res.end();
-      });  
+      });
       return;
     }
 
@@ -148,7 +167,7 @@ exports.server = () => {
   })});
 }
 
-exports.start = (server) => { 
+exports.start = (server) => {
   server.listen(conf.http.port, conf.http.hostname, () => {
   console.log(`Server running at http://${conf.http.hostname}:${conf.http.port}/`);
   });
@@ -184,4 +203,3 @@ function streamToString(stream, maxSize, callback) {
     callback(chunks.join(''));
   });
 }
-

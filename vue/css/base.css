@@ -168,7 +168,7 @@ div.header {
 /*  margin: 10px;*/
   background:linear-gradient(rgba(40,157,195,.3),rgba(40,157,195,.2)),url(../img/header_grey.png);
   height:50px;
-  
+
 }
 div.content {
   display:table;
@@ -208,13 +208,13 @@ div.fields{
   margin-top:5px;
 }
 div.fields-collapsed {
-  display:none;  
+  display:none;
 }
 div.grid {
   /*background-color:#AAAAAA;*/
   display:flex;
   flex-direction:row;
-  flex-wrap:wrap; 
+  flex-wrap:wrap;
   position:absolute;
   top:0;
   left:0;
@@ -274,7 +274,7 @@ div.cell {
   width:100px;
   height:100px;
   background-color:#DDDDDD;
-  margin:1px; 
+  margin:1px;
 }
 div.selected-cell{
   background-color:#444444;
@@ -319,7 +319,7 @@ img.action-icon {
   width:24px;
   height:24px;
   margin:1px;
-  padding:3px;  
+  padding:3px;
 }
 div.action-button:hover {
   background-color:#777777
@@ -328,7 +328,7 @@ img.visual-icon {
   width:24px;
   height:24px;
   margin:1px;
-  padding:3px;  
+  padding:3px;
 }
 div.options-title {
   text-align:center;
@@ -423,7 +423,7 @@ div.modal-button {
 }
 div.modal-button:hover {
   background-color:#e6e6e6
-} 
+}
 
 div.modal-waiting {
   background-image: url(../img/waiting.gif);
@@ -452,4 +452,43 @@ div.workspace-switch {
   flex-direction: row;
   justify-content: space-between;
   flex-wrap: nowrap;
+}
+/*--------------------------------------*/
+.addWks-hidePage{
+  height:100%;
+  width:100%;
+  top:0;
+  left:0;
+  background:#333333;
+  z-index:5000;
+  position:fixed;
+  opacity:0.3;
+}
+.addWks-div{
+   z-index:10000;
+   opacity:1;
+   position:absolute;
+   left:0;
+   right:0;
+   top:0;
+   bottom:0;
+   margin:auto;
+   width:20%;
+   height:25%;
+   color:white;
+   text-align: center;
+   border: 1px #5cb85c
+
+}
+.addWks-form{
+ display: flex;
+ flex-direction: column;
+ justify-content: center;
+ align-content: space-between;
+ opacity:1;
+}
+#addWks-form-submit{
+  margin:auto;
+  margin-top: 10px;
+  width:50%;
 }

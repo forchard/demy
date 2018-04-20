@@ -23,18 +23,73 @@ function get(name){
 }
 
 window.onload = function() {
-
  if(get("showProjects"))
    showAvailableProjects();
  else
    storage.getWorkspaces((err, wks)=> changeWorkspace(wks[0]));
- 
+ d3.select("img.refresh-icon").on("click", refresh)
+ d3.select("img.plus-icon").on("click", addWks)
  d3.select("img.switch-icon").on("click", showAvailableProjects);
  d3.select("div.epilogo").on("click", toggleApps);
  showActionButtons();
  showProperties();
 }
 
+//add Be me
+function addWks(){
+hidePage = d3.select('body').append('div').classed('addWks-hidePage',true)
+
+div = hidePage.append('div').classed('addWks-div',true)
+title = div.append('p').classed("addWks-title",true).text('Add a new Workspace')
+form = div.append('form').classed('addWks-form',true).attr('method','POST').attr('action','/workspaces/addWks')
+form.append('label').attr('for','name').text('workspace name')
+form.append('input').attr('type','text').attr('name','name')
+form.append('label').attr('for','login').text('Login')
+form.append('input').attr('type','text').attr('name','login')
+form.append('label').attr('for','psw').text('Password')
+form.append('input').attr('type','password').attr('name','psw')
+form.append('label').attr('for','url').text('VooZanoo URL')
+form.append('input').attr('type','url').attr('name','url')
+form.append('input').attr('type',"submit").attr('id','addWks-form-submit')
+
+}
+
+function refresh() {
+  // ws = storage.getWorkspaces((err, wks)=> wks[0])
+  // console.log(ws)
+    appendHide()
+    storage.getRefresh("DemoDataViz").then(()=>{
+      changeWorkspace('DemoDataViz')
+      d3.select('div.hidePage').remove()
+    }).catch(console.error)
+
+}
+function appendHide(){
+  d3.select('div.hidePage').remove()
+  d3.select('img.loadGif').remove()
+  d3.select('body')
+  .append('div').classed('hidePage',true)
+    .style('height','100%')
+    .style('width','100%')
+    .style('top',0)
+    .style('left',0)
+    .style('background','#333333')
+    .style('z-index',5000)
+    .style('position','fixed')
+    .style('opacity',0.3)
+  d3.select('div.hidePage')
+    .append('img').classed('loadGif',true)
+    .attr('src','../img/loading.gif')
+      .style('z-index',10000)
+      .style('opactiy',1)
+      .style('position','absolute')
+      .style('left',0)
+      .style('right',0)
+      .style('top',0)
+      .style('bottom',0)
+      .style('margin','auto')
+}
+//add Be me
 function toggleApps() {
   if(d3.select("div.app-list").style("display")==="none") {
     d3.select("div.app-list").style("display", "block");
@@ -70,7 +125,7 @@ function showProperties() {
   const eObjectValues = uObjectValues.enter().append("option");
   const aObjectValues = uObjectValues.merge(eObjectValues)
            .property("value", d => d).text(d => d).property("selected", function(d) { return d === d3.select(this.parentNode).datum().value;});
-  
+
 
   //Object properties
   eProperty.filter(d => d.type === "object").append("div").classed("object-properties", true);
@@ -85,7 +140,7 @@ function showProperties() {
   eOPropertyInput.append("input").attr("type", "input").classed("property-value", true);
 
   const aOProperty = uOProperty.merge(eOProperty);
-  
+
   //Input porperties
   const aOPropertyInput = aOProperty.filter(d => d.type === "input");
   aOPropertyInput.selectAll("span.property-label").text(d => d.label);
@@ -115,14 +170,14 @@ function showProperties() {
   const eOPropertyDDListValues = uOPropertyDDListValues.enter().append("option").classed("property-list-value", true);
   const aOPropertyDDListValues = uOPropertyDDListValues.merge(eOPropertyDDListValues);
   aOPropertyDDListValues.property("value", d => d).text(d => d)
-  
+
 
 
 }
 function toggleObjectProperties() {
   const img = d3.select(this);
   const properties = d3.select(this.parentNode.parentNode).select("div.object-properties");
-  const value =  d3.select(this.parentNode.parentNode).select("div.object-value"); 
+  const value =  d3.select(this.parentNode.parentNode).select("div.object-value");
   if(properties.style("display") === "block") {
      properties.style("display", null);
      value.style("display", null);
@@ -142,8 +197,10 @@ function showActionButtons() {
   const aButtons = uButtons.merge(eButtons);
   aButtons.text(d => d);
 }
+
 function showAvailableProjects() {
   showModal("Select Epicraft Project", "Hello", [], ()=>{},(div)=>{ storage.getWorkspaces((err, wks)=> {drawWorkspaces(err, wks, div)});});
+
 }
 
 function drawWorkspaces(err, workspaces, div) {
@@ -161,7 +218,7 @@ function changeWorkspace(ws) {
   storage.getWorkspace(ws, (err, data) => {
   if(err == null);
     d3.select("span.workspace-name").text(ws);
-    applyWorkspace(data); 
+    applyWorkspace(data);
   });
 }
 
@@ -177,7 +234,7 @@ function setupGrid() {
  d3.select("div.grid").selectAll("div").data(cells).enter()
    .append("div").attr("class", "cell")
    .on("mouseover", selectCell)
-   .on("mouseout", unselectCell) 
+   .on("mouseout", unselectCell)
  d3.select("div.pane-resizer").call(paneDraggable);
 }
 
@@ -220,7 +277,7 @@ function setupFields() {
        .attr("src", function(d) {if(!d.collapsed) return "img/invertedTriangle.png"; else return "img/triangle.png";})
      d3.select(group[i].parentNode).selectAll("div.field").classed("fields-collapsed", !collapsed );
      d.collapsed = !collapsed;
-    }); 
+    });
 
  //Existing Tables
  tables.text(function(d) {return d.name;});
@@ -303,7 +360,7 @@ function boundaryCells(cells, index, width, height) {
   while(ind<cells.length && i< width*height) {
     if(i % width <= ind % nCols) //avoid shape overflow canvas
       ret.push(cells[ind])
-    if(Math.floor(i/width)<Math.floor((i+1)/width)) //jump to next line 
+    if(Math.floor(i/width)<Math.floor((i+1)/width)) //jump to next line
       ind = ind + nCols - width + 1;
     else
       ind++;
@@ -318,16 +375,16 @@ function resizedCells(cells, index, vData) {
   var ret = [];
   var coord = getCellCoordinates(nCols, index);
   var points = getVisualResizePoints(vData);
-  if(resizeUp && coord.y <= points.down) points.up = coord.y; 
-  if(resizeDown && coord.y >= points.up) points.down = coord.y; 
-  if(resizeLeft && coord.x <= points.right) points.left = coord.x; 
-  if(resizeRight && coord.x >= points.left) points.right = coord.x; 
-  var width = points.right - points.left + 1; 
+  if(resizeUp && coord.y <= points.down) points.up = coord.y;
+  if(resizeDown && coord.y >= points.up) points.down = coord.y;
+  if(resizeLeft && coord.x <= points.right) points.left = coord.x;
+  if(resizeRight && coord.x >= points.left) points.right = coord.x;
+  var width = points.right - points.left + 1;
   var ind = points.up*nCols+points.left;
   var point = getCellCoordinates(nCols, ind);
   while(ind < cells.length && !(point.y>points.down)) {
     ret.push(cells[ind]);
-    if(point.x == points.right) //jump to next line 
+    if(point.x == points.right) //jump to next line
       ind = ind + nCols - width + 1;
     else
       ind++;
@@ -352,7 +409,7 @@ function getVisualResizePoints(vData) {
 }
 
 function fieldDraggable(selection) {
-  var body = d3.select("body");  
+  var body = d3.select("body");
   selection.call(d3.drag()
     .container(body.node())
     .on("start", fieldDragStart)
@@ -380,11 +437,12 @@ function visualResizable(selection) {
   );
 }
 function renderVisualData(visuals) {
-  visuals.select("svg").remove()
-  visuals.append("svg")
+  var svg = visuals.select("svg")
+  if(svg.size()==0) svg = visuals.append("svg")
+  svg
     .classed("visual-data", true)
-    .attr("width", function(d) {return (d.x1-d.x0)}) 
-    .attr("height", function(d) {return (d.y1-d.y0)}) 
+    .attr("width", function(d) {return (d.x1-d.x0)})
+    .attr("height", function(d) {return (d.y1-d.y0)})
     .each(function(d, i, g) {vRender[(d.renderAs && d.renderAs.name)?d.renderAs.name:visualGallery[0].name].render(d3.select(g[i])) })
 }
 
@@ -399,7 +457,7 @@ function fieldDragStart() {
     .style("left", (d3.event.x-10)+"px")
     .style("display","block")
     .datum(clone)
-  ;  
+  ;
   d3.select("body").style("cursor", "grabbing");
   if(currentVisualOptionIndex>=0) {
     showOptionsAt(currentVisualOptionIndex);
@@ -411,9 +469,9 @@ function visualDragStart() {
   draggingVisual = true;
   currentVisualWidth=d3.event.subject.width;
   currentVisualHeight=d3.event.subject.height;
-  d3.select("div.grid").style("z-index","2");  
+  d3.select("div.grid").style("z-index","2");
   d3.select("body").style("cursor", "grabbing");
-} 
+}
 function resizePane() {
   d3.select("div.fields").style("width", d3.event.x+"px");
 }
@@ -432,7 +490,7 @@ function visualResizeStart() {
 function fieldDrag() {
   d3.select("#dragField")
     .style("top", (d3.event.y-5)+"px").style("left", (d3.event.x-10)+"px");
-  setDropPosition(); 
+  setDropPosition();
 }
 function fieldDragEnd() {
   replaceSelectionByVisual();
@@ -488,7 +546,7 @@ function replaceSelectionByVisual(currentVisual) {
 
 
 function getVisualId(dat) {
-  return dat.id;  
+  return dat.id;
 }
 
 function renderVisual(currentVisual,x0, x1, y0, y1, posx, posy, width, height, title, fields) {
@@ -526,19 +584,19 @@ function renderVisuals() {
   var existing = d3.select("div.canvas").selectAll("div.visual-container").data(visuals, getVisualId);
   var newVisuals = existing.enter();
   var deletedVisuals = existing.exit();
-     
+
   //insert new
   newVisuals.append("div")
     .call(resizeVisuals)
     .classed("visual-container", true)
     .call(visualDraggable)
-  
+
   //deleting removed
   deletedVisuals.remove();
 
   //updatingChanged
   existing.filter(function(d) {return d.update})
-    .call(resizeVisuals); 
+    .call(resizeVisuals);
 
   for(var i = 0; i<visuals.length;i++) {
     visuals[i].update=true;
@@ -571,7 +629,7 @@ function drawResizeLines(visuals) {
    ;
 }
 function getResizers(width, height) {
-  
+
 return  [
    {"direction":"w-resize","orientation":"vertical","height":(0.8*height)+"px","width":resizerWeight+"px","top":(0.1*height)+"px","left":"0px"}
   ,{"direction":"e-resize","orientation":"vertical","height":(0.8*height)+"px","width":resizerWeight+"px","top":(0.1*height)+"px","left":(width-resizerWeight)+"px"}
@@ -622,20 +680,20 @@ function showOptionsAt(visualIndex) {
   currentVisualOptionIndex=visualIndex;
   if(!visuals[visualIndex].renderAs)
     changeRender(visuals[visualIndex]);
-  
+
   var pBox = d3.select("div.grid").node().getBoundingClientRect();
   var options = d3.select("#options");
   options.selectAll("input.hidden").data(["x"]).enter().append("input").classed("hidden", true).attr("type", "hidden")
     .call(function() { //this call is to ensure that this call will be done only the first time the options are created
-      options.on("mouseover", function() { 
+      options.on("mouseover", function() {
                                  showDropOptions();
                                  if(!options.datum())
-                                   options.datum({"mouseover":true}); 
+                                   options.datum({"mouseover":true});
                                  options.datum().mouseover=true;
                                  }
              )
              .on("mouseout", function() {  options.datum().mouseover=false; })
-      
+
     });
 
   options.select("div.options-title")
@@ -651,8 +709,8 @@ function showOptionsAt(visualIndex) {
       .on("mouseover", function(d) {d3.select(this).classed("focus2", true);})
       .on("mouseout", function(d) {d3.select(this).classed("focus2", false);})
       .on("click", function(d, i) {
-       changeRender(visuals[currentVisualOptionIndex], visualGallery[i]); 
-       showOptionsAt(currentVisualOptionIndex); 
+       changeRender(visuals[currentVisualOptionIndex], visualGallery[i]);
+       showOptionsAt(currentVisualOptionIndex);
       })
     ;
 
@@ -667,11 +725,11 @@ function showOptionsAt(visualIndex) {
   newLines.append("div").classed("options-detail", true).classed("options-detail-name", true);
   var placeHolders = newLines.append("div").classed("options-detail", true).classed("value-placeholder", true)
          .on("mouseover", function(d) { d.mouseover = true;})
-         .on("mouseout", function(d) { 
+         .on("mouseout", function(d) {
             var box = this.getBoundingClientRect();
-            if(d3.event.clientX<= box.x   
-               || d3.event.clientX>= box.x + box.width 
-               || d3.event.clientY<= box.y  
+            if(d3.event.clientX<= box.x
+               || d3.event.clientX>= box.x + box.width
+               || d3.event.clientY<= box.y
                || d3.event.clientY>= box.y + box.height)
             {
               d.mouseover = false;
@@ -684,35 +742,35 @@ function showOptionsAt(visualIndex) {
   allLines.select("div.options-detail-name").text(function(d) {return d.name});
 
   var vals = allLines.select("div.value-placeholder").selectAll("div.field-value").data(function(d) {return d.values;});
- 
+
   var news = vals.enter().append("div").classed("field-value", true)
     .on("mouseover", function(d, i, group) {
-      if(!draggingField && d.type!="empty") { 
+      if(!draggingField && d.type!="empty") {
         var div = d3.select(group[i]).classed("focus", true)
-        if(div.selectAll("div.close-button").size()==0) 
+        if(div.selectAll("div.close-button").size()==0)
           div.insert("div", "div.function-choice").text("x").classed("close-button", true).on("click", function(d, i, group) {
 	    d.type="selected";
             removingField = true;
             removeSelectedFields();
-            removingField = false; 
+            removingField = false;
           });
         if(div.selectAll("img.triangle-button").size()==0)
           div.insert("img", "div.function-choice").attr("src", "img/invertedTriangle.png").classed("triangle-button", true)
             .on("click", function(d, i, group) {
                renderFieldFunctions(d, group[i].parentNode.parentNode.__data__, group[i].parentNode.parentNode);
-             }) 
+             })
       }
      })
-    .on("mouseout", function(d, i, group) { 
-      if(!draggingField) { 
+    .on("mouseout", function(d, i, group) {
+      if(!draggingField) {
         var box = this.getBoundingClientRect();
-        if(d3.event.clientX<= box.x   
+        if(d3.event.clientX<= box.x
             || d3.event.clientX>= box.x + box.width
-            || d3.event.clientY<= box.y  
+            || d3.event.clientY<= box.y
             || d3.event.clientY>= box.y + box.height)
-        { 
+        {
           var div = d3.select(group[i]).classed("focus", false)
-          div.selectAll("div.close-button").remove(); 
+          div.selectAll("div.close-button").remove();
           div.selectAll("img.triangle-button").remove();
         }
       }
@@ -727,20 +785,20 @@ function showOptionsAt(visualIndex) {
   vals.exit().remove();
   lines.exit().remove();
 
-    
+
 
   options
    .style("left",((pBox.x + window.scrollX)+ visuals[visualIndex].x0)+"px")
    .style("top",(pBox.y+ window.scrollY + visuals[visualIndex].y1+1)+"px").style("display","flex")
    .style("width", (visuals[visualIndex].x1 - visuals[visualIndex].x0)+"px")
   ;
-  
-  
+
+
 
   if(draggingField) {
-    options.style("cursor", "not-allowed"); 
+    options.style("cursor", "not-allowed");
   } else {
-    options.style("cursor", "auto"); 
+    options.style("cursor", "auto");
   }
   showActionsAt(visualIndex);
 }
@@ -764,7 +822,7 @@ function changeRender(visual, renderAs) {
           renderAs.fields[i].values = [{"type":"empty", "name":""}];
       }
       else
-        renderAs.fields[i].values = []; 
+        renderAs.fields[i].values = [];
     }
     renderAs.unusedFields = [];
     if(visual.renderAs) {
@@ -787,12 +845,12 @@ function changeRender(visual, renderAs) {
             if(old.values.length>0) {
               renderAs.unusedFields.push(old);
             }
-          } 
-        } 
+          }
+        }
       }
-    } 
+    }
     visual.renderAs = renderAs;
-    d3.selectAll("div.visual-container").filter(function(d) {return d.id == visual.id}).call(renderVisualData); 
+    d3.selectAll("div.visual-container").filter(function(d) {return d.id == visual.id}).call(renderVisualData);
 }
 
 function hideOptions() {
@@ -810,7 +868,7 @@ function showDropOptions() {
     var places = d3.select("#options").select("div.options-details").selectAll("div.options-detail-line").selectAll("div.value-placeholder");
     places.classed("accept-field",  function(d) {
                                       d.acceptingField =  (d.type == "measure" || (d.type == "axis" && field.type == "column"))
-                                      return d.acceptingField;  
+                                      return d.acceptingField;
                                     })
     ;
   }
@@ -834,14 +892,14 @@ function setDropPosition() {
           vals[i].candidate = field;
           inserted = true;
           break;
-        }  
+        }
       }
       if(!inserted) {
         var mouseY = d3.event.y;
         //Counting the number of divs after the cursor
         var elementsBefore = placeholder.selectAll("div.field-value").filter(function(d, i, group) {
           var box = group[i].getBoundingClientRect();
-          return d.type!="selected" &&  (box.y + box.height + window.scrollY)<=mouseY; 
+          return d.type!="selected" &&  (box.y + box.height + window.scrollY)<=mouseY;
         });
         var oldIndex = -1;
         for(var i=0;i<vals.length;i++) {
@@ -909,7 +967,7 @@ function dropSelectedField() {
         }
       }
     }
-  } 
+  }
   if(changes)
     showOptionsAt(currentVisualOptionIndex);
 }
@@ -918,10 +976,10 @@ function renderFieldFunctions(fieldData, holderData, valueItem) {
   var holder = d3.select(valueItem);
   var options = null;
   if(holderData.type == "axis") {
-    options = transformationFunctions 
+    options = transformationFunctions
   }
   else if(holderData.type == "measure") {
-    options = measureFunctions 
+    options = measureFunctions
   }
   //Set the first option if not selected
   if(holderData.type == "axis" && !fieldData.transformation) {
@@ -936,7 +994,7 @@ function renderFieldFunctions(fieldData, holderData, valueItem) {
     currentChoice = options[0].name;
   }
   else if(holderData.type == "measure") {
-    currentChoice = fieldData.aggregation;  
+    currentChoice = fieldData.aggregation;
   }
 
   //Let's check if the "other" option is to be selected
@@ -947,7 +1005,7 @@ function renderFieldFunctions(fieldData, holderData, valueItem) {
   var oData = JSON.parse(JSON.stringify(options));
   var choices = holder.selectAll("div.field-value").selectAll("div.function-choice").data(oData);
   var newChoices = choices.enter().append("div").classed("function-choice", true)
-     .each(function(d, i, g) { 
+     .each(function(d, i, g) {
          if(!g[i].parentNode.__data__.randomName)
            g[i].parentNode.__data__.randomName = "N"+Math.floor(Math.random()*1000000000);
          d.randomName = g[i].parentNode.__data__.randomName;
@@ -956,7 +1014,7 @@ function renderFieldFunctions(fieldData, holderData, valueItem) {
   newChoices.append("span")
 
   var allChoices = choices.merge(newChoices);
-  allChoices.selectAll("input")	
+  allChoices.selectAll("input")
     .property("checked", function(d) {return d.name == currentChoice})
     .style("display", fieldData.showDetails);
   allChoices.selectAll("span").text(function(d) {return d.name});
@@ -975,7 +1033,7 @@ function showModal(title, text, buttonsText, action, drawing) {
     .style("height", window.screen.height+"px")
     .style("display", "block")
   ;
-  
+
   modal.select("div.modal-window > div.modal-title").text(title);
   const content = modal.select("div.modal-window > div.modal-content").style("display", "none");
   content.selectAll("*").remove();
@@ -994,6 +1052,3 @@ function showModal(title, text, buttonsText, action, drawing) {
   }, 2000);
 
 }
-
-
-

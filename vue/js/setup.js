@@ -27,9 +27,8 @@ window.onload = function() {
    showAvailableProjects();
  else
    storage.getWorkspaces((err, wks)=> changeWorkspace(wks[0]));
-// add be me
  d3.select("img.refresh-icon").on("click", refresh)
-// add be me
+ d3.select("img.plus-icon").on("click", addWks)
  d3.select("img.switch-icon").on("click", showAvailableProjects);
  d3.select("div.epilogo").on("click", toggleApps);
  showActionButtons();
@@ -37,6 +36,24 @@ window.onload = function() {
 }
 
 //add Be me
+function addWks(){
+hidePage = d3.select('body').append('div').classed('addWks-hidePage',true)
+
+div = hidePage.append('div').classed('addWks-div',true)
+title = div.append('p').classed("addWks-title",true).text('Add a new Workspace')
+form = div.append('form').classed('addWks-form',true).attr('method','POST').attr('action','/workspaces/addWks')
+form.append('label').attr('for','name').text('workspace name')
+form.append('input').attr('type','text').attr('name','name')
+form.append('label').attr('for','login').text('Login')
+form.append('input').attr('type','text').attr('name','login')
+form.append('label').attr('for','psw').text('Password')
+form.append('input').attr('type','password').attr('name','psw')
+form.append('label').attr('for','url').text('VooZanoo URL')
+form.append('input').attr('type','url').attr('name','url')
+form.append('input').attr('type',"submit").attr('id','addWks-form-submit')
+
+}
+
 function refresh() {
   // ws = storage.getWorkspaces((err, wks)=> wks[0])
   // console.log(ws)
@@ -44,7 +61,6 @@ function refresh() {
     storage.getRefresh("DemoDataViz").then(()=>{
       changeWorkspace('DemoDataViz')
       d3.select('div.hidePage').remove()
-      d3.select('img.loadGif').remove()
     }).catch(console.error)
 
 }

@@ -4,6 +4,7 @@
   "description": "d3bi-server",
   "main": "index.js",
   "dependencies": {
+    "body": "^5.1.0",
     "jdbc": "^0.5.0",
     "node-gyp": "^3.6.2",
     "rebuild": "^0.1.2",

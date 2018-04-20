@@ -53,14 +53,20 @@ exports.server = () => {
       path = path.substring("/workspaces/".length);
       path = path.substring(0, path.length - "/refresh".length)
       console.log(`${login} is asking for refresh on: ${ path }`)
-        model.modelCreate.then(()=>{
+        model.modelCreate().then(()=>{
           console.log('model created')
           res.statusCode = 200;
           return res.end("{refresh}")
-
-        })
-
+        }).catch(console.error())
     }
+
+    else if(path.startsWith("/workspaces/") && path.endsWith("/addWks")) {
+      console.log(`${login} is asking for adding a new workspace`)
+          res.statusCode = 200;
+          res.writeHead(302, { "Location": "http://" + req.headers['host'] + '/index.html' });
+          return res.end()
+    }
+
     else if(path.startsWith("/workspaces/") && path.endsWith("/visuals")) {
       path = path.substring("/workspaces/".length);
       path = path.substring(0, path.length - "/visuals".length)

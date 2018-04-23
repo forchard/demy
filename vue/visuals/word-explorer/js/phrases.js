@@ -166,8 +166,8 @@ function PhraseGrid(selector, indexPath, phrasesPath, tagsByClusters, tags, phra
        while(i < steps.length && !stop) {
          if(typeof current[steps[i]] == "undefined") stop = true;
          else {
-           if(typeof current["tags"] != "undefined") {
-             current["tags"].forEach(tag => {
+           if(typeof current[steps[i]]["tags"] != "undefined") {
+             current[steps[i]]["tags"].forEach(tag => {
                phrase.tags[tag] = this.tags[tag];
                thisGrid.undoOverrideIfPossible(phrase, tag); 
              });
@@ -202,7 +202,7 @@ function PhraseGrid(selector, indexPath, phrasesPath, tagsByClusters, tags, phra
        taggedCluster.split(",").forEach(p => {
          if(typeof current[p] === "undefined") current[p] = {};
          path = path + (path.length==0?"":",")+p;
-         if(path === taggedCluster) current["tags"]=tagsByClusters[taggedCluster];
+         if(path === taggedCluster) current[p]["tags"]=tagsByClusters[taggedCluster];
          current = current[p];
        });
      });

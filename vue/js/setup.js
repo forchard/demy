@@ -442,7 +442,19 @@ function renderVisualData(visuals) {
     .classed("visual-data", true)
     .attr("width", function(d) {return (d.x1-d.x0)})
     .attr("height", function(d) {return (d.y1-d.y0)})
-    .each(function(d, i, g) {vRender[(d.renderAs && d.renderAs.name)?d.renderAs.name:visualGallery[0].name].render(d3.select(g[i])) })
+    .each(function(d, i, g) {
+      var data = null;
+      if(d.renderAs) {
+        var fields =  d.renderAs.fields.filter(f => f.acceptingField)
+        if(fields.length>0) {
+          var usedFields = fields.map(f => f.values).reduce((f1, f2) => f1.concat(f2)).filter(f => f.type !== "empty")
+          var q = new query();
+          q.addFields(usedFields);
+          data = q.data();
+        }
+      }
+      vRender[(d.renderAs && d.renderAs.name)?d.renderAs.name:visualGallery[0].name].render(d3.select(g[i]), data); 
+    })
 }
 
 function fieldDragStart() {

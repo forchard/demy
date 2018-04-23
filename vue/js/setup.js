@@ -16,12 +16,11 @@ var resizerWeight = 4;
 var addingToVisualId = null;
 var keepOptionsOpen=false;
 var currentVisualOptionIndex=-1;
-
+var workspaceName = '';
 function get(name){
    if(name=(new RegExp('[?&]'+encodeURIComponent(name)+'=([^&]*)')).exec(location.search))
       return decodeURIComponent(name[1]);
 }
-
 window.onload = function() {
  if(get("showProjects"))
    showAvailableProjects();
@@ -37,29 +36,28 @@ window.onload = function() {
 
 //add Be me
 function addWks(){
-hidePage = d3.select('body').append('div').classed('addWks-hidePage',true)
 
-div = hidePage.append('div').classed('addWks-div',true)
-title = div.append('p').classed("addWks-title",true).text('Add a new Workspace')
-form = div.append('form').classed('addWks-form',true).attr('method','POST').attr('action','/workspaces/addWks')
-form.append('label').attr('for','name').text('workspace name')
-form.append('input').attr('type','text').attr('name','name')
-form.append('label').attr('for','login').text('Login')
-form.append('input').attr('type','text').attr('name','login')
-form.append('label').attr('for','psw').text('Password')
-form.append('input').attr('type','password').attr('name','psw')
-form.append('label').attr('for','url').text('VooZanoo URL')
-form.append('input').attr('type','url').attr('name','url')
-form.append('input').attr('type',"submit").attr('id','addWks-form-submit')
+  hidePage = d3.select('body').append('div').classed('addWks-hidePage',true)
 
+  div = hidePage.append('div').classed('addWks-div',true)
+  title = div.append('p').classed("addWks-title",true).text('Add a new Workspace')
+  form = div.append('form').classed('addWks-form',true).attr('method','POST').attr('action','/workspaces/addWks')
+  form.append('label').attr('for','name').text('workspace name')
+  form.append('input').attr('type','text').attr('name','name')
+  form.append('label').attr('for','login').text('Login')
+  form.append('input').attr('type','text').attr('name','login')
+  form.append('label').attr('for','psw').text('Password')
+  form.append('input').attr('type','password').attr('name','psw')
+  form.append('label').attr('for','url').text('VooZanoo URL')
+  form.append('input').attr('type','url').attr('name','url')
+  form.append('input').attr('type',"submit").attr('id','addWks-form-submit')
 }
 
 function refresh() {
-  // ws = storage.getWorkspaces((err, wks)=> wks[0])
-  // console.log(ws)
+  console.log(workspaceName)
     appendHide()
-    storage.getRefresh("DemoDataViz").then(()=>{
-      changeWorkspace('DemoDataViz')
+    storage.getRefresh(workspaceName).then(()=>{
+      changeWorkspace(workspaceName)
       d3.select('div.hidePage').remove()
     }).catch(console.error)
 
@@ -218,6 +216,7 @@ function changeWorkspace(ws) {
   storage.getWorkspace(ws, (err, data) => {
   if(err == null);
     d3.select("span.workspace-name").text(ws);
+    workspaceName = ws;
     applyWorkspace(data);
   });
 }

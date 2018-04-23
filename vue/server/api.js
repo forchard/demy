@@ -6,6 +6,7 @@ var http = require('http')
     ,storage = require('./storage')
     ,workspace = require('./workspace')
     ,model = require('./model')
+    ,addWks = require('./addWks')
 
 exports.server = () => {
   return http.createServer((req, res) => {
@@ -53,18 +54,29 @@ exports.server = () => {
       path = path.substring("/workspaces/".length);
       path = path.substring(0, path.length - "/refresh".length)
       console.log(`${login} is asking for refresh on: ${ path }`)
-        model.modelCreate().then(()=>{
+        model.modelRefresh(path)
+        .then(()=>{
           console.log('model created')
           res.statusCode = 200;
           return res.end("{refresh}")
-        }).catch(console.error())
+        })
+        .catch((err) => {
+            if (err) throw err;
+        })
     }
 
     else if(path.startsWith("/workspaces/") && path.endsWith("/addWks")) {
       console.log(`${login} is asking for adding a new workspace`)
+          addWks.createWks(query.name,query.login,query.psw,query.url)
+          .then(()=>{
+            model.modelRefresh(query.name, query.login, query.psw, query.url)
+          }).then(()=>{
           res.statusCode = 200;
           res.writeHead(302, { "Location": "http://" + req.headers['host'] + '/index.html' });
           return res.end()
+          }).catch((err) => {
+            if (err) throw err;
+          })
     }
 
     else if(path.startsWith("/workspaces/") && path.endsWith("/visuals")) {

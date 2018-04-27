@@ -26,7 +26,10 @@ const model = require('./model')
       fs.writeFile(path + '/datasources.json', jsonDatasource, (err) => {
         if (err) throw err;
         console.log('The dataset.json has been saved!');
-        resolve1()
+        resolve1(path)
+      })
+      fs.mkdir(path +'/dataset', function(err){
+        if (err) console.log(err)
       })
     })
     .catch((err)=>{

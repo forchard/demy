@@ -1,5 +1,9 @@
 const storage = {
-  getWorkspaces: function(cb) {
+  addWorkspace: function(ws, login, passwd, url, cb) {
+    this.jsonRequest(`/workspaces/${encodeURI(ws)}/addWks?name=${encodeURI(ws)}&login=${encodeURI(login)}&psw=${encodeURI(passwd)}&url=${encodeURI(url)}`, cb);
+  }
+
+  ,getWorkspaces: function(cb) {
     this.jsonRequest("/workspaces", cb);
   }
 
@@ -28,8 +32,33 @@ const storage = {
       request.open('GET', path);
       request.send();
     })
-
   }
+  ,getData: function(url,ws){
+
+    return new Promise((resolve,reject)=>{
+      path = `/workspaces/${ws}${url}/data`; // the missing slash is added in query
+      request = new XMLHttpRequest()
+      request.onreadystatechange = function() {
+        if (request.readyState === XMLHttpRequest.DONE) {
+          // everything is good, the response is received
+          if (request.status === 200) {
+            console.log('row data received')
+            const rowData = JSON.parse(request.responseText)
+            resolve(rowData)
+
+          } else {
+
+          }
+        } else {
+          // still not ready
+        }
+      }
+      request.responseType = 'text';
+      request.open('GET', path);
+      request.send();
+    })
+  }
+
   //added by me
   ,jsonRequest: function(path, cb) {
     request = new XMLHttpRequest()
@@ -38,7 +67,6 @@ const storage = {
         // everything is good, the response is received
         if (request.status === 200) {
           cb(null, JSON.parse(request.responseText));
-          console.log("done", request.responseText)
         } else {
           cb("Error on Request", null);
         }

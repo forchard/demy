@@ -4,7 +4,7 @@ var model = {
   ]
   ,"tables":
     [{"name":"Patient", "order":1, "visible":true, "Source":"myDb"
-      ,"fields": 
+      ,"fields":
         [{"name":"IdPatient","type":"column", "dataType":"string", "formule":"IdPatient","format":null, "visible":false, "order":0, "level":1, "table":"Patient"}
         ,{"name":"Nom","type":"column", "dataType":"string", "formule":"Nom","format":null, "visible":true, "order":1, "level":1, "table":"Patient"}
         ,{"name":"Prenom","type":"column", "dataType":"string", "formule":"Prenom","format":null, "visible":true, "order":2, "level":1, "table":"Patient"}
@@ -15,14 +15,14 @@ var model = {
         ]
      }
     ,{"name":"Pays", "order":2, "visible":true, "Source":"myDb"
-      ,"fields": 
+      ,"fields":
         [{"name":"Code Pays","type":"column", "dataType":"string", "formule":"Code Pays","format":null, "visible":true, "order":1, "level":1, "table":"Pays"}
         ,{"name":"Pays","type":"column", "dataType":"string", "formule":"Pays","format":null, "visible":true, "order":2, "level":1, "table":"Pays"}
         ,{"name":"Region","type":"column", "dataType":"string", "formule":"Region","format":null, "visible":true, "order":3, "level":1, "table":"Pays"}
         ]
      }
     ,{"name":"Visite", "order":3, "visible":true, "Source":"myDb"
-      ,"fields": 
+      ,"fields":
         [{"name":"IdPatient","type":"column", "dataType":"string", "formule":"IdPatient","format":null, "visible":false, "order":0, "level":1, "table":"Visite"}
         ,{"name":"Age Patient","type":"column", "dataType":"date", "formule":"DateDiff(Date, Now(), 'yyyy')","format":null,"visible":true, "order":1, "level":1, "table":"Visite"}
         ,{"name":"Date","type":"column", "dataType":"date", "formule":"Date","format":null,"visible":true, "order":2, "level":1, "table":"Visite"}
@@ -46,35 +46,35 @@ for(var i=0;i<cellCount;i++) {cells.push(i); }
 var visuals = [];
 
 const visualGallery = [
-  {"name":"Bars", "icon":"barChart.png", "alt":"Bar Chart"
+  {"name":"Lines", "icon":"lineChart.png", "alt":"Line Chart"
     ,"fields":[
-      {"name":"Title", "type":"string", "arity":"1", "group":"data"}
-      ,{"name":"Category", "type":"axis", "arity":"*", "group":"data"}
-      ,{"name":"Legend", "type":"axis", "arity":"1", "group":"data"}
-      ,{"name":"Measure", "type":"measure","arity":"*", "group":"data"}
+      {"name":"Title", "type":"string", "arity":"1", "group":"data", "values":[]}
+      ,{"name":"Category", "type":"axis", "arity":"*", "group":"data", "values":[]}
+      ,{"name":"Legend", "type":"axis","arity":"1", "group":"data", "values":[]}
+      ,{"name":"Measure", "type":"measure", "arity":"*", "group":"data", "values":[]}
     ]}
-  ,{"name":"Lines", "icon":"lineChart.png", "alt":"Line Chart"
-    ,"fields":[
-      {"name":"Title", "type":"string", "arity":"1", "group":"data"}
-      ,{"name":"Category", "type":"axis", "arity":"*", "group":"data"}
-      ,{"name":"Legend", "type":"axis","arity":"1", "group":"data"}
-      ,{"name":"Measure", "type":"measure", "arity":"*", "group":"data"}
-    ]}
+  ,{"name":"Bars", "icon":"barChart.png", "alt":"Bar Chart"
+      ,"fields":[
+        {"name":"Title", "type":"string", "arity":"1", "group":"data", "values":[]}
+        ,{"name":"Category", "type":"axis", "arity":"*", "group":"data", "values":[]}
+        ,{"name":"Legend", "type":"axis", "arity":"1", "group":"data", "values":[]}
+        ,{"name":"Measure", "type":"measure","arity":"*", "group":"data", "values":[]}
+      ]}
   ,{"name":"Scatter", "icon":"scatterChart.png", "alt":"Scatter Plot"
     ,"fields":[
-      {"name":"Title", "type":"string", "arity":"1", "group":"data"}
-      ,{"name":"X-Axis", "type":"measure","arity":"1", "group":"data"}
-      ,{"name":"Y-Axis", "type":"measure", "arity":"1", "group":"data"}
-      ,{"name":"Category", "type":"axis", "arity":"1", "group":"data"}
-      ,{"name":"Legend", "type":"axis", "arity":"1", "group":"data"}
+      {"name":"Title", "type":"string", "arity":"1", "group":"data", "values":[]}
+      ,{"name":"X-Axis", "type":"measure","arity":"1", "group":"data", "values":[]}
+      ,{"name":"Y-Axis", "type":"measure", "arity":"1", "group":"data", "values":[]}
+      ,{"name":"Category", "type":"axis", "arity":"1", "group":"data", "values":[]}
+      ,{"name":"Legend", "type":"axis", "arity":"1", "group":"data", "values":[]}
     ]}
   ,{"name":"Filter", "icon":"filter.png", "alt":"Filter"
     ,"fields":[
-      {"name":"Field", "type":"axis", "arity":"1", "group":"data"}
+      {"name":"Field", "type":"axis", "arity":"1", "group":"data", "values":[]}
     ]}
   ,{"name":"Table", "icon":"table.png", "alt":"Table"
     ,"fields":[
-      {"name":"Field", "type":"axis", "arity":"*", "group":"data"}
+      {"name":"Field", "type":"axis", "arity":"*", "group":"data", "values":[]}
     ]}
 ]
 
@@ -88,7 +88,7 @@ const measureFunctions = [
 
 const transformationFunctions = [
   {"name":"Other", "types":[], "isOther":true}
-] 
+]
 
 const actionButtons = [
   {"name":"2DataQuery", "title":"Save as Query", "icon":"dataExport.png"}
@@ -131,5 +131,3 @@ const properties = [
              ]}
          ]}
   ];
-
-

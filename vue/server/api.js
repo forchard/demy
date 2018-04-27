@@ -7,7 +7,7 @@ var http = require('http')
     ,workspace = require('./workspace')
     ,model = require('./model')
     ,addWks = require('./addWks')
-
+    ,sendData = require('./sendData')
 exports.server = () => {
   return http.createServer((req, res) => {
     var login = conf.user.login;
@@ -58,7 +58,7 @@ exports.server = () => {
         .then(()=>{
           console.log('model created')
           res.statusCode = 200;
-          return res.end("{refresh}")
+          return res.end("{}")
         })
         .catch((err) => {
             if (err) throw err;
@@ -67,16 +67,32 @@ exports.server = () => {
 
     else if(path.startsWith("/workspaces/") && path.endsWith("/addWks")) {
       console.log(`${login} is asking for adding a new workspace`)
+      path = path.substring("/workspaces/".length);
+      path = path.substring(0, path.length - "/addWks".length)
           addWks.createWks(query.name,query.login,query.psw,query.url)
           .then(()=>{
-            model.modelRefresh(query.name, query.login, query.psw, query.url)
-          }).then(()=>{
-          res.statusCode = 200;
-          res.writeHead(302, { "Location": "http://" + req.headers['host'] + '/index.html' });
-          return res.end()
+            res.statusCode = 200;
+            return res.end('{"status":"OK"}')
           }).catch((err) => {
             if (err) throw err;
           })
+    }
+
+    else if(path.startsWith("/workspaces/") && path.endsWith("/data")) {
+      path = path.substring("/workspaces/".length);
+      path = path.substring(0, path.length - "/data".length)
+      console.log(`${login} is asking for adding dataquerie`)
+      aPath  = path.split("/")
+      sendData.sendData(aPath)
+      .then((data)=>{
+        res.statusCode = 200;
+        res.write(data)
+        console.log('data send')
+        return res.end();
+      })
+      .catch((err) => {
+        if (err) throw err;
+      })
     }
 
     else if(path.startsWith("/workspaces/") && path.endsWith("/visuals")) {
@@ -92,6 +108,7 @@ exports.server = () => {
       fd.pipe(res);
       });
     }
+
     else if(path.startsWith("/workspaces/") && path.endsWith("/window")) {
       path = path.substring("/workspaces/".length);
       path = path.substring(0, path.length - "/window".length)

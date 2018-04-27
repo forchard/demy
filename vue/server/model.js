@@ -3,6 +3,8 @@ exports.modelRefresh = function(ws){
     const req = require('request')
     ,parser = require('xml2json')
     ,fs = require('fs')
+    ,rimraf = require('rimraf')
+
     console.log('Refreshing the model')
     let datasourcesJson = 0
     const test = new Promise((resolve,reject)=>{
@@ -17,8 +19,8 @@ exports.modelRefresh = function(ws){
     test.then((datasourceJson)=>{
 
       const datasources = JSON.parse(datasourcesJson)
-      const  login = datasources.data[0].login
-      , psw = datasources.data[0].psw
+      const  login = datasources[0].login
+      , psw = datasources[0].psw
       , url = 'https://' + login + ':' + psw + '@respe-decl.preprod.voozanoo.net/decl/ws/dataset'
       , model = {
         "sources":
@@ -80,27 +82,36 @@ exports.modelRefresh = function(ws){
           const url = 'https://' + login + ':' + psw + '@respe-decl.preprod.voozanoo.net/decl/ws/dataset/id/'+ oItem.id +'/format/json/'
           req.get(url, (error, res, body) => {
             const dataQuerie = JSON.parse(body)
-          if(Object.keys(dataQuerie).indexOf('metadata') != -1){
-            const fields = dataQuerie.metadata.fields
-            const table = {"name":oItem.name, "order":iIndex, "visible":true, "Source":"varset", "group":"Data Queries", "collapsed":"true"
-              ,"fields":[]}
-            let index = 0
-            for (var d in fields) {
-              const field = {"name":fields[d].default_label,"type":"column", "dataType":fields[d].type, "formule":"","format":null, "visible":true, "order":index, "level":1, "table":dataQuerie.name}
-              table.fields.push(field)
-              index++
+            if(Object.keys(dataQuerie).indexOf('metadata') != -1){
+              const fields = dataQuerie.metadata.fields
+              const rows = dataQuerie.rowdata
+              const table = {"name":oItem.name, "order":iIndex, "visible":true, "Source":"varset", "group":"Data Queries", "collapsed":"true"
+                ,"fields":[]}
+              let index = 0
+              for (var d in fields) {
+                const field = {"name":fields[d].default_label,"type":"column", "dataType":fields[d].type, "formule":"","format":null, "visible":true, "order":index, "level":1, "table":oItem.name}
+                table.fields.push(field)
+                index++
+              }
+              const dataJson = JSON.stringify(rows.map(row => {
+                let newRow = {}
+                for(var d in row) {
+                  newRow[fields[d].default_label] = row[d]
+                }
+                return newRow;
+              }))
+              fs.writeFile('../data/fod/workspaces/'+ ws + `/dataset/${oItem.name}.json`, dataJson, (err) => {
+                  if (err) throw err;
+                  console.log(`The data for ${oItem.name} file has been saved!`);
+              })
+              model.tables.push(table);
             }
-            model.tables.push(table)
-          }
-
-      if (error) {
-        return resolve({error});
-      }
-
-            resolve({body});
-          })
-        }))
-      )
+            if (error) {
+              return resolve({error});
+            }
+          resolve({body});
+        })
+      })))
       .then(aResult => {
         aResult.forEach(oItem => {
           if (oItem.error) {
@@ -109,13 +120,13 @@ exports.modelRefresh = function(ws){
           }
         oItem.body;
         })
-        modelJSON = JSON.stringify(model)
-
-        fs.appendFile('../data/fod/workspaces/'+ ws + '/model.json', modelJSON, (err) => {
+        const modelJSON = JSON.stringify(model)
+        fs.writeFile('../data/fod/workspaces/'+ ws + '/model.json', modelJSON, (err) => {
             if (err) throw err;
-            console.log('The file has been saved!');
-            resolved1()
+            console.log('The model file has been saved!');
         });
+
+        resolved1()
       })
       .catch(console.error);
       })

@@ -227,7 +227,7 @@ function drawWorkspaces(err, workspaces, div) {
 function changeWorkspace(ws) {
   storage.getWorkspace(ws, (err, data) => {
   if(err == null);
-    d3.select("span.workspace-name").text(Boolean(model.tables)?ws:"");
+    d3.select("span.workspace-name").text(Boolean(data.tables)?ws:"");
     workspaceName = ws;
     applyWorkspace(data);
   });

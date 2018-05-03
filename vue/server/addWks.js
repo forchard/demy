@@ -1,27 +1,43 @@
 const fs = require('fs')
 const model = require('./model')
 
-function addWks(name,login,psw,url) {
-  let path = '../data/fod/' + name.toUpperCase()
-  console.log(path)
-  if (!fs.existsSync(path)){
-    fs.mkdirSync(path ,(err) => {
-      if (err) throw err;
-      console.log('The folder workspace has been saved!');
+ exports.createWks = function(name,login,psw,url) {
+  return new Promise((resolve1,reject1) => {
+
+    return new Promise((resolve,reject)=>{
+      let path = '../data/fod/workspaces/' + name
+      console.log(path)
+      if (!fs.exists(path)){
+        fs.mkdir(path ,(err) => {
+          if (err) throw err;
+          console.log('The folder workspace has been saved!');
+          resolve(path)
+        })
+      }else{
+        console.log('file already exist')
+      }
+    }).then((path) => {
+      oDatasources = [{
+        'login':login
+        ,'psw':psw
+        ,'url':url
+      }]
+      jsonDatasource = JSON.stringify(oDatasources)
+      fs.writeFile(path + '/datasources.json', jsonDatasource, (err) => {
+        if (err) throw err;
+        console.log('The dataset.json has been saved!');
+        resolve1(path)
+      })
+      fs.mkdir(path +'/dataset', function(err){
+        if (err) console.log(err)
+      })
     })
-    oDatasources = {
-      'login':login
-      ,'psw':psw
-      ,'url':url
-    }
-    jsonDatasource = JSON.stringify(oDatasources)
-    path = path + 'dataset.json'
-    console.log(path)
-    fs.writeFileSync(path + 'dataset.json', jsonDatasource, (err) => {
-      if (err) throw err;
-      console.log('The dataset.json has been saved!');
+    .catch((err)=>{
+      if(err) throw err
     })
-  }
+  })
+  .catch((err)=>{
+    if(err) throw err
+  })
 
 }
-addWks('test1','test','test')

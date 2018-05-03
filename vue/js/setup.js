@@ -16,12 +16,11 @@ var resizerWeight = 4;
 var addingToVisualId = null;
 var keepOptionsOpen=false;
 var currentVisualOptionIndex=-1;
-
+var workspaceName = '';
 function get(name){
    if(name=(new RegExp('[?&]'+encodeURIComponent(name)+'=([^&]*)')).exec(location.search))
       return decodeURIComponent(name[1]);
 }
-
 window.onload = function() {
  if(get("showProjects"))
    showAvailableProjects();
@@ -37,29 +36,40 @@ window.onload = function() {
 
 //add Be me
 function addWks(){
-hidePage = d3.select('body').append('div').classed('addWks-hidePage',true)
 
-div = hidePage.append('div').classed('addWks-div',true)
-title = div.append('p').classed("addWks-title",true).text('Add a new Workspace')
-form = div.append('form').classed('addWks-form',true).attr('method','POST').attr('action','/workspaces/addWks')
-form.append('label').attr('for','name').text('workspace name')
-form.append('input').attr('type','text').attr('name','name')
-form.append('label').attr('for','login').text('Login')
-form.append('input').attr('type','text').attr('name','login')
-form.append('label').attr('for','psw').text('Password')
-form.append('input').attr('type','password').attr('name','psw')
-form.append('label').attr('for','url').text('VooZanoo URL')
-form.append('input').attr('type','url').attr('name','url')
-form.append('input').attr('type',"submit").attr('id','addWks-form-submit')
+  hidePage = d3.select('body').append('div').classed('addWks-hidePage',true)
 
+  div = hidePage.append('div').classed('addWks-div',true)
+  title = div.append('p').classed("addWks-title",true).text('Add a new Workspace')
+  form = div.append('form').classed('addWks-form',true)//.attr('method','POST').attr('action','/workspaces/'+ workspaceName +'/addWks')
+  form.append('label').attr('for','name').text('workspace name')
+  form.append('input').attr('type','text').attr('name','name').attr('id','wksName')
+  form.append('label').attr('for','login').text('Login')
+  form.append('input').attr('type','text').attr('name','login').attr('id','wksUser')
+  form.append('label').attr('for','psw').text('Password')
+  form.append('input').attr('type','password').attr('name','psw').attr('id','wksPasswd')
+  form.append('label').attr('for','url').text('VooZanoo URL')
+  form.append('input').attr('type','url').attr('name','url').attr('id','wksUrl')
+  form.append('input').attr('type',"button").attr('id','addWks-form-submit')
+
+  d3.select("#addWks-form-submit").on("click", (d) => {
+    storage.addWorkspace(
+        d3.select("#wksName").property("value")
+        ,d3.select("#wksUser").property("value")
+        ,d3.select("#wksPasswd").property("value")
+        ,d3.select("#wksUrl").property("value")
+        , d => {
+            workspaceName = d3.select("#wksName").property("value");
+            d3.select('div.addWks-hidePage').remove()
+            refresh();
+
+  })})
 }
 
 function refresh() {
-  // ws = storage.getWorkspaces((err, wks)=> wks[0])
-  // console.log(ws)
     appendHide()
-    storage.getRefresh("DemoDataViz").then(()=>{
-      changeWorkspace('DemoDataViz')
+    storage.getRefresh(workspaceName).then(()=>{
+      changeWorkspace(workspaceName)
       d3.select('div.hidePage').remove()
     }).catch(console.error)
 
@@ -217,7 +227,8 @@ function drawWorkspaces(err, workspaces, div) {
 function changeWorkspace(ws) {
   storage.getWorkspace(ws, (err, data) => {
   if(err == null);
-    d3.select("span.workspace-name").text(ws);
+    d3.select("span.workspace-name").text(Boolean(data.tables)?ws:"");
+    workspaceName = ws;
     applyWorkspace(data);
   });
 }
@@ -225,8 +236,10 @@ function changeWorkspace(ws) {
 
 function applyWorkspace(data) {
  model = data;
- setupReports();
- setupFields();
+ if(Boolean(model.tables)) {
+   setupReports();
+   setupFields();
+ }
  setupGrid();
 }
 
@@ -240,7 +253,7 @@ function setupGrid() {
 
 function setupReports() {
   d3.select("div.reports").selectAll("span.reports").data(["Reports"]).enter().append("span").classed("reports", true).text(d=>d);
-  const uReports = d3.select("div.reports").selectAll("div.report").data(model.reports);
+  const uReports = d3.select("div.reports").selectAll("div.report").data(Boolean(model.reports)?model.reports:[]);
   const eReports = uReports.enter().append("div").classed("report", true);
   uReports.exit().remove();
   eReports.append("i").classed("fa fa-play-circle", true)
@@ -436,9 +449,9 @@ function visualResizable(selection) {
     .on("end", visualResizeEnd)
   );
 }
-function renderVisualData(visuals) {
-  var svg = visuals.select("svg")
-  if(svg.size()==0) svg = visuals.append("svg")
+function renderVisualData(visualsSel) {
+  var svg = visualsSel.select("svg")
+  if(svg.size()==0) svg = visualsSel.append("svg")
   svg
     .classed("visual-data", true)
     .attr("width", function(d) {return (d.x1-d.x0)})
@@ -446,15 +459,32 @@ function renderVisualData(visuals) {
     .each(function(d, i, g) {
       var data = null;
       if(d.renderAs) {
-        var fields =  d.renderAs.fields.filter(f => f.acceptingField)
+        var fields =  d.renderAs.fields.filter(f => f.values.filter(v => v.type != "empty").length>0)
+        var properties = {
+          "series_colors":["#66CDAA", "#ff7500"]
+          , "series_names":["serie 1", "serie 2"]
+          , "xAxis_format":",.0f"
+          , "yAxis_format":""
+          , "tooltip_format":",.0f"
+          , "show_legend":true
+          , "show_labels":true
+          , "labels_format":true
+          , "columns_name":{}
+        }
+        fields.forEach((d,i)=>{
+          properties.columns_name[fields[i].name] = fields[i].values.map((v)=> v.name).filter(n => n.length>0)
+        })
         if(fields.length>0) {
           var usedFields = fields.map(f => f.values).reduce((f1, f2) => f1.concat(f2)).filter(f => f.type !== "empty")
           var q = new query();
           q.addFields(usedFields);
           data = q.data();
+
         }
       }
-      vRender[(d.renderAs && d.renderAs.name)?d.renderAs.name:visualGallery[0].name].render(d3.select(g[i]), data); 
+      //var visualIndex = visualGallery.map(v => v.name).indexOf(d.renderAs.name)
+      if (data == null) vRender[(d.renderAs && d.renderAs.name)?d.renderAs.name:visualGallery[0].name].render(d3.select(g[i]), null);
+      else data.then((d)=> vRender[(d.renderAs && d.renderAs.name)?d.renderAs.name:visualGallery[0].name].render(d3.select(g[i]), d, properties))
     })
 }
 
@@ -506,7 +536,9 @@ function fieldDrag() {
 }
 function fieldDragEnd() {
   replaceSelectionByVisual();
-  dropSelectedField();
+  if(dropSelectedField())
+    renderVisuals();
+
   draggingField = false;
   d3.select("body").style("cursor", "auto");
   d3.select("#options").style("cursor", "auto");
@@ -980,8 +1012,10 @@ function dropSelectedField() {
       }
     }
   }
-  if(changes)
+  if(changes) {
     showOptionsAt(currentVisualOptionIndex);
+  }
+  return changes;
 }
 
 function renderFieldFunctions(fieldData, holderData, valueItem) {

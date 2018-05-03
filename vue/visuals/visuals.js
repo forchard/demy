@@ -114,113 +114,130 @@ vRender["Bars"].render = function(svg, data, properties) {
 if(d3.select('svg').select('g.v-barChart').empty()){
  svg.html("")
 }
-
 var data = d3.range(1000).map(d3.randomBates(10));
+if (data != null){
 
-var formatCount = d3.format(",.0f");
 
-var margin = {top: 10, right: 30, bottom: 30, left: 30},
-    width = +svg.attr("width") - margin.left - margin.right,
-    height = +svg.attr("height") - margin.top - margin.bottom,
+  // var keys = Object.keys(data[0])
+  // keys.pop()
+  var formatCount = d3.format(",.0f");
 
-    visUpd = svg.selectAll("g.v-barChart").data([1]),
-    visEnt = visUpd.enter().append("g").classed("v-barChart", true),
-    vis = visUpd.merge(visEnt).attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+  var margin = {top: 10, right: 30, bottom: 30, left: 30},
+      width = +svg.attr("width") - margin.left - margin.right,
+      height = +svg.attr("height") - margin.top - margin.bottom,
 
-var x = d3.scaleLinear()
-    // .domain(d3.extent(data))
+      visUpd = svg.selectAll("g.v-barChart").data([1]),
+      visEnt = visUpd.enter().append("g").classed("v-barChart", true),
+      vis = visUpd.merge(visEnt).attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+  // var parseDate = d3.timeParse("%Y-%m-%d");
+
+  // if (Date.parse(data[0][keys[0]]) != NaN && typeof data[0][keys[0]] == 'string'){
+  //   var x = d3.scaleTime()
+  //       .domain(d3.extent(data.map((d)=> parseDate(d[keys[0]]))
+  //     ))
+  //       .range([0, width])
+  // }else {
+    var x = d3.scaleLinear()
+     //.domain(d3.extent(data.map((d)=> d[keys[0]])))
     .rangeRound([0, width]);
+  // }
 
-var bins = d3.histogram()
-    .domain(x.domain())
-    .thresholds(x.ticks(20))
-    (data);
+  // var aValuey = []
+  // data.forEach((d)=> {
+  //   d[keys[1]].forEach((v)=>{ // need to map that in y domain and in bins data
+  //     aValuey.push(v)
+  //   })
+  // })
 
-var y = d3.scaleLinear()
-.domain([0, d3.max(bins, function(d) { return d.length; })])
-.range([height, 0]);
 
-var rectWidth = x(bins[0].x1) - x(bins[0].x0) - 1
-var nbRect = width / (11 * 20) // 11 for min width rect and 20 for number of rect generated
-var minimalbins = []
-var sortBins = bins.map(function(d,i){
-      return {'size':d.length, 'index':i}
-    })
-    .sort((a,b) => b.size - a.size)
-    .slice(0, 3)
-    .sort((a,b) => a.index - b.index)
-sortBins.forEach(function(d){
-  minimalbins.push(bins[d.index])
-})
-console.log(minimalbins)
-// rectWidth < 11 ?
+  var bins = d3.histogram()
+      .domain(x.domain())
+      .thresholds(x.ticks(10))
+      (data)
+  var y = d3.scaleLinear()
+  .domain([0, d3.max(bins, function(d) { return d.length; })])
+  .rangeRound([height, 0]);
 
-var rectUpd = vis.selectAll('rect.v-barChart-bar-rect').data(nbRect<1 ? minimalbins : bins)
-var rectEnt = rectUpd.enter().append('rect')
-                .classed('v-barChart-bar-rect',true)
-                .attr("transform", function(d) { return "translate(" + x(d.x0) + "," + 0 + ")"; })
-                .attr('height',0)
-var rect = rectUpd.merge(rectEnt)
-            .attr("x", 1)
-            .attr("width", x(bins[0].x1) - x(bins[0].x0) - 1.5)
-            .transition()
-            .duration(500)
-            .attr("transform", function(d) { return "translate(" + x(d.x0) + "," + y(d.length) + ")"; })
-            .attr("height", function(d) { return height - y(d.length); })
-            .style('fill', (d,i) => i%2==0 ? '#66CDAA' : '#ff7500' )
-
-rectEnt.on("mouseover",function(d){
-    var pos = this.getBoundingClientRect()
-        , y = window.scrollY
-        , x = window.scrollX
-        , tooltip = d3.select('body').append('div')
-            .attr('class','tooltip')
-
-      tooltip.style('left', (pos.left + x)+"px")
-      .style('top', (pos.top + y - 15)+"px")
-      .text(d.length)
-
-    })
-rectEnt.on("mouseout",function(d){
-      d3.selectAll('.tooltip')
-        .transition()
-        .duration(500)
-        .style('opacity',0.5)
-        .remove()
-
+  var rectWidth = x(bins[0].x1) - x(bins[0].x0) - 1
+  var nbRect = width / (11 * 20) // 11 for min width rect and 20 for number of rect generated
+  var minimalbins = []
+  var sortBins = bins.map(function(d,i){
+        return {'size':d.length, 'index':i}
+      })
+      .sort((a,b) => b.size - a.size)
+      .slice(0, 3)
+      .sort((a,b) => a.index - b.index)
+  sortBins.forEach(function(d){
+    minimalbins.push(bins[d.index])
   })
+  var rectUpd = vis.selectAll('rect.v-barChart-bar-rect').data(nbRect<1 ? minimalbins : bins)
+  var rectEnt = rectUpd.enter().append('rect')
+                  .classed('v-barChart-bar-rect',true)
+                  .attr("transform", function(d) { return "translate(" + x(d.x0) + "," + 0 + ")"; })
+                  .attr('height',0)
+  var rect = rectUpd.merge(rectEnt)
+              .attr("x", 1)
+              .attr("width", x(bins[0].x1) - x(bins[0].x0) - 1.5)
+              .transition()
+              .duration(500)
+              .attr("transform", function(d) { return "translate(" + x(d.x0) + "," + y(d.length) + ")"; })
+              .attr("height", function(d) { return height - y(d.length); })
+              .style('fill', (d,i) => i%2==0 ? '#66CDAA' : '#ff7500' )
 
-var xAxisUpd = vis.selectAll('g.v-barChart-xAxis').data([1])
-var xAxisEnt = xAxisUpd.enter().append('g')
-                .classed('v-barChart-xAxis',true)
-var xAxis = xAxisUpd.merge(xAxisEnt)
-              .attr("transform", "translate(0," + height + ")")
-              .call(d3.axisBottom(x).ticks(NbTicksX(data,width)));
+  rectEnt.on("mouseover",function(d){
+      var pos = this.getBoundingClientRect()
+          , y = window.scrollY
+          , x = window.scrollX
+          , tooltip = d3.select('body').append('div')
+              .attr('class','tooltip')
 
-// var yAxisUpd = vis.selectAll('g.v-barChart-yAxis').data([1])
-// var yAxisEnt = yAxisUpd.enter().append('g')
-//                 .classed('v-barChart-yAxis',true)
-// var yAxis = yAxisUpd.merge(xAxisEnt)
-//               .call(d3.axisLeft(y).ticks(Math.round(height/50)));
+        tooltip.style('left', (pos.left + x)+"px")
+        .style('top', (pos.top + y - 15)+"px")
+        .text(d.length)
 
-rectUpd.exit().remove()
+      })
+  rectEnt.on("mouseout",function(d){
+        d3.selectAll('.tooltip')
+          .transition()
+          .duration(500)
+          .style('opacity',0.5)
+          .remove()
 
-function NbTicksX(data, width){
-    var valMax = d3.format(",.0f")(d3.max(data,function(d,i) { return i}));
-    var valMin = d3.format(",.0f")(d3.min(data,function(d,i) {return i}));
-    var lengthValMax = valMax.toString().length;
-    var lengthValMin = valMin.toString().length;
-    var lengthMax;
-    if (lengthValMin <= lengthValMax){
-      lengthMax = lengthValMax + 1 ;
+    })
+
+  var xAxisUpd = vis.selectAll('g.v-barChart-xAxis').data([1])
+  var xAxisEnt = xAxisUpd.enter().append('g')
+                  .classed('v-barChart-xAxis',true)
+  var xAxis = xAxisUpd.merge(xAxisEnt)
+                .attr("transform", "translate(0," + height + ")")
+                .call(d3.axisBottom(x).ticks(NbTicksX(data,width)));
+
+  // var yAxisUpd = vis.selectAll('g.v-barChart-yAxis').data([1])
+  // var yAxisEnt = yAxisUpd.enter().append('g')
+  //                 .classed('v-barChart-yAxis',true)
+  // var yAxis = yAxisUpd.merge(xAxisEnt)
+  //               .call(d3.axisLeft(y).ticks(Math.round(height/50)));
+
+  rectUpd.exit().remove()
+
+  function NbTicksX(data, width){
+      var valMax = d3.format(",.0f")(d3.max(data));
+      var valMin = d3.format(",.0f")(d3.min(data));
+      var lengthValMax = valMax.toString().length;
+      var lengthValMin = valMin.toString().length;
+      var lengthMax;
+      if (lengthValMin <= lengthValMax){
+        lengthMax = lengthValMax + 1 ;
+      }
+      if (lengthValMin <= lengthValMax){
+        lengthMax = lengthValMin + 1 ;
+      }
+      var tickSize = 6*lengthMax + 25 ;
+      var nbTick = Math.floor(width / tickSize) ;
+      return nbTick<1?1:nbTick ;
     }
-    if (lengthValMin <= lengthValMax){
-      lengthMax = lengthValMin + 1 ;
-    }
-    var tickSize = 6*lengthMax + 25 ;
-    var nbTick = Math.floor(width / tickSize) ;
-    return nbTick<1?1:nbTick ;
-  }
+  }else data = 0
 }
 /////////////////////Line chart////////////////////////////
 vRender["Lines"].render = function(svg, data, properties){
@@ -232,28 +249,51 @@ if (d3.select('svg').select("g.lineChart").empty()){
 
 }
 
-var data = [
-  d3.range(20).map(d3.randomBates(10))
-  ,d3.range(20).map(d3.randomBates(10))
-]
+if(data == null || properties == null) return;
+if( typeof properties.columns_name.Measure === 'undefined'
+      || typeof properties.columns_name.Measure[0] === 'undefined')
+    properties.columns_name.Measure = "__count__"
+else
+  properties.columns_name.Measure = properties.columns_name.Measure[0];
+properties.columns_name.Category = properties.columns_name.Category[0];
+var fieldLegend = true;
+if( typeof properties.columns_name.Legend === 'undefined')
+  fieldLegend = false;
+else
+  properties.columns_name.Legend = properties.columns_name.Legend[0];
 
-var properties =
-  {"series_colors":["#66CDAA", "#ff7500"]
-      , "series_names":["serie 1", "serie 2"]
-      , "xAxis_format":".2s"
-      , "yAxis_format":""
-      , "tooltip_format":[".4s",".4s"]
-      , "show_legend":true
-      , "show_labels":true
-      , "labels_format":true
-  }
+var series_values_all = fieldLegend?data.map(d => d[properties.columns_name.Legend]):[properties.columns_name.Measure]
+var series_values =  series_values_all.filter((d, i) => i == series_values_all.indexOf(d))
+
+var categories_values_all = data.map(d => d[properties.columns_name.Category])
+var categories_values =  categories_values_all.filter((d, i) => i == categories_values_all.indexOf(d))
+                                              .sort((a, b) => a > b)
+
+properties.series_names = series_values
+properties.series_colors = properties.series_names.map((d, i) => properties.series_colors[i % properties.series_colors.length])
+
+
+data = properties.series_names.map(
+    serie_name => {
+        var unsorted_serie = data.filter(d => !fieldLegend || d[properties.columns_name.Legend]===serie_name)
+        var sorted_serie = []
+        unsorted_serie.forEach(d => {
+          var category_index = categories_values.indexOf(d[properties.columns_name.Category])
+          sorted_serie[category_index] = isNaN(parseFloat(d[properties.columns_name.Measure]))?0:parseFloat(d[properties.columns_name.Measure])
+        })
+        return sorted_serie;
+    })
 
 var i = 0;
 var graphData = data.map(d => {
-  var ret = {"values":d, "color":properties.series_colors[i]
+  var ret = {
+  "values":d
+  ,"color":properties.series_colors[i]
   ,"names":properties.series_names[i]
-  ,xAxis_format:properties.xAxis_format[0]
-  ,tooltip_format:properties.tooltip_format[i]}
+  ,"xAxis_format":properties.xAxis_format[0]
+  ,"tooltip_format":properties.tooltip_format[i]
+  ,"columns_name":properties.columns_name
+  }
   i++;
   return ret;
 })
@@ -270,7 +310,6 @@ var max = d3.max(graphData,function(c){ return d3.max(c.values)})
 var min = d3.min(graphData,function(c){ return d3.min(c.values)})
 var namesLength = d3.max(graphData,function(d){ return d.names.length}) > 8 ? 8 : d3.max(graphData,function(d){ return d.names.length})
 
-
 var x = d3.scaleLinear()
     .domain([0, graphData[0].values.length])
     .rangeRound([0, width > 100 ? width - namesLength*5 : width]);
@@ -278,6 +317,7 @@ var x = d3.scaleLinear()
 var y = d3.scaleLinear()
     .domain([min,max])
     .range([height, 0]);
+
 
 var valueline = d3.line()
     .x(function(d, i) { return x(i); })
@@ -341,7 +381,7 @@ circEnt.on("mouseover",function(d){
 
       tooltip.style('left', (pos.left + x)+"px")
       .style('top', (pos.top + y - 15)+"px")
-      .text(d3.format(".4s")(d))
+      .text(d3.format(properties.tooltip_format)(d))
 
     })
 circEnt.on("mouseout",function(d){
@@ -374,7 +414,7 @@ var textValueEnt = textValueUpd.enter().append('text').classed('v-line-values-te
 
 
 var textValue = textValueUpd.merge(textValueEnt)
-    .text(d => d3.format(".4s")(d.val))
+    .text(d => d3.format(properties.tooltip_format)(d.val))
     .transition()
     .duration(500)
     .style("display", function(d,i){
@@ -434,7 +474,7 @@ var textValue = textValueUpd.merge(textValueEnt)
         }
       }
 
-      return y(d.val)
+      return y(d.val) - 5
 
   })
 //////////// xAxis ////////////

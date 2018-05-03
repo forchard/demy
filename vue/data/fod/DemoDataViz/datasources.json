@@ -1,0 +1,4 @@
+[
+  {"name":"DemoDataViz", "login":"root", "psw":"root", "url":""},
+  { "name":"neo", "driver":"mysql", "connection_string":"jdbc:mysql://localhost/neo" }
+]

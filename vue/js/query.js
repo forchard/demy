@@ -17,7 +17,11 @@ var query = function() {
      if(!Boolean(field.aggregation)) {
        //Field is goin to be considered as an axis (GROUP BY)
        if(!Boolean(this.axis[this.fieldId(field)])) {
-         this.axis[this.fieldId(field)] = field
+        let id = this.fieldId(field).split('[')
+        id.shift()
+        id = id.toString()
+        id = id.substr(0, id.length-1)
+        this.axis[id] = field
        }
      }
      else {
@@ -25,46 +29,55 @@ var query = function() {
        if(!Boolean(this.measures[this.fieldId(field)])) {
          this.measures[this.fieldId(field)] = field
        }
-       
+
      }
   }
   this.addFields = function(fields) {
     fields.forEach(f => this.addField(f));
   }
+  // this.addFieldsName = function(fieldsName){
+  //   fields.
+  // }
   this.fieldId = function(field) {
+    // return field.name
     return field.table + "[" +field.name + "]";
   }
-  this.rawData = function() {
-    //TODO: Implement getting data from json stored files on model
-    var ret = [];
-    for(var i=0;i<1000;i++) {
-      var line = {}
-      Object.keys(this.fields).forEach(colKey => line[colKey] = Math.floor(Math.random()*20))
-      ret.push(line);
-    }
-    return ret;
-  }
-
+  this.rawData = function(fields) {
+    return new Promise((resolve,reject)=>{
+    //todo: Implement getting data from json stored files on model
+    const wks = d3.select("span.workspace-name").text()
+    const aData = []
+    let url = ""
+      Object.keys(this.fields).forEach((d,i)=>{
+        url += '/'+ d
+      })
+     storage.getData(url,wks).then((d)=>{
+          resolve(d)
+      })
+  })
+}
   this.data = function() {
     var grouped = {}
     var raw = this.rawData()
     //grouping
-    raw.forEach(line => {
-      var key = this.getGroupKey(line)
-      if(!Boolean(grouped[key]))
+    return raw.then((d)=>{
+      d.forEach(line => {
+        var key = this.getGroupKey(line)
+        if(!Boolean(grouped[key]))
         grouped[key] = [];
-      line["__count__"] = 1; //This is for allowing counting
-      grouped[key].push(line);
-    })
-    //reducing
-    var reduced = Object.keys(grouped)
+        line["__count__"] = 1; //This is for allowing counting
+        grouped[key].push(line);
+      })
+      //reducing
+      var reduced = Object.keys(grouped)
       .map(key => grouped[key].reduce(this.reduceLines))
       .map(groupedLine => {
         Object.keys(this.measures).forEach(columnKey => groupedLine[columnKey] = [].concat[groupedLine[columnKey]][0])
         return groupedLine
       });
-    
-    return reduced; 
+
+      return reduced;
+    })
   }
 
   this.getGroupKey = function(line) {
@@ -85,5 +98,5 @@ var query = function() {
     });
     return line;
   }
-  
+
 }

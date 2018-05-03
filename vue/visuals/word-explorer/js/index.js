@@ -76,12 +76,12 @@ function visibleParentOf(id, node) {
 function getFocus(id, node) {
   if(node.hierarchy.join(",") === id)
    return [node];
-  return [node].concat(node.children.filter(c => id.startsWith(c.hierarchy.join(","))).flatMap(c => getFocus(id, c)));
+  return [node].concat(node.children.filter(c => (id+",").startsWith(c.hierarchy.join(",")+",")).flatMap(c => getFocus(id, c)));
 }
 function getNode(id, node) {
   if(node.hierarchy.join(",") === id)
    return node;
-  return getNode(id, node.children.filter(c => id.startsWith(c.hierarchy.join(",")))[0]);
+  return getNode(id, node.children.filter(c => (id+",").startsWith(c.hierarchy.join(",")+","))[0]);
 }
 
 function setFocus(node, root) {

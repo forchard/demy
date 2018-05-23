@@ -74,7 +74,7 @@ function WordTree() {
     var removedByTag =
           (!isTagged && !includeNoTag)
           | ( isTagged && Object.keys(tags).filter(t => tags[t].withinSearch && taggedNodes[nodeId].includes(t)).length == 0 )
-
+    var matchingTag = isTagged && Object.keys(tags).filter(t => tags[t].withinSearch && taggedNodes[nodeId].includes(t)).length > 0 
     var ignoreLevel = (!isParentExpanded) && 
                       ( node.hierarchy.length<startLevel 
                          || node.size > maxSize 
@@ -86,6 +86,7 @@ function WordTree() {
                    && !isCollapsed
                    && ((node.children.filter(c => c.size<minSize).length == 0
                        && node.hierarchy.length<endLevel
+                       && !(matchingTag) 
                       ) || isExpanded)
     //Looking for focus node
     if(node.hierarchy.length < hierarchy.length) {
@@ -98,8 +99,9 @@ function WordTree() {
               , "children":node.children.flatMap(c => this.slice(c, hierarchy, startLevel, endLevel, minSize, maxSize, minRatio, maxRatio, wordFilter, expandedNodes, collapsedNodes, selectedNodes, taggedNodes, tags, includeNoTag, true))
               , "childrenHidden":false, "leaf":node.children.length==0, "selected":isSelected}
     //Ignoring nodes out of limits but giving a chance to children 
-    else if(ignoreLevel && canSplit)
+    else if(ignoreLevel && canSplit) {
       return node.children.flatMap(c => this.slice(c, hierarchy, startLevel, endLevel, minSize, maxSize, minRatio, maxRatio, wordFilter, expandedNodes, collapsedNodes, selectedNodes, taggedNodes, tags, includeNoTag, false))
+    }
     else if(!ignoreLevel)
     {
       return {"hierarchy":node.hierarchy, "name":node.name, "size":node.size, "words":node.words

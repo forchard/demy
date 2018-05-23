@@ -35,6 +35,9 @@ function renderTree(r) {
         .classed("in", true)
         .style("display", "inline")
 
+    var titleEnter = circEnter.append("title")
+    circle.select("title").text(d => Boolean(S.taggedNodes[d.data.id])?S.taggedNodes[d.data.id].join("\\r\\n"):"");
+
     var textUpdate = gText.selectAll("text").data(nodes, d => d.data.id)
     var textEnter = textUpdate.enter()
         .append("text")
@@ -52,7 +55,13 @@ function renderTree(r) {
         .style("display", function(d) { return d!==root && (d.parent === root || d.parent.parent === root)? "inline" : "none"; })
         .classed("out", false)
 
-    nodeText.selectAll("tspan.name").text(function(d, i, g) { return d.data.name; });
+    nodeText.selectAll("tspan.name").text(function(d, i, g) { 
+	let text =  Boolean(S.taggedNodes[d.data.id])?S.taggedNodes[d.data.id].join("\\r\\n"):d.data.name; 
+        let limit = 20;
+        if(text.length < limit)
+          return text;
+        return text.slice(0, limit -2 )+"..."
+    });
     nodeText.selectAll("tspan.value").text(function(d, i, g) { return d.data.noCount?"":d.data.size;});
    
     svg

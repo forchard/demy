@@ -124,9 +124,9 @@ case class PhraseTagging(textSource:org.apache.spark.sql.DataFrame, commentColum
         //println(countVect..map(c => c.value))
 
         val indexToRemove = countVect.coord.filter(c => c.value < UnknownWordsMinFrequency && c.index > 300).map(c => c.index).toSet
-        val avgVector = countVect.coord.zipWithIndex.map(p => p match {case (count, i) => Math.abs(sumVector.coord(i).value)/count.value})
+        val avgVector = countVect.coord.zipWithIndex.map(p => p match {case (count, i) => (count.index, Math.abs(sumVector.coord(i).value)/count.value)}).toMap
         //println(avgVector)
-        val w2VAvgSize = avgVector.slice(0, 300).reduce(_ + _) / 300
+        val w2VAvgSize = avgVector.values.slice(0, 300).reduce(_ + _) / 300
 
         semPhrases
           .map(s => SemanticPhrase(docId = s.docId, phraseId = s.phraseId, words= s.words, clusterId = s.clusterId
@@ -136,13 +136,11 @@ case class PhraseTagging(textSource:org.apache.spark.sql.DataFrame, commentColum
                                                                case Some(s) => 
                                                                   Some(SemanticVector(
                                                                          s.word
-                                                                         , s.coord.zipWithIndex.map(p => 
-                                                                                       p match {
-                                                                                         case (c, i) => Coordinate(c.index, 
-                                                                                                                   if(c.index < 300) c.value 
-                                                                                                                   else 0.5 * c.value * (w2VAvgSize/avgVector(i))
+                                                                         , s.coord.map(c => Coordinate(c.index, 
+                                                                                                       if(c.index < 300) c.value 
+                                                                                                       else 0.5 * c.value * (w2VAvgSize/avgVector(c.index))
                                                                                                         )
-                                                                                   })
+                                                                                   )
                                                                                    .filter(c => !indexToRemove.contains(c.index))
                                                               ))}
                      )

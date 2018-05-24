@@ -10,6 +10,8 @@ todo.json
 vue/maps/shapefile/ne_110m_admin_0_countries*
 vue/maps/shapefile/world*
 vue/visuals/word-explorer/data
+mllib/project
+mllib/target
 net2demy/project
 net2demy/target
 net2demy/*.jar

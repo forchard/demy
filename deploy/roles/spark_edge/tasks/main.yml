@@ -277,6 +277,13 @@
     owner: spark
     group: hadoop
     state: directory
+- name: zeppelin custom lib folder exists
+  tags: install_zeppelin
+  file:
+    path: "{{ zeppelin_run }}/custom-libs" 
+    owner: spark
+    group: hadoop
+    state: directory
 - name: zeppelin configuration file present
   tags: install_zeppelin
   copy:

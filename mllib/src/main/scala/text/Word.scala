@@ -3,14 +3,15 @@ package demy.mllib.text
 import demy.mllib.linalg.SemanticVector
 
 case class Doc(text:String, docId:Int
-);case class Word(word:String, simplified:String, isWord:Boolean, index:Int, phraseId:Int, docId:Int, root:String=null, tags:Array[Short]=null, wordType:String=null, semantic:SemanticVector=null
-                   ,hierarchy:Seq[Int]=null, clusterCount:Int=1) {
+);case class Word(word:String, simplified:String, isWord:Boolean, index:Int, phraseId:Int, docId:Int, root:String=null, tags:Array[Short]=null
+                    , wordType:String=null, semantic:SemanticVector=null,hierarchy:Seq[Int]=null, clusterCount:Int=1) {
     def updatePhrase(phraseId:Int) = Word(this.word, this.simplified, this.isWord, this.index, phraseId, this.docId, this.root, this.tags, this.wordType, this.semantic)
     def setSemantic(semantic:SemanticVector, defaultIfNull:Boolean = false, splitOnCharacters:Boolean = false) = {
         Word(this.word, this.simplified, this.isWord, this.index, this.phraseId, this.docId, this.root, this.tags, this.wordType
             , if(semantic != null) semantic 
                 else if(defaultIfNull && !splitOnCharacters) SemanticVector.fromWord(this.word.toLowerCase) 
-                else if(defaultIfNull && splitOnCharacters &&  this.word.replaceAll("\\s", "").size > 0) this.word.replaceAll("\\s", "").map(c => SemanticVector.fromWord(c.toString.toLowerCase)).reduce((v1, v2) => v1.sum(v2)) 
+                else if(defaultIfNull && splitOnCharacters &&  this.word.replaceAll("\\s", "").size > 0) 
+                  this.word.replaceAll("\\s", "").map(c => SemanticVector.fromWord(c.toString.toLowerCase)).reduce((v1, v2) => v1.sum(v2)) 
                 else null
         )
     }
@@ -22,9 +23,12 @@ case class Doc(text:String, docId:Int
             w.semantic
         SemanticPhrase(w.docId, w.phraseId, Seq(w), if(combined == null) None else Some(combined))
     }
-    def sumWords(that:Word) = Word(this.word, this.simplified, this.isWord, this.index, this.phraseId, this.docId, this.root, this.tags, this.wordType, this.semantic, this.hierarchy, this.clusterCount+ that.clusterCount) 
-    def setHierarchy(hierarchy:Seq[Int]) = Word(this.word, this.simplified, this.isWord, this.index, this.phraseId, this.docId, this.root, this.tags, this.wordType, this.semantic, hierarchy, this.clusterCount) 
-    def setClusterCount(count:Int) = Word(this.word, this.simplified, this.isWord, this.index, this.phraseId, this.docId, this.root, this.tags, this.wordType, this.semantic, hierarchy, count) 
+    def sumWords(that:Word) = Word(this.word, this.simplified, this.isWord, this.index, this.phraseId, this.docId, this.root
+                                    , this.tags, this.wordType, this.semantic, this.hierarchy, this.clusterCount+ that.clusterCount) 
+    def setHierarchy(hierarchy:Seq[Int]) = Word(this.word, this.simplified, this.isWord, this.index, this.phraseId, this.docId
+                                                 , this.root, this.tags, this.wordType, this.semantic, hierarchy, this.clusterCount) 
+    def setClusterCount(count:Int) = Word(this.word, this.simplified, this.isWord, this.index, this.phraseId, this.docId
+                                           , this.root, this.tags, this.wordType, this.semantic, hierarchy, count) 
 };object Word {
     def containsPhraseSep(s:String) = if(s==null) false else "[\\r\\n\\.;!?]".r.findFirstIn(s) match {case Some(s) => true case _ => false}
     def simplifyText(word:String):String = {
@@ -68,9 +72,26 @@ case class Doc(text:String, docId:Int
     val sqlSimplify = org.apache.spark.sql.functions.udf((text: String) => {
       Word.simplifyText(text)
     })
-    def splitDoc(doc:Doc):Seq[Word] = {
+    def linksAsBlanks(s:String) = {
+        val urlPattern = "((https?|ftp|gopher|telnet|file|Unsure|http):((//)|(\\\\))+[\\w\\d:#@%/;$()~_?\\+-=\\\\\\.&]*)";
+        val p = java.util.regex.Pattern.compile(urlPattern,java.util.regex.Pattern.CASE_INSENSITIVE);
+        val m = p.matcher(s);
+        var sb:Option[StringBuilder] = None
+        var i = 0
+        while(m.find) {
+            sb = sb match {case Some(b) => sb case _ => Some(new StringBuilder())}
+            sb.get.append(s.substring(i, m.start))
+            sb.get.append(Range(m.start, m.end).map(i => " ").mkString(""))
+            i = m.end()
+        }
+        
+        val ret =  sb match {case Some(b) => b.append(s.substring(i)).toString case _ => s}
+        ret
+    }
+    def splitDoc(doc:Doc, linksAsSeparators:Boolean = true):Seq[Word] = {
         val orig = if(doc.text == null) "" else doc.text 
-        val simpli = Word.simplifyText(orig).map(car => car.toString.replaceAll("[^(\\p{L})]|[\\(]|[\\)]", " ")).mkString("")
+        val noLinks = if(linksAsSeparators) linksAsBlanks(orig) else orig
+        val simpli = Word.simplifyText(noLinks).map(car => car.toString.replaceAll("[^(\\p{L})]|[\\(]|[\\)]", " ")).mkString("")
         val WStarts = simpli.zipWithIndex.map(p => if(p._1 != ' ' && (p._2 == 0 || simpli(p._2-1) == ' ')) p._2 else -1).filter(i => i >= 0)
         val WEnds = simpli.zipWithIndex.map(p => if(p._1 != ' ' && (p._2 == simpli.size-1 || simpli(p._2+1) == ' ')) p._2 else -1).filter(i => i >= 0)
         val wordIndex = WStarts.zipWithIndex.map(p => Word(orig.substring(p._1, WEnds(p._2)+1),simpli.substring(p._1, WEnds(p._2)+1), true, p._1 , -1, doc.docId))

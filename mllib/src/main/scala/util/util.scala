@@ -9,9 +9,17 @@ case class util(dummy:Int){
         val strDate = sdfDate.format(now);
         println(strDate+"-->"+message);
     }
-    def checkpoint[T : org.apache.spark.sql.Encoder : scala.reflect.runtime.universe.TypeTag] (ds:org.apache.spark.sql.Dataset[T], path:String):org.apache.spark.sql.Dataset[T] = {
+    def checkpoint[T : org.apache.spark.sql.Encoder : scala.reflect.runtime.universe.TypeTag] (ds:org.apache.spark.sql.Dataset[T], path:String)
+               :org.apache.spark.sql.Dataset[T] = 
+    {
         ds.write.mode("overwrite").parquet(path)
         return ds.sparkSession.read.parquet(path).as[T]
+    }
+
+    def checkpoint(df:org.apache.spark.sql.DataFrame, path:String) = 
+    {
+        df.write.mode("overwrite").parquet(path)
+        df.sparkSession.read.parquet(path)
     }
 /*    def schemaOf[T: scala.reflect.runtime.universe.TypeTag]: StructType = { 
         org.apache.spark.sql.catalyst.ScalaReflection

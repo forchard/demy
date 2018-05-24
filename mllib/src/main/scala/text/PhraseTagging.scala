@@ -89,10 +89,10 @@ case class PhraseTagging(textSource:org.apache.spark.sql.DataFrame, commentColum
         lexique.unpersist
     }
     
-    def addSemantic(simplifySemantic:Boolean = true, wordTypeScope:Seq[String] = Seq("Characteristic"/*, "Arity"*/,"Quantity"/*,"Connector"*/, "Entity", "Autre", "Negation", "Action","Quality")
-                    , keepSymbols:Boolean = false, keepUnknownWords:Boolean = true, UnknownWordsMinFrequency:Int = 20, stopWords:Seq[String]=Seq[String]()) {
+    def addSemantic(simplifySemantic:Boolean = true
+                      , wordTypeScope:Seq[String] = Seq("Characteristic"/*, "Arity"*/,"Quantity"/*,"Connector"*/, "Entity", "Autre", "Negation", "Action","Quality")
+                      , keepSymbols:Boolean = false, keepUnknownWords:Boolean = true, UnknownWordsMinFrequency:Int = 20, stopWords:Seq[String]=Seq[String]()) {
         import spark.implicits._
-        import org.apache.spark.sql.functions._
 
         val wordVectors = spark.read.parquet(this.semanticVectorsPath).as[SemanticVector]
         val wordsInDocs = spark.read.parquet(this.taggedWordsPath).as[Word]
@@ -105,8 +105,10 @@ case class PhraseTagging(textSource:org.apache.spark.sql.DataFrame, commentColum
         )
         val semPhrases = joined.map(p => p._1.setSemantic(
                                 semantic = if(wordTypeScope.filter(s => p._1.wordType == s).length==0 || stopWords.filter(s => s == p._1.root).size > 0) null else p._2
-                                ,defaultIfNull = (!p._1.isWord && keepSymbols) || (wordTypeScope.filter(s => p._1.wordType == s).length>0) || stopWords.filter(s => s == p._1.root).size == 0
-                                , splitOnCharacters= !p._1.isWord && keepSymbols
+                                ,defaultIfNull = (!p._1.isWord && keepSymbols) 
+                                                   || (wordTypeScope.filter(s => p._1.wordType == s).length>0) 
+                                                   || stopWords.filter(s => s == p._1.root).size == 0
+                                , splitOnCharacters = !p._1.isWord && keepSymbols
             ))
             .map(w => w.toSemanticPhrase())
             .groupByKey(ps => (ps.docId, ps.phraseId))
@@ -115,25 +117,37 @@ case class PhraseTagging(textSource:org.apache.spark.sql.DataFrame, commentColum
             .cache
         val sumVector = semPhrases.flatMap(p=>p.phraseSemantic).reduce((s1, s2)=>s1.sum(s2))
         //println(sumVector.coord.map(c => c.value))
-        val countVect = semPhrases.flatMap(p=>p.phraseSemantic).map(s => SemanticVector(word = s.word, coord = s.coord.map(c => Coordinate(index = c.index, value = 1)))).reduce((s1, s2)=>s1.sum(s2))
+        val countVect = semPhrases
+                          .flatMap(p=>p.phraseSemantic)
+                          .map(s => SemanticVector(word = s.word, coord = s.coord.map(c => Coordinate(index = c.index, value = 1))))
+                          .reduce((s1, s2)=>s1.sum(s2))
         //println(countVect..map(c => c.value))
+
         val indexToRemove = countVect.coord.filter(c => c.value < UnknownWordsMinFrequency && c.index > 300).map(c => c.index).toSet
         val avgVector = countVect.coord.zipWithIndex.map(p => p match {case (count, i) => Math.abs(sumVector.coord(i).value)/count.value})
         //println(avgVector)
         val w2VAvgSize = avgVector.slice(0, 300).reduce(_ + _) / 300
 
-        semPhrases.map(s => SemanticPhrase(docId = s.docId, phraseId = s.phraseId, words= s.words, clusterId = s.clusterId, centerDistance = s.centerDistance, hierarchy = s.hierarchy
-            , phraseSemantic = s.phraseSemantic 
-                            match {
-                                
-                                case None => None 
-                                case Some(s) => Some(SemanticVector(s.word, s.coord
-                                                        .zipWithIndex.map(p => p match {case (c, i) => Coordinate(c.index, if(c.index < 300) c.value else 0.5 * c.value * (w2VAvgSize/avgVector(i)))})
-                                                        .filter(c => !indexToRemove.contains(c.index))
-                                                ))}
-                            )
-                    )
-                .write.mode("Overwrite").parquet(this.semanticPhrasesPath)
+        semPhrases
+          .map(s => SemanticPhrase(docId = s.docId, phraseId = s.phraseId, words= s.words, clusterId = s.clusterId
+                        , centerDistance = s.centerDistance, hierarchy = s.hierarchy
+                        , phraseSemantic = s.phraseSemantic match {
+                                                               case None => None 
+                                                               case Some(s) => 
+                                                                  Some(SemanticVector(
+                                                                         s.word
+                                                                         , s.coord.zipWithIndex.map(p => 
+                                                                                       p match {
+                                                                                         case (c, i) => Coordinate(c.index, 
+                                                                                                                   if(c.index < 300) c.value 
+                                                                                                                   else 0.5 * c.value * (w2VAvgSize/avgVector(i))
+                                                                                                        )
+                                                                                   })
+                                                                                   .filter(c => !indexToRemove.contains(c.index))
+                                                              ))}
+                     )
+          )
+          .write.mode("Overwrite").parquet(this.semanticPhrasesPath)
         semPhrases.unpersist
     }
 }

@@ -409,6 +409,19 @@
   register: out
   changed_when: not out.stdout.startswith('NO-CHANGE')
   notify: restart zeppelin
+- name : zeppelin spark interpreter options
+  tags: install_zeppelin
+  become_user: spark
+  shell: |
+    quotedid=`jq '.interpreterSettings[] | select(.name == "spark") |.id' "{{ zeppelin_home }}/conf/interpreter.json"`
+    sparkid="${quotedid%\"}"
+    sparkid="${sparkid#\"}"
+    jq 'setpath(["interpreterSettings", "'$sparkid'", "option"];{"remote": true,"port": -1,"perNote": "{{ zeppelin_spark_perNoteIsolation }}","perUser": "{{ zeppelin_spark_perUserIsolation }}","isExistingProcess": false,"setPermission": false,"users": [],"isUserImpersonate": false})' "{{ zeppelin_home }}/conf/interpreter.json" > "{{ zeppelin_home }}/conf/interpreter.json.1"
+
+    if cmp -s "{{ zeppelin_home }}/conf/interpreter.json.1" "{{ zeppelin_home }}/conf/interpreter.json"; then echo "NO-CHANGE"; else cp "{{ zeppelin_home }}/conf/interpreter.json.1" "{{ zeppelin_home }}/conf/interpreter.json"; echo "CHANGED"; fi  
+  register: out
+  changed_when: not out.stdout.startswith('NO-CHANGE')
+  notify: restart zeppelin
 - name: zeppelin service installed
   tags: install_zeppelin
   template:

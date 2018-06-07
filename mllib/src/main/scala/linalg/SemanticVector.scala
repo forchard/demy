@@ -27,6 +27,29 @@ case class SemanticVector(word:String, coord:Vector[Coordinate]) {
     def scale(factor:Double = 1) = {
         if(factor==1.0) this else SemanticVector(this.word, this.coord.map(c => Coordinate(c.index, c.value*factor)))
     }
+    def relativeSemantic(reference:SemanticVector) = {
+        var i1 = 0
+        var i2 = 0
+        var newVec = Vector[Coordinate]()
+        val maxRef = reference.coord.map(c => Math.abs(c.value)).max
+        val maxValue = this.coord.map(c => Math.abs(c.value)).max
+        while( i1 < this.coord.size || i2 < reference.coord.size) {
+            if( i1 < this.coord.size && i2 < reference.coord.size && this.coord(i1).index==reference.coord(i2).index && this.coord(i1).value!=0) {
+                val v = this.coord(i1).value
+                val ref = Math.abs(reference.coord(i2).value)
+                val tf = 0.5 + 0.5 * (v/maxValue)
+                val idf = Math.log(maxRef / ref)
+                newVec = newVec :+ Coordinate(this.coord(i1).index, tf*idf)
+                i1 = i1 + 1
+                i2 = i2 + 1
+            } else if ((i1 < this.coord.length && i2 < reference.coord.length && this.coord(i1).index<reference.coord(i2).index) || (i1 < this.coord.length && i2 == reference.coord.length)) {
+                i1 = i1 + 1
+            } else if ((i1 < this.coord.length && i2 < reference.coord.length && this.coord(i1).index>reference.coord(i2).index) ||  (i1 == this.coord.length && i2 < reference.coord.length)) {
+                i2 = i2 + 1
+            }
+        }
+        SemanticVector(this.word, newVec)
+    }
     def semanticDiff(docFreq:SemanticVector) = {
         var i1 = 0
         var i2 = 0
@@ -67,7 +90,7 @@ case class SemanticVector(word:String, coord:Vector[Coordinate]) {
                 i2 = i2 + 1
             }
         }
-        Sv1v2 / (Math.sqrt(Sv1v1)*Math.sqrt(Sv2v2))
+        0.5 + 0.5 * Sv1v2 / (Math.sqrt(Sv1v1)*Math.sqrt(Sv2v2))
     }    
     def commonDimSimilarity(that:SemanticVector) =  {
         var i1 = 0

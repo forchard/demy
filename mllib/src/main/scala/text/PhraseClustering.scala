@@ -15,7 +15,7 @@ import scala.util.Random
 case class PhraseClustering(numClusters:Int, taggedCentersPath:String,userContextPath:Seq[String], userClustersPath:String, phraseVectorsPath:String
                              , phraseClustersPath:String, phraseHierarchy:String, hirarchicalClusters:String ,clusterInfoPath:String, clusterOutputPath:String
                              , phrasesOutputPath:String, contextOutputPath:String, spark:org.apache.spark.sql.SparkSession) {
-    def applyClustering(keepExistingIteration:Boolean=false, ignoreTags:Set[String] = Set[String](), minIterations:Int = -1) = {
+    def applyClustering(keepExistingIteration:Boolean=false, ignoreTags:Set[String] = Set[String](), minIterations:Int = -1, maxIterations:Int = -1) = {
         //Modified k-means on phrases
         import spark.implicits._
 
@@ -33,7 +33,7 @@ case class PhraseClustering(numClusters:Int, taggedCentersPath:String,userContex
         //Adding previous tagged clusters if we have tagged phrases without a cluster
         val orphelinTags = previousTaggedPhrases.flatMap(c => c.tags).distinct.joinWith(previousTaggedClusters.flatMap(c => c.tags).distinct, $"_1" === $"_2", "left").filter(p => p._2 == null).map(p => p._1).collect
         if(orphelinTags.size > 0) {
-            util.log(s"Found (${orphelinTags.mkString(", ")}helin tags, they will be added as new centers")
+            util.log(s"Found (${orphelinTags.mkString(", ")} orphehelin tags, they will be added as new centers")
             val maxCluster = previousTaggedClusters.map(c => c.centerId).reduce((a, b)=> if(a>b) a else b)
             val newCenters = previousTaggedPhrases.flatMap(c => c.tags.map(t => CenterTagged(centerId = -1, center = c.center, tags=Seq(t))))
                                 .groupByKey(c => c.tags(0))
@@ -220,7 +220,9 @@ case class PhraseClustering(numClusters:Int, taggedCentersPath:String,userContex
             taggedClusters = util.checkpoint(iterationCenters.filter(c => c.centerId >=0)/*.union(iterationCenters.filter(c => c.centerId <0).limit(missingClusters))*/, this.taggedCentersPath)
 
             //7. Choosing if keep iterating or not
-            if(oldCost/oldPhrasesCount <= stat.totalDistance/stat.phraseCount && (minIterations < 0 || iterations >=minIterations)) {
+            if(   (oldCost/oldPhrasesCount <= stat.totalDistance/stat.phraseCount && (minIterations < 0 || iterations >=minIterations)) 
+               || (maxIterations >= 0 && iterations >= maxIterations)
+              ) {
                 finish = true
                 util.log(s"Final cost is ${stat.totalDistance} for ${stat.phraseCount} phrases")
                 util.log("Writing tagged clusters")
@@ -406,7 +408,7 @@ case class PhraseClustering(numClusters:Int, taggedCentersPath:String,userContex
             val comp = org.apache.spark.sql.functions.udf((h:String) => h.split(",").map(s => s.toInt))
             val phraseSemantic = spark.read.parquet(this.phraseVectorsPath).as[SemanticPhrase]
             val phrases = spark.read.parquet(this.phraseHierarchy).as[SemanticPhrase]
-                .joinWith(phraseSemantic, $"_1.docId"===$"_2.docId" && $"_1.phraseId"===$"raseId")
+                .joinWith(phraseSemantic, $"_1.docId"===$"_2.docId" && $"_1.phraseId"===$"_2.phraseId")
                 .map(p => p match {case (pCluster, pWords) => SemanticPhrase(docId = pWords.docId, phraseId= pWords.phraseId, phraseSemantic = pWords.phraseSemantic
                                                                                             ,  words = pWords.words
                                                                                             , clusterId = pCluster.clusterId, centerDistance = pCluster.centerDistance, hierarchy = pCluster.hierarchy)})

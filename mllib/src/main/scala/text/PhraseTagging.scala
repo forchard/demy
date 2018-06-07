@@ -7,7 +7,7 @@ import org.apache.spark.sql.functions._
 import org.apache.spark.sql.expressions.{Window}
 
 
-case class PhraseTagging(textSource:org.apache.spark.sql.DataFrame, commentColumnName:String, lexiquePath:String, semanticVectorsPath: String, taggedWordsPath:String, semanticPhrasesPath: String, spark:org.apache.spark.sql.SparkSession) {
+case class PhraseTagging(textSource:org.apache.spark.sql.DataFrame, idColumnName:Option[String]=None, commentColumnName:String, lexiquePath:String, semanticVectorsPath: String, taggedWordsPath:String, semanticPhrasesPath: String, spark:org.apache.spark.sql.SparkSession) {
     def tagWords() {
         //TODO: Improve tagging by restarting on sentence break (both on tagging and frequency evaluation)
     
@@ -23,7 +23,7 @@ case class PhraseTagging(textSource:org.apache.spark.sql.DataFrame, commentColum
             .csv(this.lexiquePath)
             .select($"id", $"Flexion", $"Lemme",$"Sémantique",$"Étymologie", $"Étiquettes",$"Fréquence")
         
-        val lexique_contractions =    lexique_base
+        val lexique_contractions = lexique_base
             .where("Flexion = 'je' or (Flexion = 'la' and `Étiquettes` like '%properobj%') or Flexion ='ne' or Flexion ='hôpital'")
             .withColumn("newFlexion", expr("case when Flexion = 'je' then 'j' when Flexion = 'la' then 'l' when Flexion ='ne' then 'n' when Flexion ='hôpital' then 'chu' end"))
             .withColumn("newEtiq", expr("case when Flexion in ('la') then regexp_replace(`Étiquettes`, 'fem ', '') else `Étiquettes` end"))
@@ -43,7 +43,10 @@ case class PhraseTagging(textSource:org.apache.spark.sql.DataFrame, commentColum
             .cache
             
         var aTagged_verbatim_0 = this.textSource.withColumnRenamed(commentColumnName, "comment")
-            .select($"comment".as("text"), row_number().over(Window.orderBy($"comment".desc)).as("docId")).as[Doc]
+            .select($"comment".as("text"), (this.idColumnName match {
+                                                               case Some(docId) => this.textSource(docId)
+                                                               case None => row_number().over(Window.orderBy($"comment".desc))
+                                                             }).as("docId")).as[Doc]
             .flatMap(doc => Word.splitDoc(doc))
             .joinWith(lexique, $"_2.Simplified"===$"_1.simplified", "left")
             .map(p => WordLexOptions(p._1, if(p._2 != null) p._2.disambiguate(p._1.word) else null).applyTag(null, Some("Single Lexique Entry")))
@@ -90,7 +93,7 @@ case class PhraseTagging(textSource:org.apache.spark.sql.DataFrame, commentColum
     }
     
     def addSemantic(simplifySemantic:Boolean = true
-                      , wordTypeScope:Seq[String] = Seq("Characteristic"/*, "Arity"*/,"Quantity"/*,"Connector"*/, "Entity", "Autre", "Negation", "Action","Quality")
+                      , wordTypeScope:Map[String, Double] = Map("Characteristic"->1.0/*, "Arity"*/,"Quantity"->1.0/*,"Connector"*/, "Entity"->1.0, "Autre"->1.0, "Negation"->1.0, "Action"->1.0,"Quality"->1.0)
                       , keepSymbols:Boolean = false, keepUnknownWords:Boolean = true, UnknownWordsMinFrequency:Int = 20, stopWords:Seq[String]=Seq[String]()) {
         import spark.implicits._
 
@@ -103,13 +106,20 @@ case class PhraseTagging(textSource:org.apache.spark.sql.DataFrame, commentColum
             else 
                 wordsInDocs.joinWith(wordVectors, $"_1.isWord" && lower($"_1.word") === lower($"_2.word"), "left")
         )
-        val semPhrases = joined.map(p => p._1.setSemantic(
-                                semantic = if(wordTypeScope.filter(s => p._1.wordType == s).length==0 || stopWords.filter(s => s == p._1.root).size > 0) null else p._2
-                                ,defaultIfNull = (!p._1.isWord && keepSymbols) 
-                                                   || (wordTypeScope.filter(s => p._1.wordType == s).length>0) 
-                                                   || stopWords.filter(s => s == p._1.root).size == 0
-                                , splitOnCharacters = !p._1.isWord && keepSymbols
-            ))
+        val semPhrases = joined.map(p => p match { case(word, vector) => 
+			         word.setSemantic(
+                                     semantic = if(wordTypeScope.getOrElse(word.wordType, 0.0) <= 0.0 
+                                                    || stopWords.filter(s => s == word.root).size > 0
+                                                    || vector == null
+                                                ) 
+							null 
+						else 
+							vector.scale(wordTypeScope(word.wordType))
+                                    ,defaultIfNull = (!word.isWord && keepSymbols) 
+                                                   || wordTypeScope.getOrElse(word.wordType, 0.0) > 0 
+                                                   || stopWords.filter(s => s == word.root).size == 0
+                                    , splitOnCharacters = !word.isWord && keepSymbols
+            )})
             .map(w => w.toSemanticPhrase())
             .groupByKey(ps => (ps.docId, ps.phraseId))
             .reduceGroups((sp1, sp2) => sp1.mergeWith(sp2))

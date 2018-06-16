@@ -18,7 +18,7 @@ crypted_disk: space
 
 #Hadoop
 hadoop_cluster_name: "demy"
-hadoop_ver: 2.8.0
+hadoop_ver: 3.1.0
 hadoop_install: "/{{ crypted_disk  }}/hadoop"
 hadoop_home: "{{ hadoop_install }}/hadoop_home"
 hadoop_run: "{{ hadoop_install }}/hadoop_run"
@@ -78,7 +78,7 @@ zeppelin_shiro_config:
 - [urls,"/api/credential/\\*\\* =", "/api/credential/** = authc, roles[admin]"]
 zeppelin_maven_repository: "http://central.maven.org/maven2/"
 zeppelin_spark_dependencies: ["org.jsoup:jsoup:1.11.2", "org.apache.lucene:lucene-core:7.2.1", "org.apache.lucene:lucene-queryparser:7.2.1", "{{ zeppelin_run }}/custom-libs/demy-machine-learning-library_2.11-1.0.jar"]
-zeppelin_spark_perNoteIsolation: "isolated" #isolated, shared or scoped
+zeppelin_spark_perNoteIsolation: "shared" #isolated, shared or scoped
 zeppelin_spark_perUserIsolation: "isolated" #isolated, shared or scoped
 
 #Head Node

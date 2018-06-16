@@ -12,6 +12,12 @@
   become: true
   roles: 
   - ssh2me 
+- name: checking if we are abiout to upgrade hadoop
+  hosts: namenode
+  gather_facts: false
+  become: true
+  roles:
+  - prepare_upgrade
 - name: installing hadoop components
   hosts: nodes
   gather_facts: false

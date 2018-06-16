@@ -1,0 +1,63 @@
+---
+- name: get current hadoop version
+  tags: upgrade
+  shell: '[ -f {{ hadoop_home }}/bin/hdfs ] && {{ hadoop_home }}/bin/hdfs version || echo "No"'
+  changed_when: false
+  become_user: hdfs
+  register: out  
+- name: check against target hadoop version
+  tags: upgrade
+  set_fact:
+    start_upgrade: 'out.stdout != "No" and not out.stdout.startswith( "Hadoop " + hadoop_ver)'
+- name: stopping all head node services and starting on 
+  when: not start_upgrade | bool
+  tags: upgrade
+  block:
+  - name: stop yarn resource manager
+    service: 
+      name: yarn-resourcemanager
+      state: stopped
+  - name: get current safe mode status
+    command: "{{ hadoop_home }}/bin/hdfs dfsadmin -safemode get"
+    changed_when: false
+    become_user: hdfs
+    register: out
+  - name: enter into safe mode
+    command: "{{ hadoop_home  }}/bin/hdfs dfsadmin -safemode enter"
+    when:  '"Safe mode is OFF" in out.stdout'
+    register: out
+    become_user: hdfs
+    changed_when: '"Safe mode is ON" in out.stdout'
+  - name: get current rolling upgrade status
+    command: "{{ hadoop_home  }}/bin/hdfs dfsadmin -rollingUpgrade query"
+    become_user: hdfs
+    changed_when: false
+    register: out
+  - name: check whether dfs should prepare rolling upgrade
+    set_fact:
+      prepare_rolling_upgrade: 'out.stdout.contains("There is no rolling upgrade in progress")'
+  - name: prepare rolling upgrade
+    command: "{{ hadoop_home  }}/bin/hdfs dfsadmin -rollingUpgrade prepare"
+    when:  '"There is no rolling upgrade in progress" in out.stdout'
+    become_user: hdfs
+    register: out
+    changed_when: '"PREPARE rolling upgrade" in out.stdout'
+  - name: wait until rolling upgrade is prepared
+    shell: |
+      X=`{{ hadoop_home }}/bin/hdfs dfsadmin -rollingUpgrade query | grep "Proceed with rolling upgrade" | wc -l`
+      until [ $X -eq 1 ]; do X=`{{ hadoop_home }}/bin/hdfs dfsadmin -rollingUpgrade query | grep "Proceed with rolling upgrade" | wc -l`; sleep 1; done
+    become_user: hdfs
+    changed_when: false
+  - name: stop name node
+    service: 
+      name: hdfs-namenode
+      state: stopped
+  - name: setting upgrade flag 
+    copy: 
+      content: ON 
+      dest: "{{ hadoop_run }}/rollingUpgrade"
+      force: true
+      owner: "hadoop"
+      group: "hadoop"
+      mode: "0770"
+

@@ -15,7 +15,8 @@ import scala.util.Random
 case class PhraseClustering(numClusters:Int, taggedCentersPath:String,userContextPath:Seq[String], userClustersPath:String, phraseVectorsPath:String
                              , phraseClustersPath:String, phraseHierarchy:String, hirarchicalClusters:String ,clusterInfoPath:String, clusterOutputPath:String
                              , phrasesOutputPath:String, contextOutputPath:String, spark:org.apache.spark.sql.SparkSession) {
-    def applyClustering(keepExistingIteration:Boolean=false, ignoreTags:Set[String] = Set[String](), minIterations:Int = -1, maxIterations:Int = -1) = {
+    def applyClustering(keepExistingIteration:Boolean=false, reusePreviousIterationCenters:Boolean= false, ignoreTags:Set[String] = Set[String]()
+                          , minIterations:Int = -1, maxIterations:Int = -1) = {
         //Modified k-means on phrases
         import spark.implicits._
 
@@ -94,22 +95,26 @@ case class PhraseClustering(numClusters:Int, taggedCentersPath:String,userContex
         while(!finish) {
             //1. Getting initial centers
             print("Iteration Start: ")
-            val iterationStart = (if(iterating || keepExistingIteration) {
-               util.log("Using previous iteration phrases, recalculating center")
-               /*val taggedCenters = spark.read.parquet(taggedCentersPath).as[CenterTagged]*/
-               /*spark.read.parquet(this.phraseClustersPath).where($"semantic".isNotNull).as[PhraseOnCluster]*/
-               taggedPhrases
-                    .map(p => p.toCenterSemanticStats())
-                    .groupByKey(centerStatByDoc => (centerStatByDoc.centerId))
-                    .reduceGroups((s1, s2) => s1.averageCenter(s2).asInstanceOf[CenterSemanticStats])
-                    .map(p => p._2)
-                    .joinWith(taggedClusters, $"_1.centerId"===$"_2.centerId")
-                    .map(p => p match {case (newCenter, oldCenter) => CenterTagged(centerId = -2, center = newCenter.center, tags=oldCenter.tags).setOrigin( origin = CenterTaggedOrigin.cluster)})
-            }
-            else {
-                util.log(s"Using phrases from $bestTaggedCount existing tagged  clusters and random for the rest")
-                bestTagPhrases.map(c => CenterTaggedOrigin(center = c.center, centerId = -2, tags = c.tags, origin = CenterTaggedOrigin.cluster))
-            })
+            val iterationStart = (
+              if(iterating || keepExistingIteration) {
+                 util.log("Using previous iteration phrases, recalculating center")
+                 /*val taggedCenters = spark.read.parquet(taggedCentersPath).as[CenterTagged]*/
+                 /*spark.read.parquet(this.phraseClustersPath).where($"semantic".isNotNull).as[PhraseOnCluster]*/
+                 taggedPhrases
+                      .map(p => p.toCenterSemanticStats())
+                      .groupByKey(centerStatByDoc => (centerStatByDoc.centerId))
+                      .reduceGroups((s1, s2) => s1.averageCenter(s2).asInstanceOf[CenterSemanticStats])
+                      .map(p => p._2)
+                      .joinWith(taggedClusters, $"_1.centerId"===$"_2.centerId")
+                      .map(p => p match {case (newCenter, oldCenter) => CenterTagged(centerId = -2, center = newCenter.center, tags=oldCenter.tags).setOrigin( origin = CenterTaggedOrigin.cluster)})
+              }
+              else if(reusePreviousIterationCenters){
+                  util.log(s"Using tags from previous iteration")
+                  previousTaggedClusters.map(c => c.setOrigin(origin = CenterTaggedOrigin.cluster))
+              } else {
+                  util.log(s"Using phrases from $bestTaggedCount existing tagged  clusters and random for the rest")
+                  bestTagPhrases.map(c => CenterTaggedOrigin(center = c.center, centerId = -2, tags = c.tags, origin = CenterTaggedOrigin.cluster))
+              })
             //2 Adding more centers as needed to fill the expected count
             val randomCenters = spark.read.parquet(this.phraseVectorsPath).where($"phraseSemantic".isNotNull).select(lit(-1).as("centerId"), $"phraseSemantic".as("center")).as[CenterSemantic]
                 .map(c => c.toEmptyCenterTagged().setOrigin(origin = CenterTaggedOrigin.randomPhrase))

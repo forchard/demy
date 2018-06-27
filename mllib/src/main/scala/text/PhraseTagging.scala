@@ -7,93 +7,83 @@ import org.apache.spark.sql.functions._
 import org.apache.spark.sql.expressions.{Window}
 
 
-case class PhraseTagging(textSource:org.apache.spark.sql.DataFrame, idColumnName:Option[String]=None, commentColumnName:String, lexiquePath:String, semanticVectorsPath: String, taggedWordsPath:String, semanticPhrasesPath: String, spark:org.apache.spark.sql.SparkSession) {
-    def tagWords() {
-        //TODO: Improve tagging by restarting on sentence break (both on tagging and frequency evaluation)
-    
-        import org.apache.spark.sql.expressions.{Window}
-        import spark.implicits._
-        import org.apache.spark.sql.functions._
-        
-        val lexique_base = this.spark.read
-            .option("header", "true")
-            .option("sep", "\t")
-            .option("nullValue", "*")
-            .option("inferSchema", "true")
-            .csv(this.lexiquePath)
-            .select($"id", $"Flexion", $"Lemme",$"Sémantique",$"Étymologie", $"Étiquettes",$"Fréquence")
-        
-        val lexique_contractions = lexique_base
-            .where("Flexion = 'je' or (Flexion = 'la' and `Étiquettes` like '%properobj%') or Flexion ='ne' or Flexion ='hôpital'")
-            .withColumn("newFlexion", expr("case when Flexion = 'je' then 'j' when Flexion = 'la' then 'l' when Flexion ='ne' then 'n' when Flexion ='hôpital' then 'chu' end"))
-            .withColumn("newEtiq", expr("case when Flexion in ('la') then regexp_replace(`Étiquettes`, 'fem ', '') else `Étiquettes` end"))
-            .select($"id", $"newFlexion".as("Flexion"),$"Lemme", $"Sémantique", $"Étymologie", $"newEtiq".as("Étiquettes"),$"Fréquence")
-        
-        val lexique = lexique_base
-            .union(lexique_contractions)
-            .withColumn("Simplified", Word.sqlSimplify($"Flexion"))
-            .withColumn("tags", GramTag.sqlGetGramTag($"Étiquettes", expr("case when Lemme in ('être', 'avoir', 'aller', 'devoir', 'falloir', 'faire', 'pouvoir') then true else false end")))
-            .withColumn("rn", row_number().over(Window.partitionBy($"Flexion", $"tags").orderBy($"id")))
-            .where($"rn"===1)
-            .select($"id", $"Simplified", $"Flexion", $"Lemme",$"Sémantique",$"Étymologie",$"tags", $"Fréquence".as("globalFreq")).as[LexiqueEntry]
-            .map(e => GroupedLexiqueEntry(e.id, e.Simplified, Array(e), 1, 1))
-            .groupByKey(ge => ge.Simplified)
-            .reduceGroups((g1, g2)=>g1.reduceWith(g2))
-            .map(p => p._2) //.removeUnusual
-            .cache
-            
-        var aTagged_verbatim_0 = this.textSource.withColumnRenamed(commentColumnName, "comment")
+case class PhraseTagging(textSource:org.apache.spark.sql.DataFrame, idColumnName:Option[String]=None, commentColumnName:String, lexiquePath:String/*, semanticVectorsPath: String, taggedWordsPath:String, semanticPhrasesPath: String*/, spark:org.apache.spark.sql.SparkSession) {
+    def tagWords() = {
+        import spark.sqlContext.implicits._
+        val lexiqueSimplified = spark.read.parquet(this.lexiquePath).as[(String, Seq[(String, String, SemanticVector, SemanticVector, SemanticVector)])]
+
+        textSource.withColumnRenamed(this.commentColumnName, "comment")
             .select($"comment".as("text"), (this.idColumnName match {
-                                                               case Some(docId) => this.textSource(docId)
+                                                               case Some(docId) => textSource(docId)
                                                                case None => row_number().over(Window.orderBy($"comment".desc))
                                                              }).as("docId")).as[Doc]
             .flatMap(doc => Word.splitDoc(doc))
-            .joinWith(lexique, $"_2.Simplified"===$"_1.simplified", "left")
-            .map(p => WordLexOptions(p._1, if(p._2 != null) p._2.disambiguate(p._1.word) else null).applyTag(null, Some("Single Lexique Entry")))
-            .map(wo => VerbText(wo.word.docId, Array(wo)))
-            .groupByKey( v => v.docId)
-            .reduceGroups((v1, v2) => v1.reduceWords(v2))
-            .map(p => p._2)
-    
-        var aFrequences = aTagged_verbatim_0
-            .flatMap(v => v.getTransitions)
-            .groupByKey(t => (t.from, t.to))
-            .reduceGroups((t1, t2) => TagTransition(t1.from, t1.to, t1.count + t2.count, 0, 0.0))
-            .map(p => p._2)
-            .select($"from", $"to", $"count", max($"count").over(Window.partitionBy($"from")).cast("int").as("fromCount"))
-            .withColumn("likehood", (lit(1.0)*$"count")/$"fromCount").as[TagTransition]
+            .map(w => (w.word, w.simplified, w.isWord, w.index, w.phraseId, w.docId)).toDF("word","simplified","isWord","index","phraseId","docId").as[(String,String, Boolean, Int, Int, Int )]
+            .joinWith(lexiqueSimplified, $"_2.simplified"===$"_1.simplified", "left")
+            .map(p => p match {case ((word,simplified,isWord,index,phraseId,docId),lexiqueEntry)=>(docId, Seq((word, index,phraseId,simplified,isWord
+                                                                                                                    , lexiqueEntry match {case (simplified2, variants) => variants
+                                                                                                                                        case _ => Seq[(String, String, SemanticVector, SemanticVector, SemanticVector)]()
+                                                                                                                        })))})
+            .groupByKey( t => t match {case (docId, words)=> docId})
+            .reduceGroups((t1, t2) => (t1, t2) match {case ((docId1, words1),(docId2, words2)) 
+                                                        => (docId1
+                                                            , (words1 ++ words2).sortWith((w1, w2)=>(w1, w2) 
+                                                                    match {case ((word1, index1,phraseId1,simplified1,isWord1, variants1),(word2, index2,phraseId2,simplified2,isWord2, variants2))
+                                                                            => phraseId1 < phraseId2 || (phraseId1 == phraseId2 && index1 < index2) 
+                                                                    }))}).map(p => p._2)//Here we have a document per row with an array of words and a set of variants associted from the soimplified lexique 
+            .map(t => t match {case (docId, words) => (docId, {
+                val defTags = SemanticVector(word = null.asInstanceOf[String], coord = Vector(Coordinate(index = GramTag.Nom.id, value = 1.0)))
+                var prevTags:Option[SemanticVector] = None
+                var i = 0
 
-        var aFrequences_Right = aFrequences
-            .map(tt => tt :: Nil)
-            .groupByKey(att => att.head.from.mkString("-"))
-            .reduceGroups((l1, l2) => l1 ++ l2)
-            .collect
-            .toMap
-        //Tagging to the words to the left & right if previous word is tagged    
-        var aFrequences_Left = aFrequences
-            .map(tt => tt :: Nil)
-            .groupByKey(att => att.head.to.mkString("-"))
-            .reduceGroups((l1, l2) => l1 ++ l2)
-            .collect
-            .toMap
-        
-        val aTagged_verbatim_1 = aTagged_verbatim_0
-            .map(v => v.tagWords(aFrequences_Right, "right"))
-            .map(v => v.tagWords(aFrequences_Left, "left"))
-            .map(v => v.setPhrases)
-            
-        aTagged_verbatim_1
-            .flatMap(v => v.words)
-            .map(lw => lw.setHumanReadableTags)
-            .map(lw => lw.tagAny)
-            .map(lw => lw.getTaggedWord)
-            .write.mode("Overwrite").parquet(this.taggedWordsPath)
+                words.zipWithIndex.map(t => t match {case ((word, index,phraseId,simplified,isWord, variants), i) => {
+                    //tryToFindPrevWord
+                    if(!isWord) {
+                        (word, null.asInstanceOf[String], index,phraseId,simplified,isWord, None)
+                    }
+                    else if(variants.filter(v => v match {case (flexion, lemme, tags, afterTag, beforeTag) => tags.coord.size > 0}).size == 0){
+                        prevTags = Some(defTags)
+                        (word, word, index,phraseId,simplified,isWord, Some(defTags))
+                    } else {
+                        var nextTags:Option[Seq[SemanticVector]] = None
+                        var j = i + 1
+                        while(nextTags.isEmpty && j < words.size) {
+                            words(j) match {case (pword, pindex, pphraseId,psimplified,pisWord, pvariants) 
+                                => if(pisWord) nextTags = Some(pvariants.map(v => v match {case (flexion, lemme, tags, afterTag, beforeTag) => tags})) 
+                            }
+                            j = j + 1
+                        }
+                        val scoredVariants = variants.map(v => v match { case (flexion, lemme, tags, afterTag, beforeTag) => 
+                            (tags, lemme,
+                                ({
+                                    val scoreBefore = prevTags match { case Some(v) => v.cosineSimilarity(beforeTag) case _ => -1.0}
+                                    val scoreAfter = nextTags match { case Some(s) if s.size>0 => s.map(v => v.cosineSimilarity(afterTag)).max case _ => -1.0}
+                                    val matchScore = if(flexion == word) 0.3 else 0.0
+                                    scoreBefore + scoreAfter
+                                })
+                            )
+                        })
+                        val (bestTags, bestLemme, bestScore) = scoredVariants.sortWith((p1, p2) => (p1, p2) match {case ((tags1, lemme1, score1), (tags2, lemme2, score2)) => score1 > score2}).head
+                        prevTags = Some(bestTags)
+                        (word, bestLemme, index,phraseId,simplified,isWord, Some(bestTags))
+                    }
+                }})
+            })})
+            .toDF("docId", "words")
+            .as[(Int, Seq[(String, String,Int, Int, String, Boolean, SemanticVector)])]
+            /*.flatMap(doc => doc match {case (docId, words) => words.map(w => w match {case (word, lemme, index,phraseId,simplified,isWord, tags)=>
+                                                                                Word(word = word, simplified = simplified, isWord = isWord, index = index, phraseId = phraseId, docId = docId, root = lemme
+                                                                                            , tags = tags match {case Some(v) => v.coord.map(c => c.index.toShort).toArray case _ => Array[Short]()}
+                                                                                            , wordType = tags match {case Some(v) => Word.getSemanticUsage(v.coord.map(c => c.index.toShort).toArray) case _ => null.asInstanceOf[String]}
+                                                                                )}
+            )}).write.mode("overwrite").parquet(taggedWordsPath)
+*/
 
-        lexique.unpersist
+
     }
     
-    def addSemantic(simplifySemantic:Boolean = true
-                      , wordTypeScope:Map[String, Double] = Map("Characteristic"->1.0/*, "Arity"*/,"Quantity"->1.0/*,"Connector"*/, "Entity"->1.0, "Autre"->1.0, "Negation"->1.0, "Action"->1.0,"Quality"->1.0)
+/*    def addSemantic(simplifySemantic:Boolean = true
+                      , wordTypeScope:Map[String, Double] = Map("Characteristic"->1.0/ *, "Arity"* /,"Quantity"->1.0/ *,"Connector"* /, "Entity"->1.0, "Autre"->1.0, "Negation"->1.0, "Action"->1.0,"Quality"->1.0)
                       , keepSymbols:Boolean = false, keepUnknownWords:Boolean = true, UnknownWordsMinFrequency:Int = 20, stopWords:Seq[String]=Seq[String]()) {
         import spark.implicits._
 
@@ -158,4 +148,5 @@ case class PhraseTagging(textSource:org.apache.spark.sql.DataFrame, idColumnName
           .write.mode("Overwrite").parquet(this.semanticPhrasesPath)
         semPhrases.unpersist
     }
+*/
 }

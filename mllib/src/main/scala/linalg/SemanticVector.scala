@@ -123,9 +123,11 @@ case class SemanticVector(word:String, coord:Vector[Coordinate]) {
         }
         maxi
     }
+    def size() = {
+        this.coord.map(c => c.value * c.value).reduce(_ + _) match {case sum => Math.sqrt(sum)}
+    }
     def normalize() = {
-        val length = this.coord.map(c => c.value).reduce(_ + _) match {case sum => Math.sqrt(sum)}
-        this.scale(1/length)
+        this.scale(1/this.size)
     }
 //    def kepTop(top:Int) = SemanticVector(word:ing, coord:Vector[Coordinate])     
     def semanticHash = scala.util.hashing.MurmurHash3.stringHash(this.coord.map(c => c.value).mkString(","))
@@ -168,6 +170,7 @@ case class SemanticVector(word:String, coord:Vector[Coordinate]) {
         Sv1v2 / (Math.sqrt(Sv1v1)*Math.sqrt(Sv2v2))
     }
     def relativeDistanceWith(that:SemanticVector, reference:SemanticVector) = 1-this.relativeSimilarity(that, reference)
+    def keepDimensionsOn(that:SemanticVector) = SemanticVector(word = this.word, coord = this.coord.filter(c => that.coord.map(tc => tc.index).contains(c.index))) 
 }
 object SemanticVector{
     def fromWord(word:String) = SemanticVector(word, Vector(Coordinate(Math.abs(scala.util.hashing.MurmurHash3.stringHash(word, scala.util.hashing.MurmurHash3.stringSeed)) % 1048576+300, 1)))

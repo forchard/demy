@@ -44,12 +44,12 @@ case class SparkLuceneReader(hdfsIndexPartition:String, tmpDir:String, reuseExis
             val index = new NIOFSDirectory(Paths.get(s"${this.tmpDir}/${src.getName}"), org.apache.lucene.store.NoLockFactory.INSTANCE);
             val reader = DirectoryReader.open(index);
             val searcher = new IndexSearcher(reader);
-            SpakLuceneReaderInfo(searcher, index, reader);
+            SparkLuceneReaderInfo(searcher, index, reader);
         } else {
             val index = new NIOFSDirectory(Paths.get(org.apache.spark.SparkFiles.get(this.hdfsIndexPartition)), org.apache.lucene.store.NoLockFactory.INSTANCE);
             val reader = DirectoryReader.open(index);
             val searcher = new IndexSearcher(reader);
-            SpakLuceneReaderInfo(searcher, index, reader);
+            SparkLuceneReaderInfo(searcher, index, reader);
         }
     }
     def mergeWith(that:SparkLuceneReader) = {

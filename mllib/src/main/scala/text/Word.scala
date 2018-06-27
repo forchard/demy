@@ -88,7 +88,7 @@ case class Doc(text:String, docId:Int
         val ret =  sb match {case Some(b) => b.append(s.substring(i)).toString case _ => s}
         ret
     }
-    def splitDoc(doc:Doc, linksAsSeparators:Boolean = true):Seq[Word] = {
+    def splitDoc(doc:Doc, linksAsSeparators:Boolean = true, splitPhrases:Boolean = true):Seq[Word] = {
         val orig = if(doc.text == null) "" else doc.text 
         val noLinks = if(linksAsSeparators) linksAsBlanks(orig) else orig
         val simpli = Word.simplifyText(noLinks).map(car => car.toString.replaceAll("[^(\\p{L})]|[\\(]|[\\)]", " ")).mkString("")
@@ -103,7 +103,7 @@ case class Doc(text:String, docId:Int
             .sortWith((a, b) => a.index < b.index)
             .zipWithIndex.map(p => {
                 val w = Word(p._1.word, p._1.simplified, p._1.isWord, p._2:Int, phraseId, doc.docId)
-                phraseId = phraseId + (if(Word.containsPhraseSep(w.word)) 1 else 0)
+                phraseId = phraseId + (if(Word.containsPhraseSep(w.word) && splitPhrases) 1 else 0)
                 w
             })
     }

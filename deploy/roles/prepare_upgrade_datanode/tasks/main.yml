@@ -1,0 +1,51 @@
+---
+- name: get current hadoop version
+  tags: upgrade
+  shell: '[ -f {{ hadoop_home }}/bin/hdfs ] && {{ hadoop_home }}/bin/hdfs version || echo "No"'
+  changed_when: false
+  become_user: hdfs
+  register: out  
+- name: check against target hadoop version
+  tags: upgrade
+  set_fact:
+    start_upgrade: '{{ out.stdout != "No" and not ("Hadoop " + hadoop_ver) in out.stdout }}'
+- name: stopping all data nodes services and starting on 
+  when: start_upgrade | bool
+  tags: upgrade
+  block:
+  - name: stop yarn node manager
+    service: 
+      name: yarn-nodemanager
+      state: stopped
+  - name: test if node should be shutdown for uprade
+    shell: |
+      X=`{{ hadoop_home }}/bin/hdfs dfsadmin -getDatanodeInfo {{ inventory_hostname.split('.')[0] }}-{{ hadoop_cluster_name }}:{{ hdfs_datanode_ipc_port }} 2>&1 | grep 'Connection refused' | wc -l`
+      if [ $X -eq 0 ]; then echo "UPGRADE"; else echo "NO"; fi
+    become_user: hdfs
+    register: out  
+    changed_when: false
+  - name: shutdown data node with the upgrade flag
+    command: "{{ hadoop_home  }}/bin/hdfs dfsadmin -shutdownDatanode {{ inventory_hostname.split('.')[0] }}-{{ hadoop_cluster_name }}:{{ hdfs_datanode_ipc_port }} upgrade"
+    when:  '"UPGRADE" in out.stdout'
+    become_user: hdfs
+    register: out
+    changed_when: true
+  - name: wait until data node is shut down
+    shell: |
+      X=`{{ hadoop_home }}/bin/hdfs dfsadmin -getDatanodeInfo {{ inventory_hostname.split('.')[0] }}-{{ hadoop_cluster_name }}:{{ hdfs_datanode_ipc_port }} 2>&1 | grep 'Connection refused' | wc -l`
+      until [ $X -gt 0 ]; do X=`{{ hadoop_home }}/bin/hdfs dfsadmin -getDatanodeInfo {{ inventory_hostname.split('.')[0] }}-{{ hadoop_cluster_name }}:{{ hdfs_datanode_ipc_port }} 2>&1 | grep 'Connection refused' | wc -l`; sleep 1; done
+    become_user: hdfs
+    changed_when: false
+  - name: data node service exists 
+    stat: path=/lib/systemd/system/hdfs-datanode.service
+    register: datanode_status
+  - name: stop datanode if service exists
+    service: 
+      name: hdfs-datanode
+      state: stopped
+    when: datanode_status.stat.exists
+  - name: disable service so will not try to restart by handlers
+    file:
+      state: absent
+      path: /lib/systemd/system/hdfs-datanode.service
+

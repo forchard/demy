@@ -1,14 +1,14 @@
 ---
 - name: produce expected hosts
-  tags: configure_hdfs
+  tags: [configure_hdfs, upgrade]
   set_fact:
     datanodes_list: "{% for i in groups['datanodes'] %}{{ i.split('.')[0]+'-'+hadoop_cluster_name+'\n' }}{%endfor%}" 
 - name: produce excluded hosts
-  tags: configure_hdfs
+  tags: [configure_hdfs, upgrade]
   set_fact:
     datanodes_excluded_list: "{% for i in groups['datanodes_excluded'] %}{{ i.split('.')[0]+'-'+hadoop_cluster_name+'\n' }}{%endfor%}" 
 - name: allowed/excluded hosts present
-  tags: configure_hdfs
+  tags: [configure_hdfs, upgrade]
   copy:
     content: ""
     dest: "{{ item }}"
@@ -20,19 +20,19 @@
   - "{{ hdfs_hosts }}"
   - "{{ hdfs_hosts_exclude }}"
 - name: allowed hosts file
-  tags: configure_hdfs
+  tags: [configure_hdfs, upgrade]
   blockinfile:
     path: "{{ hdfs_hosts }}"
     block: "{{ datanodes_list }}"
     marker: "#{mark} list of hosts managed by ansible"
 - name: excluded hosts file
-  tags: configure_hdfs
+  tags: [configure_hdfs, upgrade]
   blockinfile:
     path: "{{ hdfs_hosts_exclude }}"
     block: "{{ datanodes_excluded_list }}"
     marker: "#{mark} list of excluded hosts managed by ansible"
 - name: copy script to update hadoop xml files
-  tags: configure_hdfs
+  tags: [configure_hdfs, upgrade]
   copy:
     src: "./xmlpresent.sh"
     dest: "/tmp/xmlpresent.sh"
@@ -40,7 +40,7 @@
     group: hadoop
     mode: 0770
 - name: get ip to use
-  tags: configure_hdfs
+  tags: [configure_hdfs, upgrade]
   shell: "ip addr show {{ back_network  }} | grep \"inet \" | awk {'print $2'} | awk -F \"/\" {'print $1'}" 
   register: app_ip
   changed_when: false
@@ -48,7 +48,7 @@
   set_fact:
     app_ip: "{{ app_ip.stdout }}"
 - name: update hdfs-site.xml on head node
-  tags: configure_hdfs
+  tags: [configure_hdfs, upgrade]
   command: "/tmp/xmlpresent.sh --container-xpath \"/configuration\" --node \"property\" --property-node name --property-text \"{{ item.var  }}\" --value-node value --value \"{{ item.value  }}\" --file {{ hadoop_conf_dir }}/hdfs-site.xml"
   register: out
   changed_when: not out.stdout.startswith('NO-CHANGE')
@@ -64,15 +64,24 @@
   - {var: "dfs.namenode.servicerpc-bind-host", value: "{{ groups['namenode'][0].split('.')[0] }}-{{ hadoop_cluster_name }}" }
   notify: restart hdfs
 - name: name node folder exists 
-  tags: hdfs_up
+  tags: [hdfs_up, upgrade]
   file:  
     path: "{{ hdfs_namenode_dir }}"
     state: directory
     mode: 0751
     owner: hdfs
     group: hadoop
+- name: getting rolling upgrade status
+  tags: [upgrade]
+  command: "cat {{ hadoop_run }}/rollingUpgrade"
+  register: out
+  changed_when: false
+- name: getting name node upgrade status
+  set_fact:
+    name_node_upgrade: "{{ out.stdout == 'ON-name-prepare' }}"
+  tags: [upgrade]
 - name: name node formatted
-  tags: hdfs_up
+  tags: [hdfs_up, upgrade]
   command: "{{ hadoop_home }}/bin/hdfs namenode -format {{ hadoop_cluster_name }}" 
   args:
     chdir: "{{ hadoop_install }}"
@@ -80,7 +89,7 @@
   become: true 
   become_user: hdfs
 - name: namenode service installed
-  tags: hdfs_up
+  tags: [hdfs_up, upgrade]
   template:
     src: templates/hdfs-namenode.service.j2
     dest: /lib/systemd/system/hdfs-namenode.service
@@ -88,11 +97,11 @@
     group: root
   register: out
 - name: reload systemctl if needed
-  tags: hdfs_up
+  tags: [hdfs_up, upgrade]
   command: systemctl daemon-reload
   when: out.changed
 - name: namenode is running
-  tags: hdfs_up
+  tags: [hdfs_up, upgrade]
   service:
     name: hdfs-namenode
     state: started

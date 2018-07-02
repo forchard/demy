@@ -1,0 +1,53 @@
+---
+- name: test if hadfoop upgrade can be finished
+  tags: upgradex
+  shell : |
+    if grep -s -q "ON-name-prepare" {{ hadoop_run }}/rollingUpgrade && [ `{{ hadoop_home  }}/bin/hdfs dfsadmin -report | grep -Po "(?<=Live datanodes \()[^\)]*"` -eq {{ groups['datanodes']|length  }} ] && [ `{{ hadoop_home  }}/bin/hdfs fsck / -files -blocks -locations | grep "Status: HEALTHY" | wc -l` -eq 1  ]; then echo OK;else echo KO; fi
+  changed_when: false
+  become_user: hdfs
+  register: out  
+- name: setting end_upgrade
+  tags: upgradex
+  set_fact:
+    end_upgrade: '{{ out.stdout == "OK" }}'
+- name: stopping all head node services and going to trolling upgrade 
+  when: end_upgrade | bool
+  tags: upgradex
+  block:
+  - name: get current rolling upgrade status
+    command: "{{ hadoop_home  }}/bin/hdfs dfsadmin -rollingUpgrade query"
+    become_user: hdfs
+    changed_when: false
+    register: out
+  - name: check whether rolling upgrade is still ongoing
+    set_fact:
+      rolling_in_progress: '{{ "Proceed with rolling upgrade" in out.stdout }}'
+  - name: end upgrade
+    command: "{{ hadoop_home }}/bin/hdfs dfsadmin -rollingUpgrade finalize"
+    changed_when: true
+    when : rolling_in_progress | bool
+    become_user: hdfs
+    register: out
+  - name: namenode service installed with normal startup
+    template:
+      src: templates/hdfs-namenode.service.j2
+      dest: /lib/systemd/system/hdfs-namenode.service
+      owner: root
+      group: root
+    register: out
+  - name: reload systemctl if needed
+    command: systemctl daemon-reload
+    when: out.changed
+  - name: namenode is running
+    service:
+      name: hdfs-namenode
+      state: started
+  - name: setting upgrade flag 
+    copy: 
+      content: "ENDED-name" 
+      dest: "{{ hadoop_run }}/rollingUpgrade"
+      force: true
+      owner: "hadoop"
+      group: "hadoop"
+      mode: "0770"
+

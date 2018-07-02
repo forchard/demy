@@ -18,7 +18,7 @@ crypted_disk: space
 
 #Hadoop
 hadoop_cluster_name: "demy"
-hadoop_ver: 2.8.0
+hadoop_ver: 3.1.0
 hadoop_install: "/{{ crypted_disk  }}/hadoop"
 hadoop_home: "{{ hadoop_install }}/hadoop_home"
 hadoop_run: "{{ hadoop_install }}/hadoop_run"
@@ -29,7 +29,6 @@ hadoop_pid_dir: "{{ hadoop_run }}/PID"
 #hdfs
 hdfs_port: 8020
 hdfs_file_buffer_bytes: "{{ 128*1024 }}"
-
 
 #Spark
 spark_ver: 2.2.0
@@ -94,11 +93,11 @@ hdfs_namenode_daemon_memory_mb: 1024
 #Data node
 hdfs_datanode_dir: "{{ hadoop_run}}/data"
 hdfs_datanode_daemon_memory_mb: 512
+hdfs_datanode_ipc_port: 50020
 
 #Httpsfs node
 hdfs_http_port: 8081
 hdfs_http_admin_port: 8082
-
 
 #yarn
 yarn_log_dir: "{{ hadoop_run }}/logs/yarn"

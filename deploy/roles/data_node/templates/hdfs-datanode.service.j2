@@ -7,8 +7,8 @@ ConditionPathExists={{ hdfs_datanode_dir }}
 Type=forking
 User=hdfs
 WorkingDirectory={{ hadoop_run }}
-ExecStart={{ hadoop_home }}/sbin/hadoop-daemon.sh --config {{ hadoop_conf_dir }} --script hdfs start datanode 
-ExecStop={{ hadoop_home }}/sbin/hadoop-daemon.sh --config {{ hadoop_conf_dir }} --script hdfs stop datanode
+ExecStart={{ hadoop_home }}/bin/hdfs --config {{ hadoop_conf_dir }} --daemon start datanode 
+ExecStop={{ hadoop_home }}/bin/hdfs --config {{ hadoop_conf_dir }} --daemon stop datanode
 Restart=on-failure
 PIDFile={{ hadoop_pid_dir }}/hadoop-hdfs-datanode.pid
 

@@ -1,16 +1,16 @@
 ---
 - name: get current hadoop version
   tags: upgrade
-  shell: '[ -f {{ hadoop_home }}/bin/hdfs ] && {{ hadoop_home }}/bin/hdfs version || echo "No"'
+  shell: 'if grep -s -q "ON" {{ hadoop_run}}/rollingUpgrade; then echo No; else [ -f {{ hadoop_home }}/bin/hdfs ] && {{ hadoop_home }}/bin/hdfs version || echo "No"; fi '
   changed_when: false
   become_user: hdfs
   register: out  
 - name: check against target hadoop version
   tags: upgrade
   set_fact:
-    start_upgrade: 'out.stdout != "No" and not out.stdout.startswith( "Hadoop " + hadoop_ver)'
-- name: stopping all head node services and starting on 
-  when: not start_upgrade | bool
+    start_upgrade: '{{ out.stdout != "No" and not ("Hadoop " + hadoop_ver) in out.stdout }}'
+- name: stopping all head node services and going to trolling upgrade 
+  when: start_upgrade | bool
   tags: upgrade
   block:
   - name: stop yarn resource manager
@@ -35,7 +35,7 @@
     register: out
   - name: check whether dfs should prepare rolling upgrade
     set_fact:
-      prepare_rolling_upgrade: 'out.stdout.contains("There is no rolling upgrade in progress")'
+      prepare_rolling_upgrade: '{{ "There is no rolling upgrade in progress" in out.stdout }}'
   - name: prepare rolling upgrade
     command: "{{ hadoop_home  }}/bin/hdfs dfsadmin -rollingUpgrade prepare"
     when:  '"There is no rolling upgrade in progress" in out.stdout'
@@ -52,9 +52,13 @@
     service: 
       name: hdfs-namenode
       state: stopped
+  - name: disable service so will not try to restart by handlers
+    file:
+      state: absent
+      path: /lib/systemd/system/hdfs-namenode.service
   - name: setting upgrade flag 
     copy: 
-      content: ON 
+      content: "ON-name-prepare" 
       dest: "{{ hadoop_run }}/rollingUpgrade"
       force: true
       owner: "hadoop"

@@ -1,11 +1,11 @@
 ---
 - name: crypted disk is running
-  tags: check_hosts
+  tags: [check_hosts, upgrade]
   shell: "if mountpoint -q /{{ crypted_disk }}; then echo 'MOUNTED'; else echo 'NOT-MOUNTED'; fi"
   register: mount_output
   changed_when: false
 - name: start crypted disk
-  tags: check_hosts
+  tags: [check_hosts, upgrade]
   shell: |
     echo -n "{{ decrypt_disk_pass }}" | cryptsetup luksOpen --key-file=- /dev/{{ hostname.stdout }}-crypt-1/{{ crypted_disk  }} {{ crypted_disk  }}
   args:
@@ -15,13 +15,13 @@
   failed_when: out.stderr != '' and not out.stderr.endswith('already exists.')
   when: mount_output.stdout == 'NOT-MOUNTED'
 - name: mount crypted disk 
-  tags: check_hosts
+  tags: [check_hosts, upgrade]
   shell: "mount /{{ crypted_disk  }}"
   register: out
   changed_when: true 
   when: mount_output.stdout == 'NOT-MOUNTED'
 - name: IPv6 disables
-  tags: check_hosts
+  tags: [check_hosts, upgrade]
   lineinfile:
     path: "/etc/sysctl.conf" 
     regexp: '^net.ipv6.conf.all.disable_ipv6'
@@ -31,10 +31,10 @@
   shell: "ip addr list | grep \"{{ front_network  }}\\|{{ back_network  }}\" | grep \"inet \" | awk {'print $2'} | awk -F \"/\" {'print $1'}" 
   register: app_ip
   changed_when: false
-  tags: etc_hosts
+  tags: [etc_hosts, upgrade]
 - set_fact:
     app_ip: "{{ app_ip.stdout }}"
-  tags: etc_hosts
+  tags: [etc_hosts, upgrade]
 - name: set ips alias on /etc/hosts
   blockinfile:
     path: /etc/hosts
@@ -42,7 +42,7 @@
       {{hostvars[item].app_ip}} {{ item.split('.')[0] }}-{{ hadoop_cluster_name }}
     marker: "# {mark} Managed ip for {{ item }} alias do not edit!" 
   with_items : "{{ groups['nodes'] }}"
-  tags: etc_hosts
+  tags: [etc_hosts, upgrade]
 - name: installation folder
   file:
     path: "{{ hadoop_install }}"
@@ -50,35 +50,38 @@
     mode: 0751
     owner: hadoop
     group: hadoop
+  tags: upgrade
 - name: jessie backports is activated
   apt_repository:
     repo: deb http://ftp.fr.debian.org/debian jessie-backports main
+  tags: upgrade
 - name: install jessie backports packages
-  tags: packages
+  tags: [packages, upgrade]
   apt:
     name: "{{ item }}"
     default_release: jessie-backports
     update_cache: true
     state: latest
-  with_items: ["{{ java_package }}", "{{ java_package_spark }}", "maven", "r-base"  ]
+  with_items: ["{{ java_package }}", "{{ java_package_spark }}", maven, r-base  ]
   notify: set_java_default
 - name: set java home
-  tags: java
+  tags: [java, upgrade]
   lineinfile:
     path: "/etc/environment" 
     regexp: '^JAVA_HOME='
     line: "JAVA_HOME={{ java_home }}"
   notify: set_java_default
 - name: compiler tools
-  tags: packages
+  tags: [packages, upgrade]
   apt:
     name: "{{ item }}"
-    update_cache: yes
-    cache_valid_time: 300
+    default_release: jessie-backports
+    update_cache: true
+    state: latest
   with_items: [build-essential, g++, autoconf, automake, libtool, cmake, zlib1g-dev, pkg-config, libssl-dev, xmlstarlet, git, npm, libfontconfig,pandoc, libgdal-dev, libgeos-dev, libproj-dev, proj-data, locales, curl, jq ]
   notify: [ set_npm_proxy, set_cran_mirror ]
 - name: install R packages for Spark
-  tags: packages
+  tags: [packages, upgrade]
   shell: |
     export http_proxy=http://{{ proxy_host }}:{{ proxy_port }}
     export https_proxy=http://{{ proxy_host }}:{{ proxy_port }}
@@ -88,22 +91,19 @@
   failed_when: out.stderr.find("WARNING")>1
   changed_when: out.stderr|length > 0
   notify: restart zeppelin
-- tags: packages
-  debug:
-    msg: "{{ out }}"
 - name: download google protocol buffer
   command: "wget -nc https://github.com/google/protobuf/releases/download/v{{ protobuf_ver }}/protobuf-{{ protobuf_ver }}.tar.gz"
   args:
     chdir: "{{ hadoop_install }}"
     creates: "{{ hadoop_install }}/protobuf-{{ protobuf_ver }}.tar.gz"
-  tags: protobuf
+  tags: [protobuf, upgrade]
 - name: uncompress protocol buffers 
   unarchive:
     src: "{{ hadoop_install }}/protobuf-{{ protobuf_ver }}.tar.gz"
     dest: "/usr/local/src"
     remote_src: true 
     creates: "/usr/local/src/protobuf-{{ protobuf_ver }}" 
-  tags: protobuf
+  tags: [protobuf, upgrade]
 - name: make/install protocol buffers
   command: "{{ item }}"
   args:
@@ -114,39 +114,42 @@
   - ./configure --prefix=/usr
   - make
   - make install
-  tags: protobuf
+  tags: [protobuf, upgrade]
 - name: install protocols buffers for java
   command: "mvn install -Dhttp.proxyHost={{ proxy_host }} -Dhttp.proxyPort={{ proxy_port }} -Dhttps.proxyHost={{ proxy_host }} -Dhttps.proxyPort={{ proxy_port }}"
   args:
     chdir: "/usr/local/src/protobuf-{{ protobuf_ver }}/java"
     creates: "/usr/local/src/protobuf-{{ protobuf_ver }}/java/target/protobuf-java-{{ protobuf_ver }}.jar"
-  tags: protobuf
+  tags: [protobuf, upgrade]
 - meta: flush_handlers
 - name: download hadoop if does not exists
-  tags: install_hadoop
+  tags: [install_hadoop, upgrade]
   command: "wget {{ apache_mirror }}/pub/apache/hadoop/common/hadoop-{{ hadoop_ver }}/hadoop-{{ hadoop_ver }}-src.tar.gz"
   args:
     chdir: "{{ hadoop_install }}"
     creates: "{{ hadoop_install }}/hadoop-{{ hadoop_ver }}-src.tar.gz"
 - name: uncompress hadoop
-  tags: install_hadoop
+  tags: [install_hadoop, upgrade]
   unarchive:
     src: "{{ hadoop_install }}/hadoop-{{ hadoop_ver }}-src.tar.gz"
     dest: "{{ hadoop_install }}"
     remote_src: true 
 - name: Compile hadoop
-  tags: install_hadoop
-  command: 'mvn package -Pdist,native -DskipTests -Dtar -Dhttp.proxyHost={{ proxy_host }} -Dhttp.proxyPort={{ proxy_port }} -Dhttps.proxyHost={{ proxy_host }} -Dhttps.proxyPort={{ proxy_port }}'
+  tags: [install_hadoop, upgrade]
+  shell: |
+          export JAVA_HOME={{ java_home }}
+          mvn package -Pdist,native -DskipTests -Dtar -Dhttp.proxyHost={{ proxy_host }} -Dhttp.proxyPort={{ proxy_port }} -Dhttps.proxyHost={{ proxy_host }} -Dhttps.proxyPort={{ proxy_port }}
   args:
     chdir: "{{ hadoop_install }}/hadoop-{{ hadoop_ver }}-src"
-    creates: "{{ hadoop_install }}/hadoop-{{ hadoop_ver }}-src/hadoop-dist/target/hadoop-dist-{{ hadoop_ver }}.jar"
+    #creates: "{{ hadoop_install }}/hadoop-{{ hadoop_ver }}-src/hadoop-dist/target/hadoop-dist-{{ hadoop_ver }}.jar"
+    creates: "{{ hadoop_install }}/hadoop-{{ hadoop_ver }}-src/hadoop-dist/target/hadoop-{{ hadoop_ver }}/share/hadoop/hdfs/hadoop-hdfs-{{ hadoop_ver }}.jar"
 - name: copy compiled version (no overwrite)
-  tags: install_hadoop
+  tags: [install_hadoop, upgrade]
   shell: "cp -R -v -n {{ hadoop_install }}/hadoop-{{ hadoop_ver }}-src/hadoop-dist/target/hadoop-{{ hadoop_ver }} {{ hadoop_install }}/ | wc -l"
   register: out
   changed_when: out.stdout!='0'
 - name: create link to current version
-  tags: install_hadoop
+  tags: [install_hadoop, upgrade]
   file:
     src: "{{ hadoop_install }}/hadoop-{{ hadoop_ver }}" 
     dest: "{{ hadoop_home }}"
@@ -156,13 +159,13 @@
     state: link
     #force: true
 - name: set hadoop home
-  tags: configure_hadoop
+  tags: [configure_hadoop, upgrade]
   lineinfile:
     path: "/etc/environment" 
     regexp: '^HADOOP_PREFIX='
     line: "HADOOP_PREFIX={{ hadoop_home  }}"
 - name: ensure conf directory exists
-  tags: configure_hadoop
+  tags: [configure_hadoop, upgrade]
   file:
     path: "{{ item }}"
     state: directory
@@ -172,7 +175,7 @@
   with_items:
   - "{{ hadoop_conf_dir }}"
 - name: ensure log et pid folder exists
-  tags: configure_hadoop
+  tags: [configure_hadoop, upgrade]
   file:
     path: "{{ item }}"
     state: directory
@@ -183,12 +186,12 @@
   - "{{ hadoop_log_dir }}"
   - "{{ hadoop_pid_dir }}"
 - name: copy conf files (no overwrite)
-  tags: configure_hadoop
+  tags: [configure_hadoop, upgrade]
   shell: "cp -R -v -n {{ hadoop_home}}/etc/hadoop/* {{ hadoop_conf_dir }} | wc -l"
   register: out
   changed_when: out.stdout!='0'
 - name: update hadoop-env.sh
-  tags: configure_hadoop
+  tags: [configure_hadoop, upgrade]
   lineinfile:
     path: "{{ hadoop_conf_dir }}/hadoop-env.sh" 
     regexp: "^export {{ item.var  }}"
@@ -206,7 +209,7 @@
   - {var: "HADOOP_JOB_HISTORYSERVER_OPTS", value: "-Xmx{{ mapreduce_jobhistory_memory_mb }}m" }
   notify: [restart hdfs, restart yarn]
 - name: copy script to update hadoop xml files
-  tags: configure_hadoop
+  tags: [configure_hadoop, upgrade]
   copy:
     src: "./xmlpresent.sh"
     dest: "/tmp/xmlpresent.sh"
@@ -214,7 +217,7 @@
     group: hadoop
     mode: 0770
 - name: update core-site.xml
-  tags: configure_hadoop
+  tags: [configure_hadoop, upgrade]
   command: "/tmp/xmlpresent.sh --container-xpath \"/configuration\" --node \"property\" --property-node name --property-text \"{{ item.var  }}\" --value-node value --value \"{{ item.value  }}\" --file {{ hadoop_conf_dir }}/core-site.xml"
   register: out
   changed_when: not out.stdout.startswith('NO-CHANGE')
@@ -227,7 +230,7 @@
   - {var: "hadoop.proxyuser.spark.groups", value: "*" }
   notify: [restart hdfs, restart yarn]
 - name: yarn log folder exist 
-  tags: configure_yarn
+  tags: [configure_yarn, upgrade]
   file:  
     path: "{{ yarn_log_dir }}"
     state: directory
@@ -235,7 +238,7 @@
     owner: yarn
     group: hadoop
 - name: setting necessary environment variable
-  tags: configure_yarn
+  tags: [configure_yarn, upgrade]
   lineinfile:
     path: "{{ hadoop_conf_dir }}/yarn-env.sh" 
     regexp: "^export {{ item.var  }}"
@@ -245,7 +248,7 @@
   - {var: "YARN_PID_DIR", value: "{{ hadoop_pid_dir  }}"}
   notify: restart yarn
 - name: copy script to update hadoop xml files
-  tags: configure_yarn
+  tags: [configure_yarn, upgrade]
   copy:
     src: "./xmlpresent.sh"
     dest: "/tmp/xmlpresent.sh"
@@ -253,7 +256,7 @@
     group: hadoop
     mode: 0770
 - name: update yarn-site.xml for resouerce manager
-  tags: configure_yarn
+  tags: [configure_yarn, upgrade]
   command: "/tmp/xmlpresent.sh --container-xpath \"/configuration\" --node \"property\" --property-node name --property-text \"{{ item.var  }}\" --value-node value --value \"{{ item.value  }}\" --file {{ hadoop_conf_dir }}/yarn-site.xml"
   register: out
   changed_when: not out.stdout.startswith('NO-CHANGE')
@@ -279,7 +282,7 @@
   - {var: "yarn.web-proxy.address", value: "{{ groups['yarn_edge'][0].split('.')[0] }}-{{ hadoop_cluster_name }}:{{ yarn_webproxy_port }}" }
   notify: restart yarn
 - name: update capacity-scheduler.xml for resouerce manager
-  tags: configure_yarn
+  tags: [configure_yarn, upgrade]
   command: "/tmp/xmlpresent.sh --container-xpath \"/configuration\" --node \"property\" --property-node name --property-text \"{{ item.var  }}\" --value-node value --value \"{{ item.value  }}\" --file {{ hadoop_conf_dir }}/capacity-scheduler.xml"
   register: out
   changed_when: not out.stdout.startswith('NO-CHANGE')
@@ -287,7 +290,7 @@
   - {var: "yarn.scheduler.capacity.resource-calculator", value: "{{ yarn_scheduler_capacity_calculator }}" }
   notify: restart yarn
 - name: update yarn-site.xml on node managers
-  tags: configure_yarn
+  tags: [configure_yarn, upgrade]
   command: "/tmp/xmlpresent.sh --container-xpath \"/configuration\" --node \"property\" --property-node name --property-text \"{{ item.var  }}\" --value-node value --value \"{{ item.value  }}\" --file {{ hadoop_conf_dir }}/yarn-site.xml"
   register: out
   changed_when: not out.stdout.startswith('NO-CHANGE')
@@ -312,35 +315,45 @@
   - {var: "yarn.nodemanager.aux-services.spark_shuffle.class", value: "org.apache.spark.network.yarn.YarnShuffleService" }
   notify: restart yarn
 - name: get ram
-  tags: configure_map_reduce
+  tags: [configure_map_reduce, upgrade]
   shell: "free -m | grep Mem:|awk '{ printf $2}'"
   register: node_ram
   changed_when: false
 - name: get cpu
-  tags: configure_map_reduce
+  tags: [configure_map_reduce, upgrade]
   command: "nproc --all"
   register: node_cpu
   changed_when: false
 - name: copy script to update hadoop xml files
-  tags: configure_map_reduce
+  tags: [configure_map_reduce, upgrade]
   copy:
     src: "./xmlpresent.sh"
     dest: "/tmp/xmlpresent.sh"
     owner: hadoop
     group: hadoop
     mode: 0770
+- name: copy conf file xml files if template not exists use aready existing
+  tags: [configure_map_reduce, upgrade]
+  copy:
+    src: "{{ hadoop_conf_dir }}/mapred-site.xml"
+    dest: "{{ hadoop_conf_dir }}/mapred-site.xml.template"
+    remote_src: True
+    force: false
+    owner: yarn
+    group: hadoop
+    mode: 0770
 - name: copy conf file xml files
-  tags: configure_map_reduce
+  tags: [configure_map_reduce, upgrade]
   copy:
     src: "{{ hadoop_conf_dir }}/mapred-site.xml.template"
-    dest: "{{ hadoop_conf_dir }}/mapred-site.xml"
+    dest: "{{ hadoop_conf_dir }}/mapredsite.xml"
     remote_src: True
     force: false
     owner: yarn
     group: hadoop
     mode: 0770
 - name: update mapred-site.xml on nodes
-  tags: configure_map_reduce
+  tags: [configure_map_reduce, upgrade]
   command: "/tmp/xmlpresent.sh --container-xpath \"/configuration\" --node \"property\" --property-node name --property-text \"{{ item.var  }}\" --value-node value --value \"{{ item.value  }}\" --file {{ hadoop_conf_dir }}/mapred-site.xml"
   register: out
   changed_when: not out.stdout.startswith('NO-CHANGE')

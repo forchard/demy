@@ -10,7 +10,7 @@ WorkingDirectory={{ hadoop_run }}
 ExecStart={{ hadoop_home }}/sbin/yarn-daemon.sh --config {{ hadoop_conf_dir }} start resourcemanager 
 ExecStop={{ hadoop_home }}/sbin/yarn-daemon.sh --config {{ hadoop_conf_dir }} stop resourcemanager
 Restart=on-failure
-PIDFile={{ hadoop_pid_dir }}/yarn-yarn-resourcemanager.pid
+PIDFile={{ hadoop_pid_dir }}/hadoop-yarn-resourcemanager.pid
 
 [Install]
 WantedBy=multi-user.target

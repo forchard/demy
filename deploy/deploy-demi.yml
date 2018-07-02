@@ -12,12 +12,18 @@
   become: true
   roles: 
   - ssh2me 
-- name: checking if we are abiout to upgrade hadoop
+- name: if we are about to upgrade hadoop wze need to start the upgrade and unlink services
   hosts: namenode
   gather_facts: false
   become: true
   roles:
-  - prepare_upgrade
+  - prepare_upgrade_namenode
+- name: if we are about to upgrade hadoop we will stop name nodes and unmlink datanode service
+  hosts: datanodes
+  gather_facts: false
+  become: true
+  roles:
+  - prepare_upgrade_datanode
 - name: installing hadoop components
   hosts: nodes
   gather_facts: false
@@ -78,4 +84,10 @@
   environment:
     http_proxy: "{{ proxy_host }}:{{ proxy_port }}"
     https_proxy: "{{ proxy_host }}:{{ proxy_port }}"
+- name: finalize upgrade
+  hosts: namenode
+  gather_facts: false
+  become: true
+  roles:
+  - finalize_upgrade_namenode
 

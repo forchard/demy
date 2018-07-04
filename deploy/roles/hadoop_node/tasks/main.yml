@@ -7,11 +7,11 @@
 - name: start crypted disk
   tags: [check_hosts, upgrade]
   shell: |
-    echo -n "{{ decrypt_disk_pass }}" | cryptsetup luksOpen --key-file=- /dev/{{ hostname.stdout }}-crypt-1/{{ crypted_disk  }} {{ crypted_disk  }}
+    echo -n "{{ decrypt_disk_pass }}" | cryptsetup luksOpen --key-file=- /dev/{{ inventory_hostname.split('.')[0] }}-crypt-1/{{ crypted_disk  }} {{ crypted_disk  }}
   args:
     executable: /bin/bash
   register: out
-  changed_when: out.stdout=='' and out.stderr=''
+  changed_when: out.stdout=='' and out.stderr==''
   failed_when: out.stderr != '' and not out.stderr.endswith('already exists.')
   when: mount_output.stdout == 'NOT-MOUNTED'
 - name: mount crypted disk 
@@ -78,7 +78,7 @@
     default_release: jessie-backports
     update_cache: true
     state: latest
-  with_items: [build-essential, g++, autoconf, automake, libtool, cmake, zlib1g-dev, pkg-config, libssl-dev, xmlstarlet, git, npm, libfontconfig,pandoc, libgdal-dev, libgeos-dev, libproj-dev, proj-data, locales, curl, jq ]
+  with_items: [build-essential, g++, autoconf, automake, libtool, cmake, zlib1g-dev, pkg-config, libssl-dev, xmlstarlet, git, npm, libfontconfig,pandoc, libgdal-dev, libgeos-dev, libproj-dev, proj-data, locales, curl, jq, python-setuptools ]
   notify: [ set_npm_proxy, set_cran_mirror ]
 - name: install R packages for Spark
   tags: [packages, upgrade]
@@ -209,7 +209,7 @@
   - {var: "HADOOP_JOB_HISTORYSERVER_OPTS", value: "-Xmx{{ mapreduce_jobhistory_memory_mb }}m" }
   notify: [restart hdfs, restart yarn]
 - name: copy script to update hadoop xml files
-  tags: [configure_hadoop, upgrade]
+  tags: [configure_hadoop, upgrade, copy_xml]
   copy:
     src: "./xmlpresent.sh"
     dest: "/tmp/xmlpresent.sh"

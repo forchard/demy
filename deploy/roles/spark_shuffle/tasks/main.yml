@@ -1,8 +1,16 @@
 ---
+- name: setting right permissions on share 
+  tags: install_spark
+  file:
+    path: "{{ hadoop_home  }}/share/hadoop/yarn/lib" 
+    owner: hadoop
+    group: hadoop
+    state: directory
 - name: Delete previous versions of shuffle service if any
   tags: install_spark
   become_user: hadoop
   shell: |
+    whoami
     toDelete=`find {{ hadoop_home  }}/share/hadoop/yarn/lib -type f -name 'spark-*-yarn-shuffle.jar' -not -name 'spark-{{ spark_ver }}-yarn-shuffle.jar' | wc -l`
     if [ $toDelete -gt 0 ]; then 
       ret="CHANGED"

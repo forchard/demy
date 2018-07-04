@@ -31,7 +31,7 @@ hdfs_port: 8020
 hdfs_file_buffer_bytes: "{{ 128*1024 }}"
 
 #Spark
-spark_ver: 2.2.0
+spark_ver: 2.3.1
 spark_home: "{{ hadoop_install }}/spark_home"
 spark_run: "{{ hadoop_install }}/spark_run"
 spark_thrift_port: "10000"
@@ -44,7 +44,7 @@ spark_r_packages: ["classInt", "colorRamps", "devtools", "jsonlite", "Rcpp", "dp
 spark_mysql_jdbc_version: 5.1.39
 
 #Zeppelin
-zeppelin_version: "v0.7.2"
+zeppelin_version: "v0.8.0"
 zeppelin_home: "{{ hadoop_install }}/zeppelin_home"
 zeppelin_run: "{{ hadoop_install }}/zeppelin_run"
 zeppelin_port: "8080"
@@ -78,7 +78,8 @@ zeppelin_shiro_config:
 zeppelin_maven_repository: "http://central.maven.org/maven2/"
 zeppelin_spark_dependencies: ["org.jsoup:jsoup:1.11.2", "org.apache.lucene:lucene-core:7.2.1", "org.apache.lucene:lucene-queryparser:7.2.1", "{{ zeppelin_run }}/custom-libs/demy-machine-learning-library_2.11-1.0.jar", "com.databricks:spark-xml_2.11:0.4.1"]
 zeppelin_spark_perNoteIsolation: "shared" #isolated, shared or scoped
-zeppelin_spark_perUserIsolation: "isolated" #isolated, shared or scoped
+zeppelin_spark_perUserIsolation: "scoped" #isolated, shared or scoped
+zeppelin_spark_master: "yarn-cluster" 
 
 #Head Node
 host_keys_to_insert: []

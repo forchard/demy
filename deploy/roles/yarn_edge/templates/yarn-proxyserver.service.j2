@@ -10,7 +10,7 @@ WorkingDirectory={{ hadoop_run }}
 ExecStart={{ hadoop_home }}/sbin/yarn-daemon.sh --config {{ hadoop_conf_dir }} start proxyserver 
 ExecStop={{ hadoop_home }}/sbin/yarn-daemon.sh --config {{ hadoop_conf_dir }} stop proxyserver
 Restart=on-failure
-PIDFile={{ hadoop_pid_dir }}/yarn-yarn-proxyserver.pid
+PIDFile={{ hadoop_pid_dir }}/hadoop-yarn-proxyserver.pid
 
 [Install]
 WantedBy=multi-user.target

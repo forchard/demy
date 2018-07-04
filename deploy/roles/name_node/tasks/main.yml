@@ -72,14 +72,14 @@
     owner: hdfs
     group: hadoop
 - name: getting rolling upgrade status
-  tags: [upgrade]
+  tags: [upgrade, hdfs_up]
   command: "cat {{ hadoop_run }}/rollingUpgrade"
   register: out
   changed_when: false
 - name: getting name node upgrade status
   set_fact:
     name_node_upgrade: "{{ out.stdout == 'ON-name-prepare' }}"
-  tags: [upgrade]
+  tags: [upgrade, hdfs_up]
 - name: name node formatted
   tags: [hdfs_up, upgrade]
   command: "{{ hadoop_home }}/bin/hdfs namenode -format {{ hadoop_cluster_name }}" 

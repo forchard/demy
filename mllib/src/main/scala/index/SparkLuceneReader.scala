@@ -11,7 +11,6 @@ import java.nio.file.{Paths}
 
 
 
-
 case class SparkLuceneReader(hdfsIndexPartition:String, tmpDir:String, reuseExisting:Boolean = false, useSparkFiles:Boolean = false) {
     def open = {
         if(!useSparkFiles) {
@@ -19,28 +18,30 @@ case class SparkLuceneReader(hdfsIndexPartition:String, tmpDir:String, reuseExis
             val dest = new org.apache.hadoop.fs.Path(this.tmpDir+"/")
             val src = new org.apache.hadoop.fs.Path(this.hdfsIndexPartition)
 
-            
-            val lockFile = new java.io.File(this.tmpDir+"/"+src.getName+".lock")
-            lockFile.createNewFile()
-            val wr = new java.io.RandomAccessFile(lockFile, "rw")
-            try {
-                val lock = wr.getChannel().lock();
-                try {
-                    //Critical section for downloading index file
-                    val exists = new java.io.File(this.tmpDir+"/"+src.getName).exists()
-                    if(exists && !reuseExisting) {
-                        this.deleteRecurse(this.tmpDir+"/"+src.getName)
-                    }
-                    if(!exists || !reuseExisting) {
-                        fs.copyToLocalFile(false,src,dest)
-                    }
-                } finally {
-                    lock.release();
-                }
-            } finally {
-                wr.close();
+            //Intra JVM lock 
+            SparkLuceneReader.readLock.synchronized {
+              //Inter JVM lock
+              val lockFile = new java.io.File(this.tmpDir+"/"+src.getName+".lock")
+              lockFile.createNewFile()
+              val wr = new java.io.RandomAccessFile(lockFile, "rw")
+              try {
+                  val lock = wr.getChannel().lock();
+                  try {
+                      //Critical section for downloading index file
+                      val exists = new java.io.File(this.tmpDir+"/"+src.getName).exists()
+                      if(exists && !reuseExisting) {
+                          this.deleteRecurse(this.tmpDir+"/"+src.getName)
+                      }
+                      if(!exists || !reuseExisting) {
+                          fs.copyToLocalFile(false,src,dest)
+                      }
+                  } finally {
+                      lock.release();
+                  }
+              } finally {
+                  wr.close();
+              }
             }
-
             val index = new NIOFSDirectory(Paths.get(s"${this.tmpDir}/${src.getName}"), org.apache.lucene.store.NoLockFactory.INSTANCE);
             val reader = DirectoryReader.open(index);
             val searcher = new IndexSearcher(reader);
@@ -78,4 +79,7 @@ case class SparkLuceneReader(hdfsIndexPartition:String, tmpDir:String, reuseExis
             }
         }
     }
+}
+object SparkLuceneReader {
+  val readLock = new Object()
 }

@@ -2,6 +2,11 @@
 - name: apply sysctl changes
   listen: apply_sysctl
   command: "sysctl -p /etc/sysctl.conf"
+- name: set java for R
+  listen: set_java_for_R
+  shell: | 
+    export JAVA_HOME=/usr/lib/jvm/{{ java_default }}
+    R CMD javareconf
 - name: set java default
   listen: set_java_default
   command: "update-java-alternatives --set /usr/lib/jvm/{{ java_default }}"

@@ -188,8 +188,9 @@
   - {var: "spark.executorEnv.JAVA_HOME", value: "{{ java_home_spark }}" }
   - {var: "spark.yarn.appMasterEnv.JAVA_HOME", value: "{{ java_home_spark }}" }
   - {var: "spark.dynamicAllocation.enabled", value: "{{ spark_dynamic_allocation }}" }
-  - {var: "spark.shuffle.service.enabled", value: "{{ spark_dynamic_allocation }}" }
-  - {var: "spark.yarn.shuffle.stopOnFailure", value: "{{ spark_dynamic_allocation }}" }
+  - {var: "spark.shuffle.service.enabled", value: "true" }
+  - {var: "spark.yarn.shuffle.stopOnFailure", value: "true" }
+  - {var: "spark.driver.extraJavaOptions", value: "-Dhttp.proxyHost={{ proxy_host }} -Dhttp.proxyPort={{ proxy_port }} -Dhttps.proxyHost={{ proxy_host }} -Dhttps.proxyPort={{ proxy_port }}" }
 - name: thrift server run exists
   tags: install_spark
   file:
@@ -379,7 +380,7 @@
     line: "export {{ item.var }}={{ item.value }}"
   with_items:
   - {var: "JAVA_HOME", value: "{{ java_home_spark }}" }
-  - {var: "MASTER", value: "yarn-client" }
+  - {var: "MASTER", value: "{{ zeppelin_spark_master }}" }
   - {var: "ZEPPELIN_LOG_DIR", value: "{{ zeppelin_run }}/logs" }
   - {var: "ZEPPELIN_PID_DIR", value: "{{ zeppelin_run }}/PID" }
   - {var: "SPARK_HOME", value: "{{ spark_home}}" }
@@ -389,7 +390,8 @@
   - {var: "ZEPPELIN_SPARK_CONCURRENTSQL", value: "true" }
   - {var: "ZEPPELIN_SPARK_IMPORTIMPLICIT", value: "true" }
   - {var: "ZEPPELIN_SPARK_MAXRESULT", value: "1500" }
-  - {var: "SPARK_SUBMIT_OPTIONS", value: "\"--executor-cores {{ zeppelin_executor_cores }} --num-executors 1 --executor-memory {{ zeppelin_executor_memory_mb }}m\"" }
+  - {var: "SPARK_SUBMIT_OPTIONS", value: "\"--executor-cores {{ zeppelin_executor_cores }} --executor-memory {{ zeppelin_executor_memory_mb }}m\"" }
+#  - {var: "SPARK_SUBMIT_OPTIONS", value: "\"--conf \\\"spark.driver.extraJavaOptions=-Dhttp.proxyHost={{ proxy_host }} -Dhttp.proxyPort={{ proxy_port }} -Dhttps.proxyHost={{ proxy_host }} -Dhttps.proxyPort={{ proxy_port }}\\\" --executor-cores {{ zeppelin_executor_cores }} --executor-memory {{ zeppelin_executor_memory_mb }}m --packages {{ zeppelin_spark_packages }} --jars {{ zeppelin_spark_jars }}\"" }
   notify: restart zeppelin
 - name : zeppelin interpreter repo
   tags: install_zeppelin
@@ -408,20 +410,19 @@
     quotedid=`jq '.interpreterSettings[] | select(.name == "spark") |.id' "{{ zeppelin_home }}/conf/interpreter.json"`
     sparkid="${quotedid%\"}"
     sparkid="${sparkid#\"}"
-    jq 'setpath(["interpreterSettings", "'$sparkid'", "properties", "master"];"{{ zeppelin_spark_master }}")' "{{ zeppelin_home }}/conf/interpreter.json" > "{{ zeppelin_home }}/conf/interpreter.json.1"
-
+    jq 'setpath(["interpreterSettings", "'$sparkid'", "dependencies"];[{"groupArtifactVersion": "{{ zeppelin_spark_packages | join('","local": false},{"groupArtifactVersion":"') }}","local": false}])' "{{ zeppelin_home }}/conf/interpreter.json" > "{{ zeppelin_home }}/conf/interpreter.json.1"
     if cmp -s "{{ zeppelin_home }}/conf/interpreter.json.1" "{{ zeppelin_home }}/conf/interpreter.json"; then echo "NO-CHANGE"; else cp "{{ zeppelin_home }}/conf/interpreter.json.1" "{{ zeppelin_home }}/conf/interpreter.json"; echo "CHANGED"; fi  
   register: out
   changed_when: not out.stdout.startswith('NO-CHANGE')
   notify: restart zeppelin
-- name : zeppelin spark interpreter options
+- name : zeppelin spark interperter options
   tags: install_zeppelin
   become_user: spark
   shell: |
     quotedid=`jq '.interpreterSettings[] | select(.name == "spark") |.id' "{{ zeppelin_home }}/conf/interpreter.json"`
     sparkid="${quotedid%\"}"
     sparkid="${sparkid#\"}"
-    jq 'setpath(["interpreterSettings", "'$sparkid'", "option"];{"remote": true,"port": -1,"perNote": "{{ zeppelin_spark_perNoteIsolation }}","perUser": "{{ zeppelin_spark_perUserIsolation }}","isExistingProcess": false,"setPermission": false,"users": [],"isUserImpersonate": false})' "{{ zeppelin_home }}/conf/interpreter.json" > "{{ zeppelin_home }}/conf/interpreter.json.1"
+    jq 'setpath(["interpreterSettings", "'$sparkid'", "properties", "master"];"{{ zeppelin_spark_master }}")' "{{ zeppelin_home }}/conf/interpreter.json" > "{{ zeppelin_home }}/conf/interpreter.json.1"
 
     if cmp -s "{{ zeppelin_home }}/conf/interpreter.json.1" "{{ zeppelin_home }}/conf/interpreter.json"; then echo "NO-CHANGE"; else cp "{{ zeppelin_home }}/conf/interpreter.json.1" "{{ zeppelin_home }}/conf/interpreter.json"; echo "CHANGED"; fi  
   register: out

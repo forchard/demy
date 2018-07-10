@@ -40,7 +40,9 @@ spark_thrift_driver_cores: "1"
 spark_thrift_executor_mem_mb: "1536"
 spark_thrift_executor_cores: "2"
 spark_dynamic_allocation: true
-spark_r_packages: ["classInt", "colorRamps", "devtools", "jsonlite", "Rcpp", "dplyr", "tidyr", "forecast", "ISOweek", "lubridate", "data.table", "plyr", "fBasics", "Hmisc", "ggplot2", "RColorBrewer", "colorRamps", "gridExtra", "scales", "lattice", "xtable", "mapproj", "maptools", "MASS", "sp", "rgdal", "rgeos", "raster", "surveillance", "epiR", "timeSeries", "stringr", "timeDate", "msm", "tseries", "xts", "rJava", "xlsx", "base64enc", "grDevices", "acepack", "bitops", "caTools", "curl", "Formula", "graphicsQC", "Hmisc", "httr", "latticeExtra", "magrittr", "memoise", "pixmap", "whisker", "withr", "XML", "blockrand", "randomizeR", "GADMTools", "sparklyr", "roxygen2", "testthat"]
+spark_r_packages_url: ["https://cran.r-project.org/src/contrib/Archive/rgdal/rgdal_1.2-20.tar.gz"]
+spark_r_packages_url_name: ["rgdal"]
+spark_r_packages: ["classInt", "colorRamps", "devtools", "jsonlite", "Rcpp", "dplyr", "tidyr", "forecast", "ISOweek", "lubridate", "data.table", "plyr", "fBasics", "Hmisc", "ggplot2", "RColorBrewer", "colorRamps", "gridExtra", "scales", "lattice", "xtable", "mapproj", "maptools", "MASS", "sp", "rgeos", "raster", "surveillance", "epiR", "timeSeries", "stringr", "timeDate", "msm", "tseries", "xts", "rJava", "xlsx", "base64enc", "grDevices", "acepack", "bitops", "caTools", "curl", "Formula", "graphicsQC", "Hmisc", "httr", "latticeExtra", "magrittr", "memoise", "pixmap", "whisker", "withr", "XML", "blockrand", "randomizeR", "GADMTools", "sparklyr", "roxygen2", "testthat"]
 spark_mysql_jdbc_version: 5.1.39
 
 #Zeppelin
@@ -76,10 +78,11 @@ zeppelin_shiro_config:
 - [urls,"/api/configurations/\\*\\* =", "/api/configurations/** = authc, roles[admin]"]
 - [urls,"/api/credential/\\*\\* =", "/api/credential/** = authc, roles[admin]"]
 zeppelin_maven_repository: "http://central.maven.org/maven2/"
-zeppelin_spark_dependencies: ["org.jsoup:jsoup:1.11.2", "org.apache.lucene:lucene-core:7.2.1", "org.apache.lucene:lucene-queryparser:7.2.1", "{{ zeppelin_run }}/custom-libs/demy-machine-learning-library_2.11-1.0.jar", "com.databricks:spark-xml_2.11:0.4.1"]
+zeppelin_spark_packages: ["org.jsoup:jsoup:1.11.2","org.apache.lucene:lucene-core:7.2.1","org.apache.lucene:lucene-queryparser:7.2.1","com.databricks:spark-xml_2.11:0.4.1","{{ zeppelin_run }}/custom-libs/demy-machine-learning-library_2.11-1.0.jar"]
+#zeppelin_spark_jars: "{{ zeppelin_run }}/custom-libs/demy-machine-learning-library_2.11-1.0.jar"
 zeppelin_spark_perNoteIsolation: "shared" #isolated, shared or scoped
 zeppelin_spark_perUserIsolation: "scoped" #isolated, shared or scoped
-zeppelin_spark_master: "yarn-cluster" 
+zeppelin_spark_master: "yarn-client" 
 
 #Head Node
 host_keys_to_insert: []

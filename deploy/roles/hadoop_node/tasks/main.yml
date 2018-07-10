@@ -63,7 +63,7 @@
     update_cache: true
     state: latest
   with_items: ["{{ java_package }}", "{{ java_package_spark }}", maven, r-base  ]
-  notify: set_java_default
+  notify: [set_java_default, set_java_for_R]
 - name: set java home
   tags: [java, upgrade]
   lineinfile:
@@ -71,24 +71,33 @@
     regexp: '^JAVA_HOME='
     line: "JAVA_HOME={{ java_home }}"
   notify: set_java_default
-- name: compiler tools
+- name: installing packages
+  tags: [packages, upgrade]
+  apt:
+    name: "{{ item }}"
+    update_cache: true
+    state: latest
+  with_items: [build-essential, g++, autoconf, automake, libtool, zlib1g-dev, pkg-config, libssl-dev, xmlstarlet, git, libfontconfig,pandoc, proj-data, locales, curl, jq, node-gyp ]
+  notify: [ set_npm_proxy, set_cran_mirror ]
+- name: installing backportes packages
   tags: [packages, upgrade]
   apt:
     name: "{{ item }}"
     default_release: jessie-backports
     update_cache: true
     state: latest
-  with_items: [build-essential, g++, autoconf, automake, libtool, cmake, zlib1g-dev, pkg-config, libssl-dev, xmlstarlet, git, npm, libfontconfig,pandoc, libgdal-dev, libgeos-dev, libproj-dev, proj-data, locales, curl, jq, python-setuptools ]
+  with_items: [npm, python-setuptools, libgdal-dev, libgeos-dev, libproj-dev, cmake]
   notify: [ set_npm_proxy, set_cran_mirror ]
 - name: install R packages for Spark
-  tags: [packages, upgrade]
+  tags: [packages, upgrade, r_packages]
   shell: |
     export http_proxy=http://{{ proxy_host }}:{{ proxy_port }}
     export https_proxy=http://{{ proxy_host }}:{{ proxy_port }}
     export ftp_proxy={{ proxy_host }}:{{ proxy_port }}
+    R -e "list.of.packages <- c(\"{{ spark_r_packages_url_name | join('\", \"') }}\");list.of.urls <- c(\"{{ spark_r_packages_url | join('\", \"') }}\");map <- new.env(hash=T, parent=emptyenv());for(i in 1:length(list.of.packages)) {map[[list.of.packages[i]]]<-list.of.urls[i]};new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,\"Package\"])]; if(length(new.packages)) install.packages(lapply(new.packages, function(x) map[[x]]), repos=NULL, type='source')"
     R -e "list.of.packages <- c(\"{{ spark_r_packages | join('\", \"') }}\"); new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,\"Package\"])]; if(length(new.packages)) install.packages(new.packages, repos=c('https://cran.univ-paris1.fr','https://ftp.igh.cnrs.fr/pub/CRAN/','http://cran.irsn.fr/'))"
   register: out
-  failed_when: out.stderr.find("WARNING")>1
+  failed_when: (out.stderr | regex_search('(^|[\\n])(ERROR|WARNING)')|string) in 'ERROR,WARNING,\nERROR,\nWARNING'
   changed_when: out.stderr|length > 0
   notify: restart zeppelin
 - name: download google protocol buffer
@@ -136,6 +145,7 @@
     remote_src: true 
 - name: Compile hadoop
   tags: [install_hadoop, upgrade]
+  become_user: hadoop
   shell: |
           export JAVA_HOME={{ java_home }}
           mvn package -Pdist,native -DskipTests -Dtar -Dhttp.proxyHost={{ proxy_host }} -Dhttp.proxyPort={{ proxy_port }} -Dhttps.proxyHost={{ proxy_host }} -Dhttps.proxyPort={{ proxy_port }}

@@ -7,7 +7,7 @@
   - ssh2nodes 
   tasks:
 - name: worker nodes users & passwordless ssh
-  hosts: [workernodes, namenode]
+  hosts: [nodes]
   gather_facts: false
   become: true
   roles: 

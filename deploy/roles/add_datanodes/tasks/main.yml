@@ -1,0 +1,25 @@
+---
+- name: identifying if there are datanodes to add
+  tags: scale
+  shell: |
+    #X will contain all live and not decommisioned nodes
+    X=`{{ hadoop_home }}/bin/hdfs dfsadmin -report -live | grep -B2 "Decommission Status : Normal" | grep Hostname | awk '{print $2}'`
+    #Y will replace \n by | so can be used on grep
+    Y=`echo $X | sed 's/ /|/g'`
+    if [ `printf "{% for i in groups['datanodes'] %}{{ i.split('.')[0]+'-'+hadoop_cluster_name+'\n' }}{%endfor%}" | grep -E -v "$Y" | grep -E -v "{% for i in groups['datanodes_excluded'] %}{{ i.split('.')[0]+'-'+hadoop_cluster_name+'|' }}{%endfor%}@" | wc -l` -gt 0 ];then echo "GO"; else echo "STOP"; fi
+  changed_when: false
+  become_user: hdfs
+  register: out  
+- name: check command result
+  tags: scale
+  set_fact:
+    refresh_nodes: '{{ out.stdout == "GO" }}'
+- name: refreshing data nodes data nodes 
+  when: refresh_nodes | bool
+  tags: scale
+  block:
+  - name: update nodes
+    command: "{{ hadoop_home }}/bin/hdfs dfsadmin -refreshNodes"
+    become_user: hdfs
+    changed_when: true
+

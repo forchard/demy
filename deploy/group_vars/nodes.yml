@@ -91,7 +91,7 @@ hdfs_hosts: "{{ hadoop_conf_dir }}/datanodes"
 hdfs_hosts_exclude: "{{ hadoop_conf_dir }}/datanodes-excluded"
 hdfs_blocksize_bytes: "{{ 64 *1024*1024 }}"
 hdfs_namenode_thread_count: 64
-hdfs_default_replication: 2
+hdfs_default_replication: 3 
 hdfs_namenode_daemon_memory_mb: 1024
 
 #Data node
@@ -124,7 +124,7 @@ yarn_scheduler: "org.apache.hadoop.yarn.server.resourcemanager.scheduler.capacit
 yarn_scheduler_capacity_calculator: "org.apache.hadoop.yarn.util.resource.DominantResourceCalculator"
 yarn_resourcemanager_daemon_memory_mb: 1024
 yarn_container_min_mb: 200 
-yarn_container_max_mb: 4096
+yarn_container_max_mb: "{{ 30 * 1024 }}"
 yarn_container_max_cores: 4
 yarn_hosts: "{{ hadoop_conf_dir }}/nodemanagers"
 yarn_hosts_exclude: "{{ hadoop_conf_dir }}/nodemanagers-excluded" 
@@ -141,7 +141,7 @@ yarn_nodemanager_remote_log_dir: "/logs/yarn"
 yarn_nodemanager_remote_log_dir_suffix: "logs" 
 yarn_nodemanager_detect_hardware: true
 yarn_nodemanager_daemon_memory_mb: "512"
-yarn_nodemanager_memory_mb: "3072"
+#yarn_nodemanager_memory_mb: "3072"
 yarn_nodemanager_system_reserved_memory_mb: "512"
 yarn_nodemanager_resource_vcores: "-1"
 yarn_nodemanager_logical_procs_as_cores: true

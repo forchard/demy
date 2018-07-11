@@ -90,4 +90,15 @@
   become: true
   roles:
   - finalize_upgrade_namenode
-
+- name: decomission datanodes
+  hosts: namenode
+  gather_facts: false
+  become: true
+  roles:
+  - decomission_datanodes
+- name: add datanodes
+  hosts: namenode
+  gather_facts: false
+  become: true
+  roles:
+  - add_datanodes

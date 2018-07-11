@@ -1,14 +1,14 @@
 ---
 - name: produce expected hosts
-  tags: [configure_hdfs, upgrade]
+  tags: [configure_hdfs, upgrade, scale]
   set_fact:
     datanodes_list: "{% for i in groups['datanodes'] %}{{ i.split('.')[0]+'-'+hadoop_cluster_name+'\n' }}{%endfor%}" 
 - name: produce excluded hosts
-  tags: [configure_hdfs, upgrade]
+  tags: [configure_hdfs, upgrade, scale]
   set_fact:
     datanodes_excluded_list: "{% for i in groups['datanodes_excluded'] %}{{ i.split('.')[0]+'-'+hadoop_cluster_name+'\n' }}{%endfor%}" 
 - name: allowed/excluded hosts present
-  tags: [configure_hdfs, upgrade]
+  tags: [configure_hdfs, upgrade, scale]
   copy:
     content: ""
     dest: "{{ item }}"
@@ -20,13 +20,13 @@
   - "{{ hdfs_hosts }}"
   - "{{ hdfs_hosts_exclude }}"
 - name: allowed hosts file
-  tags: [configure_hdfs, upgrade]
+  tags: [configure_hdfs, upgrade, scale]
   blockinfile:
     path: "{{ hdfs_hosts }}"
     block: "{{ datanodes_list }}"
     marker: "#{mark} list of hosts managed by ansible"
 - name: excluded hosts file
-  tags: [configure_hdfs, upgrade]
+  tags: [configure_hdfs, upgrade, scale]
   blockinfile:
     path: "{{ hdfs_hosts_exclude }}"
     block: "{{ datanodes_excluded_list }}"

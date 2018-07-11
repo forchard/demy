@@ -1,0 +1,33 @@
+---
+- name: identifying if there are excluded datanodes
+  tags: scale
+  set_fact:
+    start_decomission: '{{ groups["datanodes_excluded"] | length > 0 }}'
+- name: identifying if there are datanodes to decomission
+  tags: scale
+  when: start_decomission | bool
+  shell: |
+    if [ `{{ hadoop_home}}/bin/hdfs dfsadmin -report -live | grep -B2 "Decommission Status : Normal" | grep Hostname | grep -E "{% for i in groups['datanodes_excluded'] %}{{ i.split('.')[0]+'-'+hadoop_cluster_name+'|' }}{%endfor%}@" | wc -l` -gt 0 ];then echo "GO"; else echo "STOP"; fi
+  changed_when: false
+  become_user: hdfs
+  register: out  
+- name: check command result
+  tags: scale
+  when: start_decomission | bool
+  set_fact:
+    start_decomission: '{{ out.stdout == "GO" }}'
+- name: decomissioning data nodes 
+  when: start_decomission | bool
+  tags: scale
+  block:
+  - name: update nodes
+    command: "{{ hadoop_home }}/bin/hdfs dfsadmin -refreshNodes"
+    become_user: hdfs
+    changed_when: true
+  - name: wait until decomission is finished
+    shell: |
+      X=`{{ hadoop_home}}/bin/hdfs dfsadmin -report -live | grep -A1 -E "{% for i in groups['datanodes_excluded'] %}{{ i.split('.')[0]+'-'+hadoop_cluster_name+'|' }}{%endfor%}@" | grep "Decommissioned" |wc -l`
+      until [ $X -eq {{  groups['datanodes_excluded']|length  }} ]; do X=`{{ hadoop_home}}/bin/hdfs dfsadmin -report -live | grep -A1 -E "{% for i in groups['datanodes_excluded'] %}{{ i.split('.')[0]+'-'+hadoop_cluster_name+'|' }}{%endfor%}@" | grep "Decommissioned" | wc -l`; sleep 3; done
+    become_user: hdfs
+    changed_when: false
+

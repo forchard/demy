@@ -1,4 +1,45 @@
 ---
+- name: produce yarn expected hosts
+  tags: [configure_yarn, upgrade]
+  set_fact:
+    nodemanagers_list: "{% for i in groups['nodemanagers'] %}{{ i.split('.')[0]+'-'+hadoop_cluster_name+'\n' }}{%endfor%}" 
+- name: produce yarn excluded hosts
+  tags: [configure_yarn, upgrade]
+  set_fact:
+    nodemanagers_excluded_list: "{% for i in groups['nodemanagers_excluded'] %}{{ i.split('.')[0]+'-'+hadoop_cluster_name+'\n' }}{%endfor%}" 
+- name: allowed/excluded hosts present
+  tags: [configure_yarn, upgrade]
+  copy:
+    content: ""
+    dest: "{{ item }}"
+    force: false
+    owner: "hadoop"
+    group: "hadoop"
+    mode: "0660"
+  with_items:
+  - "{{ yarn_hosts }}"
+  - "{{ yarn_hosts_exclude }}"
+- name: allowed hosts file
+  tags: [configure_yarn, upgrade]
+  blockinfile:
+    path: "{{ yarn_hosts }}"
+    block: "{{ nodemanagers_list }}"
+    marker: "#{mark} list of hosts managed by ansible"
+- name: excluded hosts file
+  tags: [configure_yarn, upgrade]
+  blockinfile:
+    path: "{{ yarn_hosts_exclude }}"
+    block: "{{ nodemanagers_excluded_list }}"
+    marker: "#{mark} list of excluded hosts managed by ansible"
+- name: update yarn-site.xml for resource manager
+  tags: [configure_yarn, upgrade]
+  command: "/tmp/xmlpresent.sh --container-xpath \"/configuration\" --node \"property\" --property-node name --property-text \"{{ item.var  }}\" --value-node value --value \"{{ item.value  }}\" --file {{ hadoop_conf_dir }}/yarn-site.xml"
+  register: out
+  changed_when: not out.stdout.startswith('NO-CHANGE')
+  with_items:
+  - {var: "yarn.resourcemanager.nodes.include-path", value: "{{ yarn_hosts  }}" }
+  - {var: "yarn.resourcemanager.nodes.exclude-path", value: "{{ yarn_hosts_exclude }}" }
+  notify: restart yarn
 - name: configure queues
   tags: configure_yarn
   command: "/tmp/xmlpresent.sh --container-xpath \"/configuration\" --node \"property\" --property-node name --property-text \"{{ item.var  }}\" --value-node value --value \"{{ item.value  }}\" --file {{ hadoop_conf_dir }}/capacity-scheduler.xml"

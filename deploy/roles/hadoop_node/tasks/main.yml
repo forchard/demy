@@ -1,4 +1,22 @@
 ---
+- name: get cpu
+  tags: [configure_map_reduce, upgradei, scale]
+  command: "nproc --all"
+  register: node_cpu
+  changed_when: false
+- name: get host available memory
+  tags: [upgrade, configure_yarn, scale]
+  shell: "cat /proc/meminfo | grep MemTotal | awk '{print int($2/1024)}'"
+  register: out
+  changed_when: false
+- name: get available memory
+  set_fact:
+    available_memory_mb: "{{ out.stdout }}"
+  tags: [upgrade, configure_yarn, scale]
+- name: get available memory for yarn node manager
+  set_fact:
+    yarn_nodemanager_memory_mb: "{{ (available_memory_mb | int - 800 )| int }}"
+  tags: [upgrade, configure_yarn, scale]
 - name: crypted disk is running
   tags: [check_hosts, upgrade]
   shell: "if mountpoint -q /{{ crypted_disk }}; then echo 'MOUNTED'; else echo 'NOT-MOUNTED'; fi"
@@ -219,7 +237,7 @@
   - {var: "HADOOP_JOB_HISTORYSERVER_OPTS", value: "-Xmx{{ mapreduce_jobhistory_memory_mb }}m" }
   notify: [restart hdfs, restart yarn]
 - name: copy script to update hadoop xml files
-  tags: [configure_hadoop, upgrade, copy_xml]
+  tags: [configure_hadoop, upgrade, copy_xml, scale]
   copy:
     src: "./xmlpresent.sh"
     dest: "/tmp/xmlpresent.sh"
@@ -266,7 +284,7 @@
     group: hadoop
     mode: 0770
 - name: update yarn-site.xml for resouerce manager
-  tags: [configure_yarn, upgrade]
+  tags: [configure_yarn, upgrade, scale]
   command: "/tmp/xmlpresent.sh --container-xpath \"/configuration\" --node \"property\" --property-node name --property-text \"{{ item.var  }}\" --value-node value --value \"{{ item.value  }}\" --file {{ hadoop_conf_dir }}/yarn-site.xml"
   register: out
   changed_when: not out.stdout.startswith('NO-CHANGE')
@@ -286,8 +304,6 @@
   - {var: "yarn.scheduler.minimum-allocation-mb", value: "{{ yarn_container_min_mb }}" }
   - {var: "yarn.scheduler.maximum-allocation-mb", value: "{{ yarn_container_max_mb }}" }
   - {var: "yarn.scheduler.maximum-allocation-vcores", value: "{{ yarn_container_max_cores }}" }
-  - {var: "yarn.resourcemanager.nodes.include-path", value: "{{ yarn_hosts  }}" }
-  - {var: "yarn.resourcemanager.nodes.exclude-path", value: "{{ yarn_hosts_exclude }}" }
   - {var: "yarn.resourcemanager.bind-host", value: "{{ groups['resourcemanager'][0].split('.')[0] }}-{{ hadoop_cluster_name }}" }
   - {var: "yarn.web-proxy.address", value: "{{ groups['yarn_edge'][0].split('.')[0] }}-{{ hadoop_cluster_name }}:{{ yarn_webproxy_port }}" }
   notify: restart yarn
@@ -300,7 +316,7 @@
   - {var: "yarn.scheduler.capacity.resource-calculator", value: "{{ yarn_scheduler_capacity_calculator }}" }
   notify: restart yarn
 - name: update yarn-site.xml on node managers
-  tags: [configure_yarn, upgrade]
+  tags: [configure_yarn, upgrade, scale]
   command: "/tmp/xmlpresent.sh --container-xpath \"/configuration\" --node \"property\" --property-node name --property-text \"{{ item.var  }}\" --value-node value --value \"{{ item.value  }}\" --file {{ hadoop_conf_dir }}/yarn-site.xml"
   register: out
   changed_when: not out.stdout.startswith('NO-CHANGE')
@@ -324,16 +340,6 @@
   - {var: "yarn.nodemanager.aux-services", value: "spark_shuffle" }
   - {var: "yarn.nodemanager.aux-services.spark_shuffle.class", value: "org.apache.spark.network.yarn.YarnShuffleService" }
   notify: restart yarn
-- name: get ram
-  tags: [configure_map_reduce, upgrade]
-  shell: "free -m | grep Mem:|awk '{ printf $2}'"
-  register: node_ram
-  changed_when: false
-- name: get cpu
-  tags: [configure_map_reduce, upgrade]
-  command: "nproc --all"
-  register: node_cpu
-  changed_when: false
 - name: copy script to update hadoop xml files
   tags: [configure_map_reduce, upgrade]
   copy:
@@ -363,17 +369,17 @@
     group: hadoop
     mode: 0770
 - name: update mapred-site.xml on nodes
-  tags: [configure_map_reduce, upgrade]
+  tags: [configure_map_reduce, upgrade, scale]
   command: "/tmp/xmlpresent.sh --container-xpath \"/configuration\" --node \"property\" --property-node name --property-text \"{{ item.var  }}\" --value-node value --value \"{{ item.value  }}\" --file {{ hadoop_conf_dir }}/mapred-site.xml"
   register: out
   changed_when: not out.stdout.startswith('NO-CHANGE')
   with_items:
   - {var: "mapreduce.framework.name", value: "{{ mapreduce_framework_name }}" }
-  - {var: "mapreduce.map.memory.mb", value: "{{ ((1.5*node_ram.stdout|int) / (node_cpu.stdout|int))|int }}" }
-  - {var: "mapreduce.map.java.opts", value: "-Xmx{{ (node_ram.stdout|int / node_cpu.stdout|int)|int }}M" }
-  - {var: "mapreduce.reduce.memory.mb", value: "{{ ((2*node_ram.stdout|int) / (node_cpu.stdout|int))|int }}" }
-  - {var: "mapreduce.reduce.java.opts", value: "-Xmx{{ (2*node_ram.stdout|int / node_cpu.stdout|int)|int }}M" }
-  - {var: "mapreduce.task.io.sort.mb", value: "{{ ((0.5*node_ram.stdout|int) / (node_cpu.stdout|int))|int }}" }
+  - {var: "mapreduce.map.memory.mb", value: "{{ ((1.5*available_memory_mb|int) / (node_cpu.stdout|int))|int }}" }
+  - {var: "mapreduce.map.java.opts", value: "-Xmx{{ (available_memory_mb|int / node_cpu.stdout|int)|int }}M" }
+  - {var: "mapreduce.reduce.memory.mb", value: "{{ ((2*available_memory_mb|int) / (node_cpu.stdout|int))|int }}" }
+  - {var: "mapreduce.reduce.java.opts", value: "-Xmx{{ (2*available_memory_mb|int / node_cpu.stdout|int)|int }}M" }
+  - {var: "mapreduce.task.io.sort.mb", value: "{{ ((0.5*available_memory_mb|int) / (node_cpu.stdout|int))|int }}" }
   - {var: "mapreduce.task.io.sort.factor", value: "{{ mapreduce_task_io_sort_factor  }}" }
   - {var: "mapreduce.reduce.shuffle.parallelcopies", value: "{{ mapreduce_reduce_shuffle_parallelcopies  }}" }
   - {var: "mapreduce.jobhistory.address", value: "{{ groups['resourcemanager'][0].split('.')[0]}}:{{mapreduce_jobhistory_port  }}" }

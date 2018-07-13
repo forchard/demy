@@ -1,10 +1,11 @@
 lazy val root = (project in file(".")).
   settings(
-    name := "Demy machine learning library",
+    name := "demy-machine-learning-library",
     scalaVersion := "2.11.8",
     version := "1.0",
-    libraryDependencies += "org.apache.spark" %% "spark-core" % "2.2.0",
-    libraryDependencies += "org.apache.spark" %% "spark-sql" % "2.2.0",
+    libraryDependencies += "org.apache.spark" %% "spark-core" % "2.3.1",
+    libraryDependencies += "org.apache.spark" %% "spark-sql" % "2.3.1",
+    libraryDependencies += "org.apache.spark" %% "spark-mllib" % "2.3.1",
     libraryDependencies += "org.apache.lucene" % "lucene-core" % "7.2.1", 
     libraryDependencies += "org.apache.lucene" % "lucene-queryparser" % "7.2.1", 
 
@@ -25,6 +26,7 @@ lazy val root = (project in file(".")).
       case "META-INF/mimetypes.default" => MergeStrategy.last
       case "plugin.properties" => MergeStrategy.last
       case "log4j.properties" => MergeStrategy.last
+      case "git.properties" => MergeStrategy.last
       case x =>
         val oldStrategy = (assemblyMergeStrategy in assembly).value
         oldStrategy(x)

@@ -190,7 +190,13 @@
   - {var: "spark.dynamicAllocation.enabled", value: "{{ spark_dynamic_allocation }}" }
   - {var: "spark.shuffle.service.enabled", value: "true" }
   - {var: "spark.yarn.shuffle.stopOnFailure", value: "true" }
-  - {var: "spark.driver.extraJavaOptions", value: "-Dhttp.proxyHost={{ proxy_host }} -Dhttp.proxyPort={{ proxy_port }} -Dhttps.proxyHost={{ proxy_host }} -Dhttps.proxyPort={{ proxy_port }}" }
+  - {var: "spark.driver.extraJavaOptions", value: "-Dhttp.proxyHost={{ proxy_host }} -Dhttp.proxyPort={{ proxy_port }} -Dhttps.proxyHost={{ proxy_host }} -Dhttps.proxyPort={{ proxy_port }} -XX:hashCode=0" }
+  - {var: "spark.executor.extraJavaOptions", value: "-Dhttp.proxyHost={{ proxy_host }} -Dhttp.proxyPort={{ proxy_port }} -Dhttps.proxyHost={{ proxy_host }} -Dhttps.proxyPort={{ proxy_port }} -XX:hashCode=0" }
+  - {var: "spark.serializer", value: "org.apache.spark.serializer.KryoSerializer" }
+  - {var: "spark.kryoserializer.buffer.max", value: "128m" }
+  - {var: "spark.kryo.registrationRequired", value: "true" }
+  - {var: "spark.kryo.unsafe", value: "false" }
+  - {var: "spark.kryo.classesToRegister", value: "scala.collection.mutable.WrappedArray$ofRef,org.apache.spark.sql.execution.datasources.InMemoryFileIndex$SerializableFileStatus,[Lorg.apache.spark.sql.execution.datasources.InMemoryFileIndex$SerializableBlockLocation;,org.apache.spark.sql.execution.datasources.InMemoryFileIndex$SerializableBlockLocation,[Lorg.apache.spark.mllib.feature.VocabWord;,org.apache.spark.mllib.feature.VocabWord,org.apache.spark.internal.io.FileCommitProtocol$TaskCommitMessage,scala.collection.immutable.Set$EmptySet$,[Lorg.apache.spark.sql.catalyst.InternalRow;,org.apache.spark.sql.catalyst.InternalRow,org.apache.spark.sql.catalyst.expressions.UnsafeRow,org.apache.spark.sql.execution.datasources.FileFormatWriter$WriteTaskResult,org.apache.spark.sql.execution.datasources.ExecutedWriteSummary,org.apache.spark.sql.execution.datasources.BasicWriteTaskStats" }
 - name: thrift server run exists
   tags: install_spark
   file:

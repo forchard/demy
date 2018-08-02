@@ -1,0 +1,12 @@
+---
+- name: 
+  set_fact:
+    publicKey: "{{lookup('file', '~/.ssh/id_rsa.pub')}}"
+  tags: ssh4localUser
+- name: authorized keys present
+  tags: ssh4localUser
+  authorized_key:
+    user: "{{ item }}"
+    state: present
+    key: "{{ publicKey  }}"     
+  with_items: "{{ hadoopusers }}"

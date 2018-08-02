@@ -12,6 +12,12 @@
   become: true
   roles: 
   - ssh2me 
+- name: local user can impersonate users on remote hosts
+  hosts: [localsshnodes]
+  gather_facts: false
+  become: true
+  roles: 
+  - sshAsUsers 
 - name: if we are about to upgrade hadoop wze need to start the upgrade and unlink services
   hosts: namenode
   gather_facts: false

@@ -2,19 +2,35 @@ package demy.mllib.index;
 
 import org.apache.lucene.index.{IndexWriter}
 import org.apache.lucene.store.NIOFSDirectory
-import org.apache.lucene.document.{Document, TextField, StringField, NumericDocValuesField, DoubleDocValuesField, StoredField, Field}
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.types._
+import org.apache.lucene.document.{Document, TextField, StringField, IntPoint, BinaryPoint, LongPoint, DoublePoint, FloatPoint, Field, StoredField, DoubleDocValuesField}
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.conf.Configuration;
 
 case class SparkLuceneWriterInfo(writer:IndexWriter, tmpIndex:NIOFSDirectory){
-    def indexText(id:Long, text:String, popularity:Double = 1.0, categories:Map[String, String]=Map[String, String]()) {
-
+    def indexRow(row:Row, textFieldPosition:Int, popularityPosition:Option[Int]=None, notStoredPositions:Set[Int]=Set[Int]()) {
         val doc = new Document();
-        doc.add(new StoredField("id", id));
-        //)
-        doc.add(new TextField("text",text, Field.Store.NO))
-        categories.toSeq.foreach(p => p match {case (catName, value) => doc.add(new TextField(catName, value, Field.Store.YES))})
-        doc.add(new DoubleDocValuesField("pop", popularity));
+        doc.add(new TextField("_text_",row.getAs[String](textFieldPosition), Field.Store.NO))
+        val schema = row.schema.fields.zipWithIndex.foreach(p => p match {case (field, i) => 
+          if(!notStoredPositions.contains(i) && !row.isNullAt(i)) field.dataType match {
+             case dt:StringType =>   doc.add(new StringField(field.name, row.getAs[String](i), Field.Store.YES))
+             case dt:IntegerType => {doc.add(new IntPoint("_point_"+field.name, row.getAs[Int](i)))
+                                     doc.add(new StoredField(field.name, row.getAs[Int](i)))}
+             case dt:BooleanType => {doc.add(new BinaryPoint("_point_"+field.name, Array(if(row.getAs[Boolean](i)) 1.toByte else 0.toByte )))
+                                     doc.add(new StoredField(field.name,  Array(if(row.getAs[Boolean](i)) 1.toByte else 0.toByte )))}
+             case dt:LongType => {   doc.add(new LongPoint("_point_"+field.name, row.getAs[Long](i)))
+                                     doc.add(new StoredField(field.name, row.getAs[Long](i)))}
+             case dt:DoubleType => { doc.add(new DoublePoint("_point_"+field.name, row.getAs[Double](i)))
+                                     doc.add(new StoredField(field.name, row.getAs[Double](i)))}
+             case dt:FloatType => {  doc.add(new FloatPoint("_point_"+field.name, row.getAs[Float](i)))
+                                     doc.add(new StoredField(field.name, row.getAs[Float](i)))}
+             case dt => throw new Exception(s"Spark type {$dt.typeName} has not implemented conversion to lucene")
+        }})
+        popularityPosition match {case Some(i) => doc.add(new DoubleDocValuesField("_pop_", row.getAs[Double](i)))
+                                  case _ => {} 
+        }
+
         this.writer.addDocument(doc);
 
     }

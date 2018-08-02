@@ -18,7 +18,7 @@ case class Corpus(textSourcePath:String, word2VecPath:String, spark:SparkSession
         val textDir = new Path(textSourcePath)
         val files = fs.listFiles(textDir, true)    
 
-        val textFiles = Iterator.continually(files.next()).takeWhile(f => files.hasNext())
+        val textFiles = Iterator.continually(if(files.hasNext) files.next() else null).takeWhile(_ != null)
             .flatMap(f => if(f.getPath.getName == "_SUCCESS") None else Some(f.getPath.toString))
      
         val urlPattern = "((https?|ftp|gopher|telnet|file|Unsure|http):((//)|(\\\\))+[\\w\\d:#@%/;$()~_?\\+-=\\\\\\.&]*)"
@@ -26,10 +26,10 @@ case class Corpus(textSourcePath:String, word2VecPath:String, spark:SparkSession
             .map(line => 
                 line.toLowerCase
                     .replaceAll(urlPattern, " ")
-                    .split("[^(\\p{L})]|[\\(]|[\\)|]")
+                    .split("(?![0-9])[\\P{L}]|[\\(]|[\\)|]")
                     .map(w => Word.simplifyText(w).slice(0, 6))
                     .filter(w => w != "rt" && w.size > 0))
-            .toDF("text")
+        .toDF("text")
         
         // Learn a mapping from words to Vectors.
         val word2Vec = new Word2Vec()
@@ -40,12 +40,12 @@ case class Corpus(textSourcePath:String, word2VecPath:String, spark:SparkSession
           .setVectorSize(300)
           .setMinCount(10)
 
-        util.log("fitting model (commented!)" )
+        util.log("fitting model" )
         val model = word2Vec.fit(textInput)
 
 
         // Save and load model
-        util.log("saving model (commented!)")
+        util.log("saving model")
         model.write.overwrite().save(word2VecPath)
     }
 }

@@ -6,28 +6,56 @@ import org.apache.lucene.index.{DirectoryReader, Term}
 import org.apache.lucene.search.BooleanClause.Occur
 import org.apache.lucene.queries.function.FunctionQuery
 import org.apache.lucene.queries.function.valuesource.DoubleFieldSource
+import org.apache.spark.sql.Row
+import org.apache.spark.sql.types._
+import org.apache.lucene.document.{Document, TextField, StringField, IntPoint, BinaryPoint, LongPoint, DoublePoint, FloatPoint, Field, StoredField}
+import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
 
-
-case class SparkLuceneReaderInfo(searcher:IndexSearcher, tmpIndex:NIOFSDirectory, reader:DirectoryReader) {
-    def search(query:String, hitsPerPage:Int, filterFields:Map[String, String] = Map[String, String](), outFields:Set[String]=Set[String]()) = {
+case class SparkLuceneReaderInfo(searcher:IndexSearcher, tmpIndex:NIOFSDirectory, reader:DirectoryReader, usePopularity:Boolean = false) {
+    def search(query:String, maxHits:Int, filter:Row = Row.empty, outFields:Seq[StructField]=Seq[StructField](), maxLevDistance:Int=2) = {
         val terms = query.replaceAll("[^\\p{L}]+", ",").split(",").filter(s => s.length>0)
-        if(terms.size == 0) 
-            Array[TextIndexResult]()
-        else {
-            val qb = new BooleanQuery.Builder()
-            terms.foreach(s => qb.add(new FuzzyQuery(new Term("text", s.toLowerCase), 1, 2), if(filterFields.size>0) Occur.MUST else Occur.SHOULD))
-            filterFields.foreach(p => p match { case (category, value)=> qb.add(new TermQuery(new Term(category, value)), Occur.MUST)})
-            val pop = new FunctionQuery(new DoubleFieldSource("pop"));
-            val q = new org.apache.lucene.queries.CustomScoreQuery(qb.build, pop); 
-            
-            //query.replaceAll("[^\\p{L}\\-]+", ",").split(",").foreach(s => qb.add(new TermQuery(new Term("text", s)), Occur.SHOULD))
-            val docs = searcher.search(q, hitsPerPage);
-            val hits = docs.scoreDocs;
-            hits.map(hit => {
-                val doc = searcher.doc(hit.doc)
-                TextIndexResult(id=doc.getField("id").numericValue.longValue, score = hit.score, outFields.map(field => (field, doc.getField(field).stringValue)).toMap)
-            })
-        }
+        val qb = new BooleanQuery.Builder()
+        val fuzzyb = new BooleanQuery.Builder()
+        terms.foreach(s => fuzzyb.add(new FuzzyQuery(new Term("text", s.toLowerCase), 1, maxLevDistance), Occur.SHOULD))
+        qb.add(fuzzyb.build, Occur.MUST)
+        filter.schema.fields.zipWithIndex.foreach(p => p match { case (field, i) => 
+           if(!filter.isNullAt(i)) field.dataType match { 
+           case dt:StringType => qb.add(new TermQuery(new Term(field.name, filter.getAs[String](i))), Occur.MUST)
+           case dt:IntegerType => qb.add(IntPoint.newExactQuery("_point_"+field.name, filter.getAs[Int](i)), Occur.MUST)
+           case dt:BooleanType => qb.add(BinaryPoint.newExactQuery("_point_"+field.name, Array(filter.getAs[Boolean](i) match {case true => 1.toByte case _ => 0.toByte})), Occur.MUST)
+           case dt:LongType => qb.add(LongPoint.newExactQuery("_point_"+field.name, filter.getAs[Long](i)), Occur.MUST)
+           case dt:FloatType => qb.add(FloatPoint.newExactQuery("_point_"+field.name, filter.getAs[Float](i)), Occur.MUST)
+           case dt:DoubleType => qb.add(DoublePoint.newExactQuery("_point_"+field.name, filter.getAs[Double](i)), Occur.MUST)
+           case dt => throw new Exception(s"Spark type {$dt.typeName} has not implemented conversion to lucene")
+        }})
+        val q = if(usePopularity) {
+                   val pop = new FunctionQuery(new DoubleFieldSource("__pop__"));
+                   new org.apache.lucene.queries.CustomScoreQuery(qb.build, pop);
+                } else qb.build
+        
+        //query.replaceAll("[^\\p{L}\\-]+", ",").split(",").foreach(s => qb.add(new TermQuery(new Term("text", s)), Occur.SHOULD))
+        val outSchema = StructType(outFields.toList :+ StructField("_score_", FloatType))
+        val docs = searcher.search(q, maxHits);
+        val hits = docs.scoreDocs;
+        hits.map(hit => {
+            val doc = searcher.doc(hit.doc)
+            new GenericRowWithSchema(
+              values = outSchema.fields.map(field => {
+                val lucField = doc.getField(field.name)
+                if(field.name == null) null
+                else
+                  field.dataType match {
+                case dt:StringType => lucField.stringValue 
+                case dt:IntegerType => lucField.numericValue().intValue()
+                case dt:BooleanType => lucField.binaryValue().bytes(0) == 1.toByte
+                case dt:LongType =>  lucField.numericValue().longValue()
+                case dt:FloatType => lucField.numericValue().floatValue()
+                case dt:DoubleType => lucField.numericValue().doubleValue()
+                case dt => throw new Exception(s"Spark type {$dt.typeName} has not implemented conversion to lucene")
+              
+                }}) ++ Array(hit.score)
+              ,schema = outSchema)
+        })
     }
     def deleteRecurse(path:String) {
         if(path!=null && path.length>1 && path.startsWith("/")) {

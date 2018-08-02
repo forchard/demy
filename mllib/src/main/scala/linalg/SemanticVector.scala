@@ -90,8 +90,9 @@ case class SemanticVector(word:String, coord:Vector[Coordinate]) {
                 i2 = i2 + 1
             }
         }
-        0.5 + 0.5 * Sv1v2 / (Math.sqrt(Sv1v1)*Math.sqrt(Sv2v2))
+        Sv1v2 / (Math.sqrt(Sv1v1)*Math.sqrt(Sv2v2))
     }    
+    def similarity(that:SemanticVector) = 0.5 + 0.5 * this.cosineSimilarity(that)
     def commonDimSimilarity(that:SemanticVector) =  {
         var i1 = 0
         var i2 = 0

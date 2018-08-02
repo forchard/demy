@@ -5,7 +5,7 @@ import java.nio.file.{Files, Paths, Path}
 import org.apache.lucene.store.NIOFSDirectory
 import org.apache.lucene.index.{IndexWriter,IndexWriterConfig}
 
-case class SparkLuceneWriter(hdfsDest:String, tmpDir:String, partitionMaxSizeMb:Int) {
+case class SparkLuceneWriter(hdfsDest:String, tmpDir:String) {
     def create = {
         val analyzer = new StandardAnalyzer();
         Files.createDirectories(Paths.get(s"${this.tmpDir}/"))

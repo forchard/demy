@@ -3,9 +3,9 @@ lazy val root = (project in file(".")).
     name := "demy-machine-learning-library",
     scalaVersion := "2.11.8",
     version := "1.0",
-    libraryDependencies += "org.apache.spark" %% "spark-core" % "2.3.1",
-    libraryDependencies += "org.apache.spark" %% "spark-sql" % "2.3.1",
-    libraryDependencies += "org.apache.spark" %% "spark-mllib" % "2.3.1",
+    libraryDependencies += "org.apache.spark" %% "spark-core" % "2.3.1" % "provided",
+    libraryDependencies += "org.apache.spark" %% "spark-sql" % "2.3.1" % "provided",
+    libraryDependencies += "org.apache.spark" %% "spark-mllib" % "2.3.1" % "provided",
     libraryDependencies += "org.apache.lucene" % "lucene-core" % "7.2.1", 
     libraryDependencies += "org.apache.lucene" % "lucene-queryparser" % "7.2.1", 
 

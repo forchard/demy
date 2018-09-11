@@ -192,7 +192,7 @@
   - {var: "spark.yarn.shuffle.stopOnFailure", value: "true" }
   - {var: "spark.driver.extraJavaOptions", value: "-Dhttp.proxyHost={{ proxy_host }} -Dhttp.proxyPort={{ proxy_port }} -Dhttps.proxyHost={{ proxy_host }} -Dhttps.proxyPort={{ proxy_port }} -XX:hashCode=0" }
   - {var: "spark.executor.extraJavaOptions", value: "-Dhttp.proxyHost={{ proxy_host }} -Dhttp.proxyPort={{ proxy_port }} -Dhttps.proxyHost={{ proxy_host }} -Dhttps.proxyPort={{ proxy_port }} -XX:hashCode=0" }
-  - {var: "spark.serializer", value: "org.apache.spark.serializer.KryoSerializer" }
+  - {var: "spark.serializer", value: "org.apache.spark.serializer.JavaSerializer" } #org.apache.spark.serializer.KryoSerializer
   - {var: "spark.kryoserializer.buffer.max", value: "128m" }
   - {var: "spark.kryo.registrationRequired", value: "true" }
   - {var: "spark.kryo.unsafe", value: "false" }

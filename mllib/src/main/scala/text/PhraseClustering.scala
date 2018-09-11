@@ -3,6 +3,7 @@ package demy.mllib.text
 import demy.mllib.linalg.SemanticVector
 import demy.mllib.linalg.Coordinate
 import demy.mllib.util.util
+import demy.mllib.util.log
 import java.nio.file.{Paths, Files}
 import java.nio.file.{Paths, Files, StandardOpenOption}
 import java.nio.charset.StandardCharsets
@@ -34,7 +35,7 @@ case class PhraseClustering(numClusters:Int, taggedCentersPath:String,userContex
         //Adding previous tagged clusters if we have tagged phrases without a cluster
         val orphelinTags = previousTaggedPhrases.flatMap(c => c.tags).distinct.joinWith(previousTaggedClusters.flatMap(c => c.tags).distinct, $"_1" === $"_2", "left").filter(p => p._2 == null).map(p => p._1).collect
         if(orphelinTags.size > 0) {
-            util.log(s"Found (${orphelinTags.mkString(", ")} orphehelin tags, they will be added as new centers")
+            log.msg(s"Found (${orphelinTags.mkString(", ")} orphehelin tags, they will be added as new centers")
             val maxCluster = previousTaggedClusters.map(c => c.centerId).reduce((a, b)=> if(a>b) a else b)
             val newCenters = previousTaggedPhrases.flatMap(c => c.tags.map(t => CenterTagged(centerId = -1, center = c.center, tags=Seq(t))))
                                 .groupByKey(c => c.tags(0))
@@ -43,10 +44,10 @@ case class PhraseClustering(numClusters:Int, taggedCentersPath:String,userContex
                                 .withColumn("centerId", lit(maxCluster) + dense_rank().over(Window.orderBy($"tags".asc))).as[CenterTagged]
             //newCenters.show
             previousTaggedClusters = previousTaggedClusters.union(newCenters)
-            util.log("New orphelin centers added")
+            log.msg("New orphelin centers added")
         }
         //Finding best phrases to start iteration bases on previous clusters
-        util.log("Finding best center phrases by tagged cluster")
+        log.msg("Finding best center phrases by tagged cluster")
         val previousTaggedClustersCollected = previousTaggedClusters.filter(c => c.tags.size>0).collect
         val bestTagPhrases = util.checkpoint(
             phrases
@@ -68,16 +69,16 @@ case class PhraseClustering(numClusters:Int, taggedCentersPath:String,userContex
             .map(p => p.toCenterTagged(keepId = true))
             , "hdfs:///tmp/bestTagPhrases")
         val bestTaggedCount = bestTagPhrases.count.toInt
-        util.log(s"found $bestTaggedCount cluster representants")
+        log.msg(s"found $bestTaggedCount cluster representants")
 
         //Counting how many phrases has been manually tagged by tag so we can adjust simlple phrase gravity
-        util.log("Counting phrases by TAG")
+        log.msg("Counting phrases by TAG")
         val tagPhrasesCounts = previousTaggedPhrases.flatMap(p => p.tags.map(t => (t, 1)))
                 .groupByKey(p => p match {case (tag, count) => tag})
                 .reduceGroups((p1, p2) => (p1, p2) match {case ((tag1, count1), (tag2, count2)) => (tag1, count1 + count2)})
                 .map(p => p._2)
                 .collect.toMap
-        util.log(tagPhrasesCounts)
+        log.msg(tagPhrasesCounts)
         val estTotal = phrases.count.toInt 
         
         var taggedPhrases:org.apache.spark.sql.Dataset[PhraseOnCluster] = null
@@ -97,7 +98,7 @@ case class PhraseClustering(numClusters:Int, taggedCentersPath:String,userContex
             print("Iteration Start: ")
             val iterationStart = (
               if(iterating || keepExistingIteration) {
-                 util.log("Using previous iteration phrases, recalculating center")
+                 log.msg("Using previous iteration phrases, recalculating center")
                  /*val taggedCenters = spark.read.parquet(taggedCentersPath).as[CenterTagged]*/
                  /*spark.read.parquet(this.phraseClustersPath).where($"semantic".isNotNull).as[PhraseOnCluster]*/
                  taggedPhrases
@@ -109,10 +110,10 @@ case class PhraseClustering(numClusters:Int, taggedCentersPath:String,userContex
                       .map(p => p match {case (newCenter, oldCenter) => CenterTagged(centerId = -2, center = newCenter.center, tags=oldCenter.tags).setOrigin( origin = CenterTaggedOrigin.cluster)})
               }
               else if(reusePreviousIterationCenters){
-                  util.log(s"Using tags from previous iteration")
+                  log.msg(s"Using tags from previous iteration")
                   previousTaggedClusters.map(c => c.setOrigin(origin = CenterTaggedOrigin.cluster))
               } else {
-                  util.log(s"Using phrases from $bestTaggedCount existing tagged  clusters and random for the rest")
+                  log.msg(s"Using phrases from $bestTaggedCount existing tagged  clusters and random for the rest")
                   bestTagPhrases.map(c => CenterTaggedOrigin(center = c.center, centerId = -2, tags = c.tags, origin = CenterTaggedOrigin.cluster))
               })
             //2 Adding more centers as needed to fill the expected count
@@ -130,14 +131,14 @@ case class PhraseClustering(numClusters:Int, taggedCentersPath:String,userContex
                             .limit(numClusters)
                     , "hdfs:///tmp/baseCenters")
             import spark.implicits._
-            util.log(s"${baseCenters.count} base clusters found on ${baseCenters.rdd.getNumPartitions} partitions")
-            util.log(s"${baseCenters.map(c => c.center.coord).distinct.count} vectors >> ${baseCenters.count} vectors")
+            log.msg(s"${baseCenters.count} base clusters found on ${baseCenters.rdd.getNumPartitions} partitions")
+            log.msg(s"${baseCenters.map(c => c.center.coord).distinct.count} vectors >> ${baseCenters.count} vectors")
 /*            if(taggedPhrases!= null) {
                 taggedPhrases.unpersist
                 taggedClusters.unpersist
             }*/
             //println(s"origin type >> ${baseCenters.map(c => (c.origin, 1)).groupByKey(p => p._1).reduceGroups((p1, p2)=>(p1._1, p1._2+p2._2)).map(p => p._2).collect.mkString("||")}")             //3 reassigning tags tu current clusters
-            util.log(s"reassigning tags tu current clusters based on manual tagged phrases cluster")
+            log.msg(s"reassigning tags tu current clusters based on manual tagged phrases cluster")
             var collectedCenters = baseCenters.collect()
             val newTags = previousTaggedClusters
                                 .map(taggedP => collectedCenters.map(c => c.toPhraseOnCluster().setCenter(center = taggedP.setCenterSemantic(centerId=c.centerId, center = taggedP.center) , tags = taggedP.tags))
@@ -166,7 +167,7 @@ case class PhraseClustering(numClusters:Int, taggedCentersPath:String,userContex
                     })
                     .map(c => c.setOrigin(origin = CenterTaggedOrigin.badTag))
                 ,"hdfs:///tmp/badTags")
-            util.log(s"We have found ${badTags.count} improperly tagged phrases/clusters adding them as forced clusters on ${badTags.rdd.getNumPartitions} partitions")
+            log.msg(s"We have found ${badTags.count} improperly tagged phrases/clusters adding them as forced clusters on ${badTags.rdd.getNumPartitions} partitions")
                 
 
             //3. Associating phrases to new centers
@@ -174,7 +175,7 @@ case class PhraseClustering(numClusters:Int, taggedCentersPath:String,userContex
                     .joinWith(badTags,  $"_1.center.coord"===$"_2.center.coord", "full")
                     .map(p => p match { case (center, badTag) => if(badTag != null && center != null) badTag.setCenterId(center.centerId).asInstanceOf[CenterTaggedOrigin] else if(badTag != null) badTag else center})
             collectedCenters = iterationCenters.collect
-            util.log(s"${collectedCenters.size} fixed clusters")
+            log.msg(s"${collectedCenters.size} fixed clusters")
             val phrasesOnCenter = util.checkpoint(
                 phrases.filter(p => p.semantic!=null && p.semantic.coord.size>0)
                     .map(phrase => {
@@ -191,10 +192,10 @@ case class PhraseClustering(numClusters:Int, taggedCentersPath:String,userContex
                     })
                 ,"hdfs:///tmp/phrasesOnCenter")
             val missingClusters = (numClusters - phrasesOnCenter.flatMap(p => if(p.clusterId == -1)None else Some(p.clusterId)).distinct.count).toInt
-            util.log(s"Centers loosed =${missingClusters} on  on ${phrasesOnCenter.rdd.getNumPartitions} partitions")
+            log.msg(s"Centers loosed =${missingClusters} on  on ${phrasesOnCenter.rdd.getNumPartitions} partitions")
             
             //4. Calculating new cost (excluding forced phrases)
-            util.log(" Calculating new cost (excluding forced phrases)")
+            log.msg(" Calculating new cost (excluding forced phrases)")
             val stat = phrasesOnCenter.filter(p => p.clusterId>=0).map(phraseCenter => phraseCenter.toCenterStatsByDoc())
                 .reduce((cs1, cs2) => cs1.mergeStatsWithinDoc(cs2).asInstanceOf[CenterStatsByDoc])
             //6. we will associate the closest real center with phrases that were associated to manual tagged phrases
@@ -219,7 +220,7 @@ case class PhraseClustering(numClusters:Int, taggedCentersPath:String,userContex
                 ,"hdfs:///tmp/phrasesMoved")
                 
             val movedCount = phrasesMoved.filter(p => p.clusterId >= 0).count
-            util.log(s" ${movedCount} phrases moved to other clusters! ")
+            log.msg(s" ${movedCount} phrases moved to other clusters! ")
                 
             taggedPhrases =  util.checkpoint(phrasesOnCenter.filter(p => p.clusterId >= 0).union(phrasesMoved.filter(p => p.clusterId >= 0)), this.phraseClustersPath)//.union(phrasesInNewClusters)
             taggedClusters = util.checkpoint(iterationCenters.filter(c => c.centerId >=0)/*.union(iterationCenters.filter(c => c.centerId <0).limit(missingClusters))*/, this.taggedCentersPath)
@@ -229,17 +230,17 @@ case class PhraseClustering(numClusters:Int, taggedCentersPath:String,userContex
                || (maxIterations >= 0 && iterations >= maxIterations)
               ) {
                 finish = true
-                util.log(s"Final cost is ${stat.totalDistance} for ${stat.phraseCount} phrases")
-                util.log("Writing tagged clusters")
+                log.msg(s"Final cost is ${stat.totalDistance} for ${stat.phraseCount} phrases")
+                log.msg("Writing tagged clusters")
                 //taggedClusters.write.mode("Overwrite").parquet(this.taggedCentersPath)
-                util.log("Writing tagged phrases")
+                log.msg("Writing tagged phrases")
                 //taggedPhrases.write.mode("Overwrite").parquet(this.phraseClustersPath)
             }
             else {
                 iterating = true
-                util.log(s"Cluster cost when from $oldCost to ${stat.totalDistance} for ${stat.phraseCount} phrases")
-                util.log(s"${taggedPhrases.count} phrases cached")
-                util.log(s"${taggedClusters.count} clusters cached")
+                log.msg(s"Cluster cost when from $oldCost to ${stat.totalDistance} for ${stat.phraseCount} phrases")
+                log.msg(s"${taggedPhrases.count} phrases cached")
+                log.msg(s"${taggedClusters.count} clusters cached")
             }
 
             oldCost = stat.totalDistance

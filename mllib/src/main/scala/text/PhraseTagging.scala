@@ -12,14 +12,15 @@ case class PhraseTagging(textSource:org.apache.spark.sql.DataFrame, idColumnName
         import spark.sqlContext.implicits._
         val lexiqueSimplified = spark.read.parquet(this.lexiquePath).as[(String, Seq[(String, String, SemanticVector, SemanticVector, SemanticVector)])]
 
-        textSource.withColumnRenamed(this.commentColumnName, "comment")
+        val source = textSource.withColumnRenamed(this.commentColumnName, "comment")
             .select($"comment".as("text"), (this.idColumnName match {
                                                                case Some(docId) => textSource(docId)
                                                                case None => row_number().over(Window.orderBy($"comment".desc))
                                                              }).as("docId")).as[Doc]
             .flatMap(doc => Word.splitDoc(doc))
             .map(w => (w.word, w.simplified, w.isWord, w.index, w.phraseId, w.docId)).toDF("word","simplified","isWord","index","phraseId","docId").as[(String,String, Boolean, Int, Int, Int )]
-            .joinWith(lexiqueSimplified, $"_2.simplified"===$"_1.simplified", "left")
+         source
+            .joinWith(lexiqueSimplified, source("simplified")===lexiqueSimplified("simplified"), "left")
             .map(p => p match {case ((word,simplified,isWord,index,phraseId,docId),lexiqueEntry)=>(docId, Seq((word, index,phraseId,simplified,isWord
                                                                                                                     , lexiqueEntry match {case (simplified2, variants) => variants
                                                                                                                                         case _ => Seq[(String, String, SemanticVector, SemanticVector, SemanticVector)]()

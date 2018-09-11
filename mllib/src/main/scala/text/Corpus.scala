@@ -1,9 +1,10 @@
 package demy.mllib.text
+
+import demy.mllib.util.log
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.expressions.{Window}
 import org.apache.spark.sql.SparkSession
 import org.apache.hadoop.fs.{FileSystem, FileUtil, Path, GlobFilter}
-import demy.mllib.util.util
 import org.apache.spark.ml.feature.{Word2Vec, Word2VecModel}
 
 case class Corpus(textSourcePath:String, word2VecPath:String, spark:SparkSession) {
@@ -40,12 +41,12 @@ case class Corpus(textSourcePath:String, word2VecPath:String, spark:SparkSession
           .setVectorSize(300)
           .setMinCount(10)
 
-        util.log("fitting model" )
+        log.msg("fitting model" )
         val model = word2Vec.fit(textInput)
 
 
         // Save and load model
-        util.log("saving model")
+        log.msg("saving model")
         model.write.overwrite().save(word2VecPath)
     }
 }

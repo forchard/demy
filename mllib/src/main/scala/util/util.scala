@@ -1,14 +1,7 @@
 package demy.mllib.util
 
 
-case class util(dummy:Int){
-};object util {
-    def log(message:Any) {
-        val sdfDate = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");//dd/MM/yyyy
-        val now = new java.util.Date();
-        val strDate = sdfDate.format(now);
-        println(strDate+"-->"+message);
-    }
+object util {
     def checkpoint[T : org.apache.spark.sql.Encoder : scala.reflect.runtime.universe.TypeTag] (ds:org.apache.spark.sql.Dataset[T], path:String)
                :org.apache.spark.sql.Dataset[T] = 
     {
@@ -27,4 +20,8 @@ case class util(dummy:Int){
             .dataType
             .asInstanceOf[StructType] // cast it to a StructType, what spark requires as its Schema
     }*/
+}
+case class MergedIterator[T](a:Iterator[T], b:Iterator[T], defA:T, defB:T) extends Iterator[(T, T)] {
+      def hasNext = a.hasNext || b.hasNext
+          def next = (if(a.hasNext) a.next else defA, if(b.hasNext) b.next else defB)
 }

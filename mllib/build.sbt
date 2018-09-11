@@ -8,6 +8,7 @@ lazy val root = (project in file(".")).
     libraryDependencies += "org.apache.spark" %% "spark-mllib" % "2.3.1" % "provided",
     libraryDependencies += "org.apache.lucene" % "lucene-core" % "7.2.1", 
     libraryDependencies += "org.apache.lucene" % "lucene-queryparser" % "7.2.1", 
+//    scalacOptions ++= Seq("-deprecation", "-feature"),
 
     assemblyMergeStrategy in assembly := {
       case PathList("org","aopalliance", xs @ _*) => MergeStrategy.last

@@ -172,6 +172,14 @@ case class SemanticVector(word:String, coord:Vector[Coordinate]) {
     }
     def relativeDistanceWith(that:SemanticVector, reference:SemanticVector) = 1-this.relativeSimilarity(that, reference)
     def keepDimensionsOn(that:SemanticVector) = SemanticVector(word = this.word, coord = this.coord.filter(c => that.coord.map(tc => tc.index).contains(c.index))) 
+    def toSeq = {
+      if(this.coord.size == 0) Seq[Double]()
+      else Range(0, this.coord.map(c => c.index).max+1).map(i => this.coord.filter(c => c.index == i) match {case Vector(Coordinate(index, value)) => value case _ =>0.0}).toSeq
+    }
+    def toVec = {
+      if(this.coord.size == 0) Vector[Double]()
+      else Range(0, this.coord.map(c => c.index).max+1).map(i => this.coord.filter(c => c.index == i) match {case Vector(Coordinate(index, value)) => value case _ =>0.0}).toVector
+    }
 }
 object SemanticVector{
     def fromWord(word:String) = SemanticVector(word, Vector(Coordinate(Math.abs(scala.util.hashing.MurmurHash3.stringHash(word, scala.util.hashing.MurmurHash3.stringSeed)) % 1048576+300, 1)))

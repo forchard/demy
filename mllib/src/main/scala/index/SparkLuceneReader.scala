@@ -11,7 +11,7 @@ import java.nio.file.{Paths}
 
 
 
-case class SparkLuceneReader(hdfsIndexPartition:String, tmpDir:String, reuseExisting:Boolean = false, useSparkFiles:Boolean = false) {
+case class SparkLuceneReader(hdfsIndexPartition:String, tmpDir:String, reuseExisting:Boolean = false, useSparkFiles:Boolean = false, usePopularity:Boolean=false) {
     def open = {
         if(!useSparkFiles) {
             val fs = FileSystem.get(new Configuration())
@@ -45,12 +45,12 @@ case class SparkLuceneReader(hdfsIndexPartition:String, tmpDir:String, reuseExis
             val index = new NIOFSDirectory(Paths.get(s"${this.tmpDir}/${src.getName}"), org.apache.lucene.store.NoLockFactory.INSTANCE);
             val reader = DirectoryReader.open(index);
             val searcher = new IndexSearcher(reader);
-            SparkLuceneReaderInfo(searcher, index, reader);
+            SparkLuceneReaderInfo(searcher, index, reader, usePopularity);
         } else {
             val index = new NIOFSDirectory(Paths.get(org.apache.spark.SparkFiles.get(this.hdfsIndexPartition)), org.apache.lucene.store.NoLockFactory.INSTANCE);
             val reader = DirectoryReader.open(index);
             val searcher = new IndexSearcher(reader);
-            SparkLuceneReaderInfo(searcher, index, reader);
+            SparkLuceneReaderInfo(searcher, index, reader, usePopularity);
         }
     }
     def mergeWith(that:SparkLuceneReader) = {

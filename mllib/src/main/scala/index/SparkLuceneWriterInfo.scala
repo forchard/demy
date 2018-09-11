@@ -7,11 +7,13 @@ import org.apache.spark.sql.types._
 import org.apache.lucene.document.{Document, TextField, StringField, IntPoint, BinaryPoint, LongPoint, DoublePoint, FloatPoint, Field, StoredField, DoubleDocValuesField}
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.conf.Configuration;
+import java.io.{ByteArrayOutputStream, ObjectOutputStream}
 
 case class SparkLuceneWriterInfo(writer:IndexWriter, tmpIndex:NIOFSDirectory){
-    def indexRow(row:Row, textFieldPosition:Int, popularityPosition:Option[Int]=None, notStoredPositions:Set[Int]=Set[Int]()) {
+    def indexRow(row:Row, textFieldPosition:Int, popularityPosition:Option[Int]=None, notStoredPositions:Set[Int]=Set[Int](), tokenisation:Boolean=true) {
         val doc = new Document();
-        doc.add(new TextField("_text_",row.getAs[String](textFieldPosition), Field.Store.NO))
+        if(tokenisation)  doc.add(new TextField("_text_",row.getAs[String](textFieldPosition), Field.Store.NO))
+        else doc.add(new StringField("_text_",row.getAs[String](textFieldPosition), Field.Store.NO))
         val schema = row.schema.fields.zipWithIndex.foreach(p => p match {case (field, i) => 
           if(!notStoredPositions.contains(i) && !row.isNullAt(i)) field.dataType match {
              case dt:StringType =>   doc.add(new StringField(field.name, row.getAs[String](i), Field.Store.YES))
@@ -24,8 +26,16 @@ case class SparkLuceneWriterInfo(writer:IndexWriter, tmpIndex:NIOFSDirectory){
              case dt:DoubleType => { doc.add(new DoublePoint("_point_"+field.name, row.getAs[Double](i)))
                                      doc.add(new StoredField(field.name, row.getAs[Double](i)))}
              case dt:FloatType => {  doc.add(new FloatPoint("_point_"+field.name, row.getAs[Float](i)))
-                                     doc.add(new StoredField(field.name, row.getAs[Float](i)))}
-             case dt => throw new Exception(s"Spark type {$dt.typeName} has not implemented conversion to lucene")
+                                     doc.add(new StoredField(field.name, row.getAs[Float](i)))
+             }
+             case _ => { //Storing field as a serialized object
+               val serData=new ByteArrayOutputStream();
+               val out=new ObjectOutputStream(serData);
+               out.writeObject(row.get(i));
+               out.close();
+               serData.close();
+               doc.add(new StoredField(field.name, serData.toByteArray()))
+             }
         }})
         popularityPosition match {case Some(i) => doc.add(new DoubleDocValuesField("_pop_", row.getAs[Double](i)))
                                   case _ => {} 

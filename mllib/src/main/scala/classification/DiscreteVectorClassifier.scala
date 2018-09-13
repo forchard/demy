@@ -1,6 +1,6 @@
 package demy.mllib.classification
 
-import demy.mllib.HasParallelismDemy
+import demy.mllib.params.HasParallelismDemy
 import demy.mllib.util.log
 import org.apache.spark.ml.{Transformer, Estimator}
 import org.apache.spark.ml.linalg.{Vector => MLVector, Vectors}

@@ -7,9 +7,7 @@ import org.apache.spark.sql.{Dataset, DataFrame}
 import org.apache.spark.sql.types._
 
 
-class CrossSplit(override val uid: String) extends Folder {
-      final val numFolds = new Param[Int](this, "numFolds", "The number of random folds to build")
-          def setNumFolds(value: Int): this.type = set(numFolds, value)
+/*class CrossSplit(override val uid: String) extends Folder {
               override def buildFolds(ds:Dataset[_]):Array[(Dataset[_], Dataset[_])] = {
                       val n = get(numFolds).get
                             val folds = ds.randomSplit(Range(0, n).toArray.map(i => 1.0/n))
@@ -20,3 +18,4 @@ class CrossSplit(override val uid: String) extends Folder {
 }
 
 object CrossSplit {}
+*/

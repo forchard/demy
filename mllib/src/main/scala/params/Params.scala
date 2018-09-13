@@ -1,9 +1,10 @@
-package demy.mllib
+package demy.mllib.params
 
 import org.apache.spark.sql.Dataset
 import org.apache.spark.ml.param.{Param, ParamValidators, Params}
 import scala.concurrent.ExecutionContext
 import java.util.concurrent.Executors
+import org.apache.spark.ml.param.shared
 
 trait HasParallelismDemy extends Params {
   val parallelism = new Param[Int](this, "parallelism", "the number of threads to use when running parallel algorithms", ParamValidators.gtEq(1))
@@ -29,5 +30,24 @@ trait HasExecutionMetrics extends Params {
   def getLogMetrics: Boolean = getOrDefault(logMetrics)
   def getMetricsToLog: Array[String] = getOrDefault(metricsToLog)
   val metrics:scala.collection.mutable.Map[String, Double] = scala.collection.mutable.Map[String, Double]()
+}
+
+trait HasFolds extends Params {
+  val numFolds = new Param[Int](this, "numFolds", "The number of random folds to build")
+  def setNumFolds(value: Int): this.type = set(numFolds, value)
+}
+
+trait HasTrainRatio extends Params {
+  val trainRatio = new Param[Double](this, "trainRatio", "The train set ratio as a proportion e.g. 0.75 meand that 3/4 of randomly selected rows will be used for training (not compatible folds > 1")
+  def setTrainRatio(value: Double): this.type = set(trainRatio, value)
+}
+
+trait HasInputCols extends shared.HasInputCols {
+  def setInputCols(value: Array[String]): this.type = set(inputCols, value)
+}
+
+trait HasGroupByCols extends Params {
+  val groupByCols = new Param[Array[String]](this, "groupByCols", "The columns to group by")
+  def setGroupByCols(value: Array[String]): this.type = set(groupByCols, value)
 }
 

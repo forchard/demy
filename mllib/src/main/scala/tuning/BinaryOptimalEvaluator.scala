@@ -1,6 +1,6 @@
 package demy.mllib.tuning
 
-import demy.mllib.HasScoreCol
+import demy.mllib.params.HasScoreCol
 import demy.mllib.evaluation.{HasBinaryMetrics, BinaryMetrics}
 import org.apache.spark.ml.{Transformer, Estimator}
 import org.apache.spark.ml.util.Identifiable
@@ -27,11 +27,29 @@ object BinaryOptimalEvaluatorBase {
 }
 
 class BinaryOptimalEvaluator(override val uid: String) extends Estimator[BinaryOptimalEvaluatorModel] with BinaryOptimalEvaluatorBase {
+
     override def fit(dataset: Dataset[_]): BinaryOptimalEvaluatorModel = {
       import dataset.sparkSession.implicits._
-      val toEvaluate = dataset.select(getOrDefault(scoreCol), getOrDefault(labelCol)).as[(MLVector,MLVector)].flatMap(p => p match {case (scores, labels) => scores.toArray.zip(labels.toArray)}).rdd.persist(StorageLevel.MEMORY_AND_DISK)
+      val labelType = dataset.select(getOrDefault(labelCol)).schema.fields(0).dataType
+      val labelExp = (labelType match {
+        case IntegerType =>  udf((label:Int)=> Vectors.dense(label.toDouble))
+        case DoubleType =>  udf((label:Double)=> Vectors.dense(label))
+        case FloatType =>  udf((label:Double)=> Vectors.dense(label.toFloat))
+        case _ => udf((label:MLVector) => label) 
+
+      }).apply(col(getOrDefault(labelCol)).as(getOrDefault(labelCol)))
+      val toEvaluate = dataset.select(col(getOrDefault(scoreCol)), labelExp).as[(MLVector,MLVector)]
+                              .flatMap(p => p match {case (scores, labels) => scores.toArray.zip(labels.toArray)})
+                              .rdd.persist(StorageLevel.MEMORY_AND_DISK)
+
       val binMetrics = get(bins) match {case Some(f) => new BinaryClassificationMetrics(toEvaluate, f) case _ => new BinaryClassificationMetrics(toEvaluate)}
-      val midThreshold = binMetrics.thresholds.filter(t => t>0.5).reduce((t1, t2)=> if(t1 < t2) t1 else t2)
+      val midThreshold = binMetrics
+                          .thresholds
+                          .reduce((t1, t2) => if(t1 < 0.5 && t2<0.5) {if(t1>t2) t1 else t2} 
+                                              else if (t1 < 0.5 && t2 >=0.5) t2  
+                                              else if (t1 >= 0.5 && t2 < 0.5) t1
+                                              else /*t1>=0.5 && t2>=0.5*/ {if(t1<t2) t1 else t2}
+                          )
       val f1s = binMetrics.fMeasureByThreshold()
       val precs = binMetrics.precisionByThreshold()
       val recs = binMetrics.recallByThreshold()

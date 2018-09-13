@@ -2,13 +2,14 @@ package demy.mllib;
 
 import demy.mllib.evaluation.{BinaryMetrics, HasBinaryMetrics}
 import demy.mllib.util.log
+import demy.mllib.params._
 import org.apache.spark.ml.{Transformer, Estimator}
 import org.apache.spark.sql.{DataFrame, Row}
 import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
 import org.apache.spark.sql.types._
 import scala.collection.JavaConverters._
 
-case class Model(project:String, model:String, modelGroup:String, steps:Seq[ModelStep], source:DataFrame) {
+case class Model(project:String, model:String, modelGroup:String, steps:Seq[ModelStep]) {
     def getVersion(steps:String*) = {
         val stepSet = steps.toSet
         val notFounds = stepSet.diff(this.steps.map(s => s.name).toSet)
@@ -17,12 +18,17 @@ case class Model(project:String, model:String, modelGroup:String, steps:Seq[Mode
         ModelVersion(steps = this.steps.flatMap(s => if(stepSet.contains(s.name)) Some(s) else None), comment = "")
     }
     def plan(baseModel:ModelVersion) = ModelPlan(base = baseModel)
-    def run(plan:ModelPlan, logOn:Option[String]=None) = {
-        plan.build().foreach(modelVersion => {
-          modelVersion.printSchema()
+    def run(plan:ModelPlan, source:DataFrame, logOn:Option[String]=None) = {
+        var i = 0
+        val versions = plan.build()
+
+        versions.foreach(modelVersion => {
+          //modelVersion.printSchema()
+          log.msg(s"Version (${i+1}/${versions.size}->${Math.round(100.0* i/versions.size)}%) ${modelVersion.comment}")
+          i = i + 1
           var binaryMetrics:Option[BinaryMetrics] = None
           var execMetrics = scala.collection.mutable.Map[String, Double]()
-          val resdf = modelVersion.steps.foldLeft(this.source)((current, step) => {
+          val resdf = modelVersion.steps.foldLeft(source)((current, step) => {
               log.msg(s"Step ${step.name}")
               val (df, executedStep) = step.action match {
                   case t:Transformer => (t.transform(current), t)
@@ -31,6 +37,7 @@ case class Model(project:String, model:String, modelGroup:String, steps:Seq[Mode
                       (model.transform(current), model)
                   }
               }
+              if(step.cache) df.cache
               (logOn, executedStep) match {
                   case (Some(path), binEvaluator:HasBinaryMetrics) => binaryMetrics = Some(binEvaluator.metrics)
                   case _ =>{}

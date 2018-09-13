@@ -1,6 +1,6 @@
 package demy.mllib.text
 
-import demy.mllib.HasExecutionMetrics
+import demy.mllib.params.HasExecutionMetrics
 import demy.mllib.index.implicits._
 import demy.mllib.util.log.msg
 import org.apache.spark.ml.Transformer

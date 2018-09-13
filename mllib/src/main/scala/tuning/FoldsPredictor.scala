@@ -1,6 +1,6 @@
 package demy.mllib.tuning
 
-import demy.mllib.{HasParallelismDemy}
+import demy.mllib.params.HasParallelismDemy
 import demy.mllib.util.log.msg
 import org.apache.spark.ml.{Transformer, Estimator}
 import org.apache.spark.ml.util.Identifiable

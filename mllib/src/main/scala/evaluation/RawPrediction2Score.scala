@@ -1,6 +1,6 @@
 package demy.mllib.evaluation
 
-import demy.mllib.HasScoreCol
+import demy.mllib.params.HasScoreCol
 import org.apache.spark.ml.Transformer
 import org.apache.spark.ml.param.{Param, ParamMap}
 import org.apache.spark.ml.util.Identifiable

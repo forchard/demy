@@ -50,7 +50,7 @@ case class ModelVersion(steps:Seq[ModelStep]=Seq[ModelStep](), comment:String=""
         versionNames.foldLeft(this)((current, versionName)=>current.params(step, versionName, paramPairs :_*))
     }
     def params(step:String, version:String, paramPairs:(String, Any)*):ModelVersion = {
-        val stepParams = paramPairs.map(p => StepParam[Any](path = p._1, value=p._2))
+        val stepParams = paramPairs.map(p => StepParam[Any](path = p._1, value=p._2, log = true))
         val selectedSteps = this.steps.filter(s => s.name == step && s.version == version)        
         if(selectedSteps.size != 1) throw new Exception(s"parameter ($step,$version) should match a single stem instead of ${selectedSteps.size}")
         val theSteps = this.steps.map(s => if(s.name == step && s.version == version) s.applyParams(stepParams:_*).logStep else s)

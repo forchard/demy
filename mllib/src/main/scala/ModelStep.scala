@@ -2,19 +2,28 @@ package demy.mllib
 
 import demy.mllib.util.log
 import org.apache.spark.ml.param.{ParamPair, ParamMap, Params}
-import org.apache.spark.ml.PipelineStage
 import org.apache.spark.sql.types._
   
 case class StepParam[+T](path:String, value:T, log:Boolean=false)
 case class StepChoice(step:String, version:String) 
-case class ModelStep(name:String, version:String, family:String, action:PipelineStage, log:Boolean=false, show:Boolean=false, pathsToLog:Seq[String]=Seq[String](), cache:Boolean=true) {
+case class ModelStep(name:String, version:String, family:String, action:Params, log:Boolean=false, show:Boolean=false
+                     , pathsToLog:Seq[String]=Seq[String](), cache:Boolean=false, input:Option[String]=None
+                     , select:Seq[String]=Seq[String](), drop:Seq[String]=Seq[String](), paramInputs:Seq[(String, String)]=Seq[(String, String)]()
+                     , snapshot:Boolean = false, reuseSnapshot:Boolean = false, renameCols:Seq[(String, String)]=Seq[(String, String)]()) {
     def applyParams(sParams:StepParam[Any]*) = {
-        val appliedAction = sParams.foldLeft(this.action)((currentStage, sParam)=> ModelStep.applyParamToParams(currentStage, sParam).asInstanceOf[PipelineStage])
+        val appliedAction = sParams.foldLeft(this.action)((currentAction, sParam)=> ModelStep.applyParamToParams(currentAction, sParam))
         new ModelStep(name = this.name, version = this.version
                       , family=this.family, action = appliedAction
                       , log = log, show=show
                       , pathsToLog=this.pathsToLog ++ sParams.map(p => p.path).toSeq
                       , cache = this.cache
+                      , input = this.input
+                      , select = this.select
+                      , drop = this.drop
+                      , paramInputs = this.paramInputs
+                      , snapshot = this.snapshot
+                      , reuseSnapshot = this.reuseSnapshot
+                      , renameCols = this.renameCols
                       )
     }
     def structFieldAndValuesToLog() = {
@@ -32,19 +41,35 @@ case class ModelStep(name:String, version:String, family:String, action:Pipeline
         })
 
     }
-    def logStep() = ModelStep(name = name, version = version, family = family, action = action, log=true, show=show, pathsToLog=pathsToLog, cache = cache)
-    def cacheStep() = ModelStep(name = name, version = version, family = family, action = action, log=log, show=show, pathsToLog=pathsToLog, cache = true)
+    def option(nameValues:(String, String)*) = 
+      nameValues.foldLeft(this)((current, nameValue) => nameValue match { case (optName, value) => 
+        ModelStep(name = current.name
+          , version = current.version
+          , family = current.family
+          , action = current.action
+          , log = if(optName == "log") value.toBoolean else current.log
+          , show = if(optName == "show") value.toBoolean else current.show
+          , pathsToLog = if(optName == "pathsToLog") value.split(',').toSeq else current.pathsToLog
+          , cache = if(optName == "cache") value.toBoolean else current.cache
+          , input = if(optName == "input") Some(value) else current.input
+          , select = if(optName == "select") value.split(',').toSeq.map(s => s.trim) else current.select
+          , drop = if(optName == "drop") value.split(',').toSeq.map(s => s.trim) else current.drop
+          , paramInputs = if(optName == "paramInputs") value.split(',').toSeq.map(s => s.trim).map(s => (s.split("->")(0), s.split("->")(1))) else current.paramInputs
+          , snapshot = if(optName == "snapshot") value.toBoolean else current.snapshot
+          , reuseSnapshot = if(optName == "reuseSnapshot") value.toBoolean else current.reuseSnapshot
+          , renameCols = if(optName == "renameCols") value.split(',').toSeq.map(s => s.trim).map(s => (s.split("->")(0), s.split("->")(1))) else current.renameCols
+        )})
 }
 
 object ModelStep {
-    def apply(name:String, action:PipelineStage):ModelStep = ModelStep(name = name, version= name , family = name, action = action)
-    def apply(name:String, version:String, action:PipelineStage):ModelStep = ModelStep(name = name, version= version, family = name , action = action)
-    def apply(name:String, version:String, action:PipelineStage, show:Boolean):ModelStep = ModelStep(name = name, version= version, family = name , action = action, show = show)
+    def apply(name:String, action:Params):ModelStep = ModelStep(name = name, version= name , family = name, action = action)
+    def apply(name:String, version:String, action:Params):ModelStep = ModelStep(name = name, version= version, family = name , action = action)
+    def apply(name:String, version:String, action:Params, show:Boolean):ModelStep = ModelStep(name = name, version= version, family = name , action = action, show = show)
     def applyParamToParams(action:Params, param:StepParam[Any]):Params = {
-        //log.msg(s"applyParamToStage: $action, ${param.path}, ${param.value}")
+        //log.msg(s"Action: $action, ${param.path}, ${param.value}")
         val pathParts = param.path.split("\\.")
         if(!action.hasParam(pathParts(0)))
-            throw new Exception(s"Cannot fin patrameter ${pathParts(0)} on stage ${action.getClass.getName}")
+            throw new Exception(s"Cannot find patrameter ${pathParts(0)} on stage ${action.getClass.getName}")
         if(pathParts.size > 1) {
             //Nested pipeline stage parameter
             val actionParam = action.getParam(pathParts(0))

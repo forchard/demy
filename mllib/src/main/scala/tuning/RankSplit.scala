@@ -55,7 +55,7 @@ class RankSplit(override val uid: String) extends Folder with HasFolds with HasT
                                         .drop((if(aggregate && dropTemp ) measureColNames else Array[String]()):_*)
      
       //Step 3: Applying the folding by using the rank
-      val probs = if(nFolds <= 1) Array(1 - getOrDefault(trainRatio), getOrDefault(trainRatio)) else Range(0, nFolds-1).map(_ => 1.0/nFolds).toArray
+      val probs = if(nFolds <= 1) Array(1 - getOrDefault(trainRatio), getOrDefault(trainRatio)) else Range(0, nFolds).map(_ => 1.0/nFolds).toArray
 
       val dist = distribution(probs = probs, tolerance = 0.01, maxSize = 100)
       val distSize = dist.map(p => p match {case (fold, positions) =>  positions.size}).reduce(_ + _)

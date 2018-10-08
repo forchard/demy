@@ -16,11 +16,13 @@ import org.apache.spark.storage.StorageLevel
 
 trait BinaryOptimalEvaluatorBase extends HasLabelCol with HasScoreCol with HasPredictionCol {
     val uid: String
-    final val bins = new Param[Int](this, "folds", "The number of bins for thresholds")
+    final val bins = new Param[Int](this, "bins", "The number of bins for thresholds")
+    final val optimize = new Param[String](this, "optimize", "The optimization mode (f1Score, precisio:0.85, recall:0.7")
+    setDefault(bins->100, optimize->"f1score")
     def setLabelCol(value: String): this.type = set(labelCol, value)
     def setPredictionCol(value: String): this.type = set(predictionCol, value)
     def setBins(value: Int): this.type = set(bins, value)
-
+    def setOptimize(value: String): this.type = set(optimize, value)
     def validateAndTransformSchema(schema: StructType): StructType = StructType(schema.filterNot(f => f.name == getOrDefault(predictionCol)) :+ (new AttributeGroup(name=get(predictionCol).get).toStructField))
 }
 object BinaryOptimalEvaluatorBase {
@@ -53,14 +55,40 @@ class BinaryOptimalEvaluator(override val uid: String) extends Estimator[BinaryO
       val f1s = binMetrics.fMeasureByThreshold()
       val precs = binMetrics.precisionByThreshold()
       val recs = binMetrics.recallByThreshold()
-
-      val optimalThreshold = f1s.reduce((p1, p2) => if(p1._2 > p2._2) p1 else p2)._1
+      val optimizeAs = getOrDefault(optimize)
+      val optimalThreshold = 
+        if(optimizeAs.startsWith("precision:")) {
+          val precLimit = optimizeAs.replace("precision:", "").toDouble
+          precs.zip(recs).reduce((p1, p2) => (p1, p2) match { case (((thres1, prec1),(_, rec1)), ((thres2, prec2), (_, rec2))) => 
+                                                    if(prec1 >= precLimit && prec2 >= precLimit) {if(rec1 > rec2) ((thres1, prec1), (thres1, rec1)) else ((thres2, prec2), (thres2, rec2)) }
+                                                    else if(prec1 >= precLimit) ((thres1, prec1), (thres1, rec1))
+                                                    else if(prec2 >= precLimit) ((thres2, prec2), (thres2, rec2))
+                                                    else ((0.0, 0.0), (0.0, 0.0))
+                        })._1._1
+        }
+        else if(optimizeAs.startsWith("recall:")) {
+          val recLimit = optimizeAs.replace("recall:", "").toDouble
+          precs.zip(recs).reduce((p1, p2) => (p1, p2) match  { case (((thres1, prec1),(_, rec1)), ((thres2, prec2), (_, rec2))) => 
+                                                    if(rec1 >= recLimit && rec2 >= recLimit) {if(prec1 > prec2) ((thres1, prec1), (thres1, rec1)) else ((thres2, prec2), (thres2, rec2)) }
+                                                    else if(rec1 >= recLimit) ((thres1, prec1), (thres1, rec1))
+                                                    else if(rec2 >= recLimit) ((thres2, prec2), (thres2, rec2))
+                                                    else ((0.0, 0.0), (0.0, 0.0))
+                        })._1._1
+        }
+        else if(optimizeAs.startsWith("prec/recall:")) {
+          val ratioLimit = optimizeAs.replace("prec/recall:", "").toDouble
+          precs.zip(recs).reduce((p1, p2) => (p1, p2) match  { case (((thres1, prec1),(_, rec1)), ((thres2, prec2), (_, rec2))) => 
+                                                    if(Math.abs(prec1/rec1-ratioLimit) <= Math.abs(prec2/rec2-ratioLimit)) ((thres1, prec1), (thres1, rec1))
+                                                    else ((thres2, prec2), (thres2, rec2))
+                        })._1._1
+        }
+        else f1s.reduce((p1, p2) => if(p1._2 > p2._2) p1 else p2)._1
       val basePrecision = Some(precs.filter(p => p._1 == midThreshold).map(p => p._2).first)
-      val precision = Some(precs.filter(p => p._1==optimalThreshold).map(p => p._2).first)
+      val precision = precs.filter(p => p._1==optimalThreshold).map(p => p._2).take(1) match {case Array(v) => Some(v) case _ => None}
       val baseRecall = Some(recs.filter(p => p._1==midThreshold).map(p => p._2).first)
-      val recall = Some(recs.filter(p => p._1==optimalThreshold).map(p => p._2).first)
+      val recall = recs.filter(p => p._1==optimalThreshold).map(p => p._2).take(1) match {case Array(v) => Some(v) case _ => None}
       val baseF1Score = Some(f1s.filter(p => p._1==midThreshold).map(p => p._2).first )
-      val f1Score = Some(f1s.filter(p => p._1==optimalThreshold).map(p => p._2).first)
+      val f1Score = f1s.filter(p => p._1==optimalThreshold).map(p => p._2).take(1) match {case Array(v) => Some(v) case _ => None}
       val areaUnderROC = Some(binMetrics.areaUnderROC())
       val rocCourve = binMetrics.roc().collect
 

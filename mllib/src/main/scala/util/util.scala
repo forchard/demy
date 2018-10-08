@@ -21,7 +21,7 @@ object util {
             .asInstanceOf[StructType] // cast it to a StructType, what spark requires as its Schema
     }*/
 }
-case class MergedIterator[T](a:Iterator[T], b:Iterator[T], defA:T, defB:T) extends Iterator[(T, T)] {
+case class MergedIterator[T, U](a:Iterator[T], b:Iterator[U], defA:T, defB:U) extends Iterator[(T, U)] {
       def hasNext = a.hasNext || b.hasNext
-          def next = (if(a.hasNext) a.next else defA, if(b.hasNext) b.next else defB)
+      def next = (if(a.hasNext) a.next else defA, if(b.hasNext) b.next else defB)
 }

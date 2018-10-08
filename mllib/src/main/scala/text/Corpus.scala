@@ -1,6 +1,7 @@
 package demy.mllib.text
 
 import demy.mllib.util.log
+import org.apache.spark.ml.feature.RegexTokenizer
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.expressions.{Window}
 import org.apache.spark.sql.SparkSession
@@ -23,18 +24,17 @@ case class Corpus(textSourcePath:String, word2VecPath:String, spark:SparkSession
             .flatMap(f => if(f.getPath.getName == "_SUCCESS") None else Some(f.getPath.toString))
      
         val urlPattern = "((https?|ftp|gopher|telnet|file|Unsure|http):((//)|(\\\\))+[\\w\\d:#@%/;$()~_?\\+-=\\\\\\.&]*)"
-        val textInput = spark.read.text(textFiles.toSeq :_*).as[String]
-            .map(line => 
-                line.toLowerCase
-                    .replaceAll(urlPattern, " ")
-                    .split("(?![0-9])[\\P{L}]|[\\(]|[\\)|]")
-                    .map(w => Word.simplifyText(w).slice(0, 6))
-                    .filter(w => w != "rt" && w.size > 0))
-        .toDF("text")
+        val textInput = spark.read.text(textFiles.toSeq :_*).as[String].toDF("text")
         
+        val tokenizer = new RegexTokenizer().setInputCol("text")
+                                            .setOutputCol("tokens")
+                                            .setPattern("(?![0-9])[\\P{L}]|[\\(]|[\\)|]")
+                                            .setToLowercase(true)
+
+
         // Learn a mapping from words to Vectors.
         val word2Vec = new Word2Vec()
-          .setInputCol("text")
+          .setInputCol("tokens")
           .setMaxIter(1)
           .setNumPartitions(1)
           .setOutputCol("result")
@@ -42,7 +42,7 @@ case class Corpus(textSourcePath:String, word2VecPath:String, spark:SparkSession
           .setMinCount(10)
 
         log.msg("fitting model" )
-        val model = word2Vec.fit(textInput)
+        val model = word2Vec.fit(tokenizer.transform(textInput).drop("text"))
 
 
         // Save and load model

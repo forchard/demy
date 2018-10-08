@@ -12,7 +12,7 @@ object implicits {
   implicit class DatasetUtil(val left: Dataset[_]) {
     def luceneLookup(right:Dataset[_], query:Column, text:Column, maxLevDistance:Int=0, indexPath:String, reuseExistingIndex:Boolean=false
                    , leftSelect:Array[Column]=Array(col("*")), rightSelect:Array[Column]=Array(col("*")), popularity:Option[Column]=None
-                   , workersTmpDir:String="/tmp", indexPartitions:Int = 1, maxRowsInMemory:Int=100000, indexScanParallelism:Int = 2
+                   , workersTmpDir:String="/tmp", indexPartitions:Int = 1, maxRowsInMemory:Int=100, indexScanParallelism:Int = 2
                    , tokenizeText:Boolean=true) = {
       val rightApplied = right.select((Array(text.as("_text_")) ++ (popularity match {case Some(c) => Array(c.as("_pop_")) case _ => Array[Column]()}) ++ rightSelect) :_*)
       //Building index if does not exists
@@ -98,7 +98,7 @@ object implicits {
                        Some(
                            queries.zipWithIndex.map(p => p match {case (query, i) => {
                                val res = rInfo.search(query=query, maxHits=1, filter = Row.empty, outFields=rightRequestFields, maxLevDistance=maxLevDistance)
-                               println(query)
+                               //println(query)
                                if(res.size == 0)
                                  resultsArray(i)
                                else

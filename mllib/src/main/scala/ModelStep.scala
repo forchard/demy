@@ -31,6 +31,7 @@ case class ModelStep(name:String, version:String, family:String, action:Params, 
         paramPairs.map(t => 
         t match {
             case (ParamPair(_, v:Int), name) => (StructField(name = name, dataType=IntegerType), v)
+            case (ParamPair(_, v:Long), name) => (StructField(name = name, dataType=LongType), v)
             case (ParamPair(_, v:String), name) => (StructField(name = name, dataType=StringType), v)
             case (ParamPair(_, v:Float), name) => (StructField(name = name, dataType=FloatType), v)
             case (ParamPair(_, v:Double), name) => (StructField(name = name, dataType=DoubleType), v)

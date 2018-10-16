@@ -69,6 +69,22 @@
     owner: hadoop
     group: hadoop
   tags: upgrade
+- name: custom tmp folder present
+  file:
+    path: "{{ tmp_dir }}"
+    state: directory
+    mode: 0771
+    owner: hadoop
+    group: hadoop
+  tags: [upgrade]
+- name: custom libs folder exists
+  file:
+    path: "{{ custom_libs }}"
+    state: directory
+    mode: 0771
+    owner: hadoop
+    group: hadoop
+  tags: [upgrade, packages, python]
 - name: jessie backports is activated
   apt_repository:
     repo: deb http://ftp.fr.debian.org/debian jessie-backports main
@@ -104,7 +120,7 @@
     default_release: jessie-backports
     update_cache: true
     state: latest
-  with_items: [npm, python-setuptools, libgdal-dev, libgeos-dev, libproj-dev, cmake]
+  with_items: [npm, python-setuptools, libgdal-dev, libgeos-dev, libproj-dev, cmake, python3, python3-pip, python3-numpy, python3-scipy]
   notify: [ set_npm_proxy, set_cran_mirror ]
 - name: install R packages for Spark
   tags: [packages, upgrade, r_packages]
@@ -118,6 +134,46 @@
   failed_when: (out.stderr | regex_search('(^|[\\n])(ERROR|WARNING)')|string) in 'ERROR,WARNING,\nERROR,\nWARNING'
   changed_when: out.stderr|length > 0
   notify: restart zeppelin
+- name: update requirement files
+  tags: [packages, upgrade, python]
+  lineinfile:
+    dest: "{{ custom_libs }}/pip_requirements"
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"  
+    create: true
+  with_items:
+  - {regexp: "\\bword_forms\\b", line: "git+https://github.com/gutfeeling/word_forms.git#egg=word_forms"}
+  - {regexp: "pandas", line: "pandas"}
+  - {regexp: "scikit-learn", line: "scikit-learn"}
+  - {regexp: "nltk", line: "nltk"}
+  - {regexp: "contractions", line: "contractions"}
+  - {regexp: "inflect", line: "inflect"}
+  - {regexp: "pprint", line: "pprint"}
+  - {regexp: "gensim", line: "gensim"}
+  - {regexp: "datetime", line: "datetime"}
+  - {regexp: "python-dateutil", line: "python-dateutil"}
+- name: install python packages
+  tags: [packages, upgrade, python]
+  pip:
+    requirements: "{{ custom_libs }}/pip_requirements"
+    executable: pip3
+  environment:
+    TMPDIR: "{{ tmp_dir }}"
+    HTTPS_PROXY: "http://{{ proxy_host }}:{{ proxy_port }}"
+    HTTP_PROXY: "http://{{ proxy_host }}:{{ proxy_port }}"
+- name: downloading github libraries
+  tags: [packages, upgrade, python]
+  git:
+    repo: "{{ item.repo }}"
+    dest: "{{ custom_libs }}/{{ item.name }}" 
+    version: "{{ item.version }}"
+  with_items:
+  - {name: "WDDS", repo: "https://github.com/WDDS/Tweet-Classification-Diabetes-Distress.git", version: "devAA" }
+  environment:
+    TMPDIR: "{{ tmp_dir }}"
+    HTTPS_PROXY: "http://{{ proxy_host }}:{{ proxy_port }}"
+    HTTP_PROXY: "http://{{ proxy_host }}:{{ proxy_port }}"
+  become_user: hadoop
 - name: download google protocol buffer
   command: "wget -nc https://github.com/google/protobuf/releases/download/v{{ protobuf_ver }}/protobuf-{{ protobuf_ver }}.tar.gz"
   args:

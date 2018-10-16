@@ -165,6 +165,7 @@
   - {var: "SPARK_LOG_DIR", value: "{{ spark_run }}/logs"}
   - {var: "SPARK_PID_DIR", value: "{{ spark_run }}/PID" }
   - {var: "HIVE_SERVER2_THRIFT_PORT", value: "{{ spark_thrift_port }}" }
+  - {var: "PYSPARK_PYTHON", value: "python3"} 
   - {var: "SPARK_MASTER", value: "yarn"} 
 - name: spark defaults present 
   tags: configure_spark
@@ -428,11 +429,14 @@
     quotedid=`jq '.interpreterSettings[] | select(.name == "spark") |.id' "{{ zeppelin_home }}/conf/interpreter.json"`
     sparkid="${quotedid%\"}"
     sparkid="${sparkid#\"}"
-    jq 'setpath(["interpreterSettings", "'$sparkid'", "properties", "master"];"{{ zeppelin_spark_master }}")' "{{ zeppelin_home }}/conf/interpreter.json" > "{{ zeppelin_home }}/conf/interpreter.json.1"
+    jq 'setpath(["interpreterSettings", "'$sparkid'", "properties", "{{ item.var }}"];"{{ item.value  }}")' "{{ zeppelin_home }}/conf/interpreter.json" > "{{ zeppelin_home }}/conf/interpreter.json.1"
 
     if cmp -s "{{ zeppelin_home }}/conf/interpreter.json.1" "{{ zeppelin_home }}/conf/interpreter.json"; then echo "NO-CHANGE"; else cp "{{ zeppelin_home }}/conf/interpreter.json.1" "{{ zeppelin_home }}/conf/interpreter.json"; echo "CHANGED"; fi  
   register: out
   changed_when: not out.stdout.startswith('NO-CHANGE')
+  with_items:
+  - {var: "master", value: "{{ zeppelin_spark_master }}" }
+  - {var: "zeppelin.pyspark.python", value: "python3" }
   notify: restart zeppelin
 - name : zeppelin spark interpreter isolation options
   tags: install_zeppelin

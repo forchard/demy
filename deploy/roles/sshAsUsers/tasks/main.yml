@@ -1,12 +1,8 @@
 ---
-- name: 
-  set_fact:
-    publicKey: "{{lookup('file', '~/.ssh/id_rsa.pub')}}"
-  tags: ssh4localUser
 - name: authorized keys present
-  tags: ssh4localUser
+  tags: ssh4admins
   authorized_key:
-    user: "{{ item }}"
+    user: "{{ item.1 }}"
     state: present
-    key: "{{ publicKey  }}"     
-  with_items: "{{ hadoopusers }}"
+    key: "{{ item.0 }}"     
+  loop: "{{ admins | product(hadoopusers)|list }}"

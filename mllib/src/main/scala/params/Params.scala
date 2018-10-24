@@ -52,8 +52,8 @@ trait HasGroupByCols extends Params {
 }
 
 trait HasStratifyByCols extends Params {
-  val stratifyByCols = new Param[Array[String]](this, "groupByCols", "The columns to group by")
-  def setStratifyByCols(value: Array[String]): this.type = set(groupByCols, value)
+  val stratifyByCols = new Param[Array[String]](this, "stratifyByCols", "The columns to group by")
+  def setStratifyByCols(value: Array[String]): this.type = set(stratifyByCols, value)
 }
 
 

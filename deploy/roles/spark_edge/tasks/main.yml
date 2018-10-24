@@ -144,15 +144,15 @@
     group: "hadoop"
     mode: "0770"
 - name: get ip to use
-  tags: configure_spark
+  tags: [configure_spark, test]
   shell: "ip addr show {{ front_network  }} | grep \"inet \" | awk {'print $2'} | awk -F \"/\" {'print $1'}" 
   register: app_ip
   changed_when: false
-- tags: configure_spark
+- tags: [configure_spark, test]
   set_fact:
     app_ip: "{{ app_ip.stdout }}"
 - name: update spark-env.sh
-  tags: configure_spark
+  tags: [configure_spark, test]
   lineinfile:
     path: "{{ spark_home }}/conf/spark-env.sh" 
     regexp: "^export {{ item.var  }}"
@@ -165,7 +165,7 @@
   - {var: "SPARK_LOG_DIR", value: "{{ spark_run }}/logs"}
   - {var: "SPARK_PID_DIR", value: "{{ spark_run }}/PID" }
   - {var: "HIVE_SERVER2_THRIFT_PORT", value: "{{ spark_thrift_port }}" }
-  - {var: "PYSPARK_PYTHON", value: "python3"} 
+  - {var: "PYSPARK_PYTHON", value: "{{ python }}"} 
   - {var: "SPARK_MASTER", value: "yarn"} 
 - name: spark defaults present 
   tags: configure_spark
@@ -423,20 +423,21 @@
   changed_when: not out.stdout.startswith('NO-CHANGE')
   notify: restart zeppelin
 - name : zeppelin spark interperter options
-  tags: install_zeppelin
+  tags: [install_zeppelin, test]
   become_user: spark
   shell: |
-    quotedid=`jq '.interpreterSettings[] | select(.name == "spark") |.id' "{{ zeppelin_home }}/conf/interpreter.json"`
-    sparkid="${quotedid%\"}"
-    sparkid="${sparkid#\"}"
-    jq 'setpath(["interpreterSettings", "'$sparkid'", "properties", "{{ item.var }}"];"{{ item.value  }}")' "{{ zeppelin_home }}/conf/interpreter.json" > "{{ zeppelin_home }}/conf/interpreter.json.1"
+    quotedid=`jq '.interpreterSettings[] | select(.name == "{{ item.interpreter }}") |.id' "{{ zeppelin_home }}/conf/interpreter.json"`
+    intId="${quotedid%\"}"
+    intId="${intId#\"}"
+    jq 'setpath(["interpreterSettings", "'$intId'", "properties", "{{ item.var }}"];"{{ item.value  }}")' "{{ zeppelin_home }}/conf/interpreter.json" > "{{ zeppelin_home }}/conf/interpreter.json.1"
 
     if cmp -s "{{ zeppelin_home }}/conf/interpreter.json.1" "{{ zeppelin_home }}/conf/interpreter.json"; then echo "NO-CHANGE"; else cp "{{ zeppelin_home }}/conf/interpreter.json.1" "{{ zeppelin_home }}/conf/interpreter.json"; echo "CHANGED"; fi  
   register: out
   changed_when: not out.stdout.startswith('NO-CHANGE')
   with_items:
-  - {var: "master", value: "{{ zeppelin_spark_master }}" }
-  - {var: "zeppelin.pyspark.python", value: "python3" }
+  - {interpreter: "spark", var: "master", value: "{{ zeppelin_spark_master }}" }
+  - {interpreter: "spark", var: "zeppelin.pyspark.python", value: "{{ python }}" }
+  - {interpreter: "python", var: "zeppelin.python", value: "{{ python }}" }
   notify: restart zeppelin
 - name : zeppelin spark interpreter isolation options
   tags: install_zeppelin
@@ -495,6 +496,30 @@
     regexp: "^{{ item[1] }}"
     line: "{{ item[2] }}"
   with_list: "{{ zeppelin_shiro_config }}"
+  notify: restart zeppelin
+- name: update python apt-get dependencies
+  tags: [packages, upgrade, python, install_zeppelin]
+  apt:
+    name: "{{ item }}"
+    default_release: jessie-backports
+    update_cache: true
+    state: latest
+  with_items: [ libfreetype6-dev, pkg-config  ]
+- name: update requirement files for zeppelin
+  tags: [packages, upgrade, python, install_zeppelin, test]
+  copy:
+    dest: "{{ custom_libs }}/pip_zeppelin_requirements"
+    content: |
+      matplotlib
+- name: install python packages for yarn
+  tags: [packages, upgrade, python, install_zeppelin, test]
+  pip:
+    requirements: "{{ custom_libs }}/pip_zeppelin_requirements"
+    executable: "{{ pip }}"
+  environment:
+    TMPDIR: "{{ tmp_dir }}"
+    HTTPS_PROXY: "http://{{ proxy_host }}:{{ proxy_port }}"
+    HTTP_PROXY: "http://{{ proxy_host }}:{{ proxy_port }}"
   notify: restart zeppelin
 - meta: flush_handlers
   tags: install_zeppelin

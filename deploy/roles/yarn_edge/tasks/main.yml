@@ -16,3 +16,19 @@
   service:
     name: yarn-proxyserver
     state: started
+- name: update requirement files for yarn (dask)
+  tags: [packages, upgrade, python, dask]
+  copy:
+    dest: "{{ custom_libs }}/pip_yarn_requirements"
+    content: |
+      dask
+      distributed
+- name: install python packages for yarn
+  tags: [packages, upgrade, python, dask]
+  pip:
+    requirements: "{{ custom_libs }}/pip_yarn_requirements"
+    executable: "{{ pip }}"
+  environment:
+    TMPDIR: "{{ tmp_dir }}"
+    HTTPS_PROXY: "http://{{ proxy_host }}:{{ proxy_port }}"
+    HTTP_PROXY: "http://{{ proxy_host }}:{{ proxy_port }}"

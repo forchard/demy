@@ -40,6 +40,12 @@ custom_libs:  "/{{ hadoop_install }}/lib"
 hdfs_port: 8020
 hdfs_file_buffer_bytes: "{{ 128*1024 }}"
 
+#Python
+python_ver: 3.6.7
+python_home: "{{ hadoop_install }}/lib/python"
+python: "{{ python_home }}/bin/python3"
+pip: "{{ python_home }}/bin/pip3"
+
 #Spark
 spark_ver: 2.3.1
 spark_home: "{{ hadoop_install }}/spark_home"
@@ -89,7 +95,16 @@ zeppelin_shiro_config:
 - [urls,"/api/configurations/\\*\\* =", "/api/configurations/** = authc, roles[admin]"]
 - [urls,"/api/credential/\\*\\* =", "/api/credential/** = authc, roles[admin]"]
 zeppelin_maven_repository: "http://central.maven.org/maven2/"
-zeppelin_spark_packages: ["org.jsoup:jsoup:1.11.2","org.apache.lucene:lucene-core:7.2.1","org.apache.lucene:lucene-queryparser:7.2.1","com.databricks:spark-xml_2.11:0.4.1","{{ zeppelin_run }}/custom-libs/demy-machine-learning-library_2.11-1.0.jar", "org.apache.commons:commons-text:1.4", "ml.dmlc:xgboost4j-spark:0.80"]
+zeppelin_spark_packages: 
+- "org.jsoup:jsoup:1.11.2"
+- "org.apache.lucene:lucene-core:7.2.1"
+- "org.apache.lucene:lucene-queryparser:7.2.1"
+- "org.apache.httpcomponents:httpmime:4.5.6"
+- "com.databricks:spark-xml_2.11:0.4.1"
+- "org.apache.commons:commons-text:1.4"
+- "ml.dmlc:xgboost4j-spark:0.80"
+- "{{ zeppelin_run }}/custom-libs/demy-machine-learning-library_2.11-1.0.jar"
+
 #zeppelin_spark_jars: "{{ zeppelin_run }}/custom-libs/demy-machine-learning-library_2.11-1.0.jar"
 zeppelin_spark_perNoteIsolation: "shared" #isolated, shared or scoped
 zeppelin_spark_perUserIsolation: "scoped" #isolated, shared or scoped

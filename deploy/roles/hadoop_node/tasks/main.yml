@@ -105,6 +105,19 @@
     regexp: '^JAVA_HOME='
     line: "JAVA_HOME={{ java_home }}"
   notify: set_java_default
+- name: Getting key for installing llvm
+  tags: [packages, upgrade, python]
+  apt_key:
+    data: "{{ lookup('url', 'https://apt.llvm.org/llvm-snapshot.gpg.key', split_lines=False) }}" 
+    state: present
+  environment:
+    HTTPS_PROXY: "http://{{ proxy_host }}:{{ proxy_port }}"
+    HTTP_PROXY: "http://{{ proxy_host }}:{{ proxy_port }}"
+- name: Ensuring a fresh version llvm is present
+  tags: [packages, upgrade, python]
+  apt_repository:
+    repo: deb http://apt.llvm.org/jessie/ llvm-toolchain-jessie-6.0 main 
+    state: present
 - name: installing packages
   tags: [packages, upgrade]
   apt:
@@ -114,14 +127,87 @@
   with_items: [build-essential, g++, autoconf, automake, libtool, zlib1g-dev, pkg-config, libssl-dev, xmlstarlet, git, libfontconfig,pandoc, proj-data, locales, curl, jq, node-gyp ]
   notify: [ set_npm_proxy, set_cran_mirror ]
 - name: installing backportes packages
-  tags: [packages, upgrade]
+  tags: [packages, upgrade, python]
   apt:
     name: "{{ item }}"
     default_release: jessie-backports
     update_cache: true
     state: latest
-  with_items: [npm, python-setuptools, libgdal-dev, libgeos-dev, libproj-dev, cmake, python3, python3-pip, python3-numpy, python3-scipy]
+  with_items: [npm, python-setuptools, libgdal-dev, libgeos-dev, libproj-dev, cmake, llvm-6.0, libbz2-dev, libreadline-gplv2-dev, libsqlite3-dev, libncurses5-dev, libncursesw5-dev, xz-utils,tk-dev, libgdbm-dev, libc6-dev, libssl-dev ] #, python3, python3-pip, python3-numpy, python3-scipy]
   notify: [ set_npm_proxy, set_cran_mirror ]
+- name: download python
+  tags: [python, upgrade]
+  command: "wget https://www.python.org/ftp/python/{{ python_ver  }}/Python-{{ python_ver  }}.tgz"
+  args:
+    chdir: "{{ custom_libs }}"
+    creates: "{{ custom_libs }}/Python-{{ python_ver }}.tgz"
+  become_user: spark
+- name: uncompress python
+  tags: [python, upgrade]
+  unarchive:
+    src: "{{ custom_libs }}/Python-{{ python_ver }}.tgz"
+    dest: "{{ custom_libs }}"
+    remote_src: true 
+  become_user: spark
+- name: building python
+  tags: [packages, upgrade, python]
+  shell: |
+   ./configure --enable-optimizations --with-ensurepip=install --prefix {{ custom_libs }}/python-{{ python_ver }}-lib --cache-file {{ tmp_dir }}/python-build
+   make -j4
+   make install
+  args:
+    chdir: "{{ custom_libs }}/Python-{{ python_ver }}"
+    creates: "{{ custom_libs }}/python-{{ python_ver }}-lib"
+  become_user: spark
+  environment:
+    TMPDIR: "{{ tmp_dir }}"
+- name: create link to current python version
+  tags: [python, upgrade]
+  file:
+    src: "{{ custom_libs }}/python-{{ python_ver }}-lib" 
+    dest: "{{ python_home }}"
+    owner: spark
+    group: hadoop
+    mode: 0751
+    state: link
+    #force: true
+- name: upgrade pip
+  tags: [packages, upgrade, python]
+  pip:
+    name: pip
+    state: latest
+    executable: "{{ pip }}"
+  environment:
+    TMPDIR: "{{ tmp_dir }}"
+    HTTPS_PROXY: "http://{{ proxy_host }}:{{ proxy_port }}"
+    HTTP_PROXY: "http://{{ proxy_host }}:{{ proxy_port }}"
+    LLVM_CONFIG: "/usr/lib/llvm-6.0/bin/llvm-config"
+- name: update requirement files
+  tags: [packages, upgrade, python]
+  copy:
+    dest: "{{ custom_libs }}/pip_requirements"
+    content: |
+      git+https://github.com/gutfeeling/word_forms.git#egg=word_forms
+      pandas
+      scikit-learn
+      nltk
+      contractions
+      inflect
+      pprint
+      gensim
+      datetime
+      python-dateutil
+      pyarrow
+- name: install python packages
+  tags: [packages, upgrade, python]
+  pip:
+    requirements: "{{ custom_libs }}/pip_requirements"
+    executable: "{{ pip }}"
+  environment:
+    TMPDIR: "{{ tmp_dir }}"
+    HTTPS_PROXY: "http://{{ proxy_host }}:{{ proxy_port }}"
+    HTTP_PROXY: "http://{{ proxy_host }}:{{ proxy_port }}"
+    LLVM_CONFIG: "/usr/lib/llvm-6.0/bin/llvm-config"
 - name: install R packages for Spark
   tags: [packages, upgrade, r_packages]
   shell: |
@@ -134,33 +220,6 @@
   failed_when: (out.stderr | regex_search('(^|[\\n])(ERROR|WARNING)')|string) in 'ERROR,WARNING,\nERROR,\nWARNING'
   changed_when: out.stderr|length > 0
   notify: restart zeppelin
-- name: update requirement files
-  tags: [packages, upgrade, python]
-  lineinfile:
-    dest: "{{ custom_libs }}/pip_requirements"
-    regexp: "{{ item.regexp }}"
-    line: "{{ item.line }}"  
-    create: true
-  with_items:
-  - {regexp: "\\bword_forms\\b", line: "git+https://github.com/gutfeeling/word_forms.git#egg=word_forms"}
-  - {regexp: "pandas", line: "pandas"}
-  - {regexp: "scikit-learn", line: "scikit-learn"}
-  - {regexp: "nltk", line: "nltk"}
-  - {regexp: "contractions", line: "contractions"}
-  - {regexp: "inflect", line: "inflect"}
-  - {regexp: "pprint", line: "pprint"}
-  - {regexp: "gensim", line: "gensim"}
-  - {regexp: "datetime", line: "datetime"}
-  - {regexp: "python-dateutil", line: "python-dateutil"}
-- name: install python packages
-  tags: [packages, upgrade, python]
-  pip:
-    requirements: "{{ custom_libs }}/pip_requirements"
-    executable: pip3
-  environment:
-    TMPDIR: "{{ tmp_dir }}"
-    HTTPS_PROXY: "http://{{ proxy_host }}:{{ proxy_port }}"
-    HTTP_PROXY: "http://{{ proxy_host }}:{{ proxy_port }}"
 - name: downloading github libraries
   tags: [packages, upgrade, python]
   git:

@@ -12,6 +12,10 @@ vue/maps/shapefile/world*
 vue/visuals/word-explorer/data
 mllib/project
 mllib/target
+core/project
+core/target
+storage/project
+storage/target
 net2demy/project
 net2demy/target
 net2demy/*.jar

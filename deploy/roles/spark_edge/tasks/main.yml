@@ -144,15 +144,15 @@
     group: "hadoop"
     mode: "0770"
 - name: get ip to use
-  tags: [configure_spark, test]
+  tags: [configure_spark]
   shell: "ip addr show {{ front_network  }} | grep \"inet \" | awk {'print $2'} | awk -F \"/\" {'print $1'}" 
   register: app_ip
   changed_when: false
-- tags: [configure_spark, test]
+- tags: [configure_spark]
   set_fact:
     app_ip: "{{ app_ip.stdout }}"
 - name: update spark-env.sh
-  tags: [configure_spark, test]
+  tags: [configure_spark]
   lineinfile:
     path: "{{ spark_home }}/conf/spark-env.sh" 
     regexp: "^export {{ item.var  }}"
@@ -423,7 +423,7 @@
   changed_when: not out.stdout.startswith('NO-CHANGE')
   notify: restart zeppelin
 - name : zeppelin spark interperter options
-  tags: [install_zeppelin, test]
+  tags: [install_zeppelin]
   become_user: spark
   shell: |
     quotedid=`jq '.interpreterSettings[] | select(.name == "{{ item.interpreter }}") |.id' "{{ zeppelin_home }}/conf/interpreter.json"`
@@ -506,13 +506,13 @@
     state: latest
   with_items: [ libfreetype6-dev, pkg-config  ]
 - name: update requirement files for zeppelin
-  tags: [packages, upgrade, python, install_zeppelin, test]
+  tags: [packages, upgrade, python, install_zeppelin]
   copy:
     dest: "{{ custom_libs }}/pip_zeppelin_requirements"
     content: |
       matplotlib
-- name: install python packages for yarn
-  tags: [packages, upgrade, python, install_zeppelin, test]
+- name: install python packages for zeppelin
+  tags: [packages, upgrade, python, install_zeppelin]
   pip:
     requirements: "{{ custom_libs }}/pip_zeppelin_requirements"
     executable: "{{ pip }}"

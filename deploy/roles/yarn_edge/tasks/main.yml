@@ -23,6 +23,7 @@
     content: |
       dask
       distributed
+      dask-yarn
 - name: install python packages for yarn
   tags: [packages, upgrade, python, dask]
   pip:

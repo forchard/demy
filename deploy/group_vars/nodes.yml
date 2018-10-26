@@ -104,6 +104,7 @@ zeppelin_spark_packages:
 - "org.apache.commons:commons-text:1.4"
 - "ml.dmlc:xgboost4j-spark:0.80"
 - "{{ zeppelin_run }}/custom-libs/demy-machine-learning-library_2.11-1.0.jar"
+- "{{ zeppelin_run }}/custom-libs/demy-storage-layer_2.11-1.0.jar"
 
 #zeppelin_spark_jars: "{{ zeppelin_run }}/custom-libs/demy-machine-learning-library_2.11-1.0.jar"
 zeppelin_spark_perNoteIsolation: "shared" #isolated, shared or scoped

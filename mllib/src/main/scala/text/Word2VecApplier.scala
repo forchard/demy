@@ -2,7 +2,7 @@ package demy.mllib.text
 
 import demy.mllib.params.HasExecutionMetrics
 import demy.mllib.index.implicits._
-import demy.mllib.util.log.msg
+import demy.mllib.util.log.{msg, debug}
 import org.apache.spark.ml.Transformer
 import org.apache.spark.ml.util.Identifiable
 import org.apache.spark.ml.param.{Param, ParamMap}
@@ -93,7 +93,8 @@ class Word2VecApplier(override val uid: String) extends Transformer with HasExec
             else
               ret.select(vectorColName).map(r => r.getAs[Seq[DenseVector]](0).size match {case _ => 1}).reduce(_ + _)
             )
-          msg(s"calculating Word2Vec hitPercent on $c lines ${matchCount.sum.toDouble} ${wordCount.sum.toDouble}")
+          val msg = s"calculating Word2Vec hitPercent on $c lines ${matchCount.sum.toDouble} ${wordCount.sum.toDouble}"
+          debug(msg)
           metrics += ("hitPercent" -> matchCount.sum.toDouble / wordCount.sum.toDouble)
         }
         ret

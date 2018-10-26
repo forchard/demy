@@ -10,7 +10,7 @@ import org.apache.spark.sql.functions.{col, abs, lit, dense_rank, sum, avg, coun
 import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.ColumnName
 
-class RankSplit(override val uid: String) extends Folder with HasFolds with HasTrainRatio {
+class RankSplit(override val uid: String) extends /*Folder with*/ HasFolds with HasTrainRatio {
     final val rankingCols = new Param[Array[String]](this, "rankingCols", "Array indicating which columns are to be considered for ranking the lines")
     final val groupCols = new Param[Array[String]](this, "groupCols", "Array idicating rows to be treated as a group when folding (all rows with the same value will always go to the same fold)")
     final val aggregateAs = new Param[Array[String]](this, "aggregateAs", "If grouping, ranking cols should be aggregated. Possible values = 'sum', 'count', 'avg'")
@@ -23,7 +23,7 @@ class RankSplit(override val uid: String) extends Folder with HasFolds with HasT
     def setSortDescending(value: Array[Boolean]): this.type = set(sortDescending, value)
     def setDropTempCols(value: Boolean): this.type = set(dropTempCols, value)
     
-    override def buildFolds(ds:Dataset[_]):Array[(Dataset[_], Dataset[_])] = {
+    /*override */def buildFolds(ds:Dataset[_]):Array[(Dataset[_], Dataset[_])] = {
       val nFolds = getOrDefault(numFolds)
       val groups = getOrDefault(groupCols)
       val aggregate = groups.size > 0

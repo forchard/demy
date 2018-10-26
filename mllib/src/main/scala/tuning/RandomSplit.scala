@@ -9,14 +9,14 @@ import org.apache.spark.sql.types._
 import org.apache.spark.sql.functions.{hash, col, abs, lit, udf}
 import org.apache.spark.sql.ColumnName
 import scala.util.Random
+import scala.util.hashing.MurmurHash3
 
 class RandomSplit(override val uid: String) extends Folder with HasFolds with HasTrainRatio with HasGroupByCols with HasStratifyByCols {
     final val seed = new Param[Long](this, "seed", "The random seed")
     def setSeed(value: Long): this.type = set(seed, value)
     
     setDefault(trainRatio->0.75, groupByCols->Array[String](), numFolds -> 1, stratifyByCols -> Array[String]())
-    override def buildFolds(ds:Dataset[_]):Array[(Dataset[_], Dataset[_])] = Array[(Dataset[_], Dataset[_])](typedBuildFolds(ds):_*)
-    def typedBuildFolds[T](ds:Dataset[T]):Array[(Dataset[T], Dataset[T])] = {
+    override def buildFolds[T](ds:Dataset[T]):Array[(Dataset[T], Dataset[T])] = {
       val ratio = getOrDefault(trainRatio)
       val groupColumns = getOrDefault(groupByCols)
       val stratColumns = getOrDefault(stratifyByCols)
@@ -28,7 +28,7 @@ class RandomSplit(override val uid: String) extends Folder with HasFolds with Ha
             .select(stratColumns.map(c => col(c)) :_*)
             .distinct.collect
                       .map(row => this.setStratifyByCols(Array[String]())
-                                      .typedBuildFolds(ds.where(stratColumns.map(colName => col(colName) === lit(row.getAs[Any](colName))).reduce(_ && _))))
+                                      .buildFolds(ds.where(stratColumns.map(colName => col(colName) === lit(row.getAs[Any](colName))).reduce(_ && _))))
         strats.reduce((p1, p2) => p1.zip(p2).map(p => p match {case ((test1, train1),(test2, train2))=> (test1.unionAll(test2), train1.unionAll(train2))})) 
       } else if(groupColumns.size == 0) {
         val splited = get(seed) match { case Some(s) => ds.randomSplit(probs, s) case _ => ds.randomSplit(probs) }
@@ -36,7 +36,7 @@ class RandomSplit(override val uid: String) extends Folder with HasFolds with Ha
       } else {
         val random = get(seed) match {case Some(s) => new Random(s) case _ => new Random()}
         val randInt = random.nextInt
-          //.match {case v => if(v<0) -v else v }) / Int.MaxValue.toDouble
+        //println(s"seed is ${get(seed)} and rand is $randInt")
         var p0 = 0.0
         var i = 0
         val pRanges = probs.map(p => {
@@ -45,15 +45,17 @@ class RandomSplit(override val uid: String) extends Folder with HasFolds with Ha
           p0 = p0 + p
           ret
         }).take(nFolds)
-        val hashExp = abs(hash((groupColumns.map(c => col(c)) :+ lit(randInt):_*))) / lit(Int.MaxValue)
+        val hashExp = abs(hash((groupColumns.map(c => col(c)):_*)))
         pRanges.map(p => p match {case (p0, p1) => 
-               (ds.where(udf((rowHash:Double, p0:Double, p1:Double )=>{
-                          rowHash< p0 || rowHash>=p1
-                         }).apply(hashExp, lit(p0), lit(p1))
+               (ds.where(udf((rowHash:Double, p0:Double, p1:Double, s:Int )=>{
+                          val rowP = Math.abs(MurmurHash3.stringHash(rowHash.toString, s)).toDouble / Int.MaxValue
+                          rowP< p0 || rowP>=p1
+                         }).apply(hashExp, lit(p0), lit(p1), lit(randInt))
                    )
-               ,ds.where(udf((rowHash:Double, p0:Double, p1:Double )=>{
-                          rowHash>= p0 && rowHash<p1
-                         }).apply(hashExp, lit(p0), lit(p1))
+               ,ds.where(udf((rowHash:Double, p0:Double, p1:Double, s:Int )=>{
+                          val rowP = Math.abs(MurmurHash3.stringHash(rowHash.toString, s)).toDouble / Int.MaxValue
+                          rowP>= p0 && rowP<p1
+                         }).apply(hashExp, lit(p0), lit(p1), lit(randInt))
                    )
                )
         })

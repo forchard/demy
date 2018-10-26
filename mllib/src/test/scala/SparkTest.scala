@@ -18,6 +18,7 @@ object SharedSpark {
 class SparkTest  extends UnitTest with BeforeAndAfterAll
   with linalg.implicitsSpec
   with tuning.RandomSplitSpec
+  with feature.ArrayHasherSpec
 {
   override def beforeAll() {
     SharedSpark.init

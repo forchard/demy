@@ -1,4 +1,5 @@
-package twitemy
+package demy.twitter
+
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import org.apache.spark.SparkConf
@@ -7,7 +8,11 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 import twitter4j._
-import twitemy._
+//import twitemy._
+
+case class Tag(trackMatched: String, Project: String, Type: String)
+case class TagGroup(trackMatched: Array[String], Project: String, Type: String)
+
 
 object Execute {
   def main(args: Array[String]) {

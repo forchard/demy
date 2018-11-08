@@ -1,12 +1,15 @@
-lazy val root = (project in file(".")).
-  settings(
+lazy val core = RootProject(file("../core"))
+
+lazy val root = (project in file("."))
+  .dependsOn(core)
+  .settings(
     name := "demy-twitter-track",
     scalaVersion := "2.11.8",
     version := "1.0",
     libraryDependencies += "org.twitter4j" % "twitter4j-core" % "4.0.4" ,
     libraryDependencies += "org.twitter4j" % "twitter4j-stream" % "4.0.4" ,
-    libraryDependencies += "org.apache.spark" %% "spark-core" % "2.3.1" % "provided",
-    libraryDependencies += "org.apache.spark" %% "spark-sql" % "2.3.1" % "provided",
+    libraryDependencies += "org.apache.spark" %% "spark-core" % "2.3.2" % "provided",
+    libraryDependencies += "org.apache.spark" %% "spark-sql" % "2.3.2" % "provided",
 
     /*assemblyShadeRules in assembly := Seq(
       ShadeRule.rename("java.net.**" -> "shadejavanet.@1").inAll

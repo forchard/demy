@@ -10,25 +10,32 @@
   tags: install_spark
   become_user: hadoop
   shell: |
-    whoami
+    exists=`find {{ hadoop_home  }}/share/hadoop/yarn/lib -type f -name 'spark-{{ spark_ver }}-yarn-shuffle.jar' | wc -l`
     toDelete=`find {{ hadoop_home  }}/share/hadoop/yarn/lib -type f -name 'spark-*-yarn-shuffle.jar' -not -name 'spark-{{ spark_ver }}-yarn-shuffle.jar' | wc -l`
-    if [ $toDelete -gt 0 ]; then 
+    if [ $exists == 0 ]; then 
       ret="CHANGED"
-      find {{ hadoop_home  }}/share/hadoop/yarn/lib -type f -name 'spark-*-yarn-shuffle.jar' -not -name 'spark-{{ spark_ver }}-yarn-shuffle.jar' -print0 | xargs -0 rm --
+    elif [ $toDelete -gt 0 ]; then 
+      ret="CHANGED"
+      find {{ hadoop_home  }}/share/hadoop/yarn/lib -type f -name 'spark-*-yarn-shuffle.jar' -not -name 'spark-{{ spark_ver }}-yarn-shuffle.jar' -delete 
     else
       ret="NO-CHANGE"
     fi
     echo $ret
-    exit 0
+  args:
+    executable: /bin/bash
   register: out
   changed_when: not out.stdout.endswith('NO-CHANGE')
   failed_when: out.stderr|length>0 
-- name: push spark suffle jar to nodes
+- name: get shuffle jar if necessary from HDFS
   tags: install_spark
-  copy:
-    src: "/tmp/spark-{{ spark_ver }}-yarn-shuffle.jar"
-    dest: "{{ hadoop_home }}/share/hadoop/yarn/lib/"
-    force: true
+  become_user: spark
+  command:  "{{ hadoop_home}}/bin/hdfs dfs -get /spark/spark-{{ spark_ver }}-yarn-shuffle.jar {{ hadoop_home }}/share/hadoop/yarn/lib/"
+  when: out.changed
+  changed_when: true
+- name: spark shuffle exists with right permissions
+  tags: install_spark
+  file:
+    path: "{{ hadoop_home }}/share/hadoop/yarn/lib/"
     owner: "hadoop"
     group: "hadoop"
     mode: "0770"

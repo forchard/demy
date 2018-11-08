@@ -1,4 +1,14 @@
 ---
+- name: install R dependencies for spark
+  tags: install_spark
+  shell: |
+    export http_proxy=http://{{ proxy_host }}:{{ proxy_port }}
+    export https_proxy=http://{{ proxy_host }}:{{ proxy_port }}
+    export ftp_proxy={{ proxy_host }}:{{ proxy_port }}
+    R -e "list.of.packages <- c(\"roxygen2\", \"stringi\", \"stringr\"); new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,\"Package\"])]; if(length(new.packages)) install.packages(new.packages, repos=c('https://cran.univ-paris1.fr','https://ftp.igh.cnrs.fr/pub/CRAN/','http://cran.irsn.fr/'))"
+  register: out
+  failed_when: out.stderr.find("WARNING")>1
+  changed_when: out.stderr|length > 0
 - name: spark sources directory
   tags: install_spark
   file:
@@ -33,6 +43,7 @@
     export https_proxy=http://{{ proxy_host }}:{{ proxy_port }}
     export ftp_proxy={{ proxy_host }}:{{ proxy_port }}
     export JAVA_HOME="{{ java_home_spark }}"
+    npm config set registry http://registry.npmjs.org/
     export PATH=$JAVA_HOME/bin:$PATH
     export MAVEN_OPTS="-Xmx2g -XX:ReservedCodeCacheSize=512m"
     ./dev/make-distribution.sh --name demy_spark --tgz -Pyarn -Phadoop-2.7 -Phive -Phive-thriftserver -Psparkr -DskipTests -Dhttp.proxyHost={{ proxy_host }} -Dhttp.proxyPort={{ proxy_port }} -Dhttps.proxyHost={{ proxy_host }} -Dhttps.proxyPort={{ proxy_port }}
@@ -145,7 +156,7 @@
     mode: "0770"
 - name: get ip to use
   tags: [configure_spark]
-  shell: "ip addr show {{ front_network  }} | grep \"inet \" | awk {'print $2'} | awk -F \"/\" {'print $1'}" 
+  shell: "ip addr list | grep \"{{ front_network  }}\\|{{ back_network  }}\" | grep \"inet \" | awk {'print $2'} | awk -F \"/\" {'print $1'}" 
   register: app_ip
   changed_when: false
 - tags: [configure_spark]
@@ -167,6 +178,8 @@
   - {var: "HIVE_SERVER2_THRIFT_PORT", value: "{{ spark_thrift_port }}" }
   - {var: "PYSPARK_PYTHON", value: "{{ python }}"} 
   - {var: "SPARK_MASTER", value: "yarn"} 
+  - {var: "TMPDIR", value: "{{ tmp_dir }}"} 
+  notify: restart zeppelin
 - name: spark defaults present 
   tags: configure_spark
   copy:
@@ -191,13 +204,16 @@
   - {var: "spark.dynamicAllocation.enabled", value: "{{ spark_dynamic_allocation }}" }
   - {var: "spark.shuffle.service.enabled", value: "true" }
   - {var: "spark.yarn.shuffle.stopOnFailure", value: "true" }
-  - {var: "spark.driver.extraJavaOptions", value: "-Dhttp.proxyHost={{ proxy_host }} -Dhttp.proxyPort={{ proxy_port }} -Dhttps.proxyHost={{ proxy_host }} -Dhttps.proxyPort={{ proxy_port }} -XX:hashCode=0" }
-  - {var: "spark.executor.extraJavaOptions", value: "-Dhttp.proxyHost={{ proxy_host }} -Dhttp.proxyPort={{ proxy_port }} -Dhttps.proxyHost={{ proxy_host }} -Dhttps.proxyPort={{ proxy_port }} -XX:hashCode=0" }
+  - {var: "spark.yarn.executorEnv.TMPDIR", value: "{{ tmp_dir }}"}
+  - {var: "spark.yarn.appMasterEnv.TMPDIR", value: "{{ tmp_dir }}"}
+  - {var: "spark.driver.extraJavaOptions", value: "-Dhttp.proxyHost={{ proxy_host }} -Dhttp.proxyPort={{ proxy_port }} -Dhttps.proxyHost={{ proxy_host }} -Dhttps.proxyPort={{ proxy_port }} -XX:hashCode=0"}
+  - {var: "spark.executor.extraJavaOptions", value: "-Dhttp.proxyHost={{ proxy_host }} -Dhttp.proxyPort={{ proxy_port }} -Dhttps.proxyHost={{ proxy_host }} -Dhttps.proxyPort={{ proxy_port }} -XX:hashCode=0"}
   - {var: "spark.serializer", value: "org.apache.spark.serializer.JavaSerializer" } #org.apache.spark.serializer.KryoSerializer
   - {var: "spark.kryoserializer.buffer.max", value: "128m" }
   - {var: "spark.kryo.registrationRequired", value: "true" }
   - {var: "spark.kryo.unsafe", value: "false" }
   - {var: "spark.kryo.classesToRegister", value: "scala.collection.mutable.WrappedArray$ofRef,org.apache.spark.sql.execution.datasources.InMemoryFileIndex$SerializableFileStatus,[Lorg.apache.spark.sql.execution.datasources.InMemoryFileIndex$SerializableBlockLocation;,org.apache.spark.sql.execution.datasources.InMemoryFileIndex$SerializableBlockLocation,[Lorg.apache.spark.mllib.feature.VocabWord;,org.apache.spark.mllib.feature.VocabWord,org.apache.spark.internal.io.FileCommitProtocol$TaskCommitMessage,scala.collection.immutable.Set$EmptySet$,[Lorg.apache.spark.sql.catalyst.InternalRow;,org.apache.spark.sql.catalyst.InternalRow,org.apache.spark.sql.catalyst.expressions.UnsafeRow,org.apache.spark.sql.execution.datasources.FileFormatWriter$WriteTaskResult,org.apache.spark.sql.execution.datasources.ExecutedWriteSummary,org.apache.spark.sql.execution.datasources.BasicWriteTaskStats" }
+  notify: restart zeppelin
 - name: thrift server run exists
   tags: install_spark
   file:
@@ -228,6 +244,14 @@
     src: "{{ spark_home  }}/yarn/spark-{{ spark_ver }}-yarn-shuffle.jar"
     dest: "/tmp/spark-{{ spark_ver }}-yarn-shuffle.jar"
     flat: yes
+  register: sparkShuffle 
+- name: upload external shuffle jar if necessary to HDFS
+  tags: install_spark
+  become_user: spark
+  command:  "{{ hadoop_home}}/bin/hdfs dfs -put {{ spark_home  }}/yarn/spark-{{ spark_ver }}-yarn-shuffle.jar /spark/spark-{{ spark_ver }}-yarn-shuffle.jar"
+  when: sparkShuffle.changed
+  notify: restart zeppelin
+  changed_when: true
 - name: getting zeppelin
   tags: install_zeppelin
   become_user: hadoop
@@ -269,6 +293,7 @@
     export HTTPS_PROXY=http://{{ proxy_host }}:{{ proxy_port }}
     npm config set proxy http://{{ proxy_host }}:{{ proxy_port }}
     npm config set https-proxy http://{{ proxy_host }}:{{ proxy_port }}
+    npm config set registry http://registry.npmjs.org/
     dev/change_scala_version.sh 2.11
     mvn clean package -DskipTests -Pscala-2.11 -Dhttp.proxyHost={{ proxy_host }} -Dhttp.proxyPort={{ proxy_port }} -Dhttps.proxyHost={{ proxy_host }} -Dhttps.proxyPort={{ proxy_port }}
   args:
@@ -501,10 +526,10 @@
   tags: [packages, upgrade, python, install_zeppelin]
   apt:
     name: "{{ item }}"
-    default_release: jessie-backports
+    default_release: "{{ ansible_distribution_release  }}-backports"
     update_cache: true
     state: latest
-  with_items: [ libfreetype6-dev, pkg-config  ]
+  with_items: [ libfreetype6-dev, pkg-config]
 - name: update requirement files for zeppelin
   tags: [packages, upgrade, python, install_zeppelin]
   copy:

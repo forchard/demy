@@ -24,6 +24,7 @@
       dask
       distributed
       dask-yarn
+      venv-pack
 - name: install python packages for yarn
   tags: [packages, upgrade, python, dask]
   pip:

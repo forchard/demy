@@ -1,11 +1,18 @@
 ---
+- name: Gather distribution info
+  hosts: [nodes]
+  gather_facts: false
+  pre_tasks:
+  - name: gathering distribution
+    tags: always
+    setup:
+      filter: "ansible_distribution*"
 - name: Users on head node & register worker hosts
   hosts: [namenode, spark_edge] 
   gather_facts: false
   become: true
   roles: 
   - ssh2nodes 
-  tasks:
 - name: worker nodes users & passwordless ssh
   hosts: [nodes]
   gather_facts: false

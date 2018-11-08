@@ -39,6 +39,7 @@ custom_libs:  "/{{ hadoop_install }}/lib"
 #hdfs
 hdfs_port: 8020
 hdfs_file_buffer_bytes: "{{ 128*1024 }}"
+hdfs_tmp_dir: "hdfs:///tmp"
 
 #Python
 python_ver: 3.6.7
@@ -47,7 +48,7 @@ python: "{{ python_home }}/bin/python3"
 pip: "{{ python_home }}/bin/pip3"
 
 #Spark
-spark_ver: 2.3.1
+spark_ver: 2.3.2
 spark_home: "{{ hadoop_install }}/spark_home"
 spark_run: "{{ hadoop_install }}/spark_run"
 spark_thrift_port: "10000"
@@ -62,7 +63,7 @@ spark_r_packages: ["classInt", "colorRamps", "devtools", "jsonlite", "Rcpp", "dp
 spark_mysql_jdbc_version: 5.1.39
 
 #Zeppelin
-zeppelin_version: "v0.8.0"
+zeppelin_version: "v0.8.0" #"a2473daf8e7400fb1cb635ba97f66835cad58ffc"
 zeppelin_home: "{{ hadoop_install }}/zeppelin_home"
 zeppelin_run: "{{ hadoop_install }}/zeppelin_run"
 zeppelin_port: "8080"
@@ -105,6 +106,8 @@ zeppelin_spark_packages:
 - "ml.dmlc:xgboost4j-spark:0.80"
 - "{{ zeppelin_run }}/custom-libs/demy-machine-learning-library_2.11-1.0.jar"
 - "{{ zeppelin_run }}/custom-libs/demy-storage-layer_2.11-1.0.jar"
+- "{{ zeppelin_run }}/custom-libs/demy-core_2.11-1.0.jar"
+- "{{ zeppelin_run }}/custom-libs/demy-twitter-track-assembly-1.0.jar"
 
 #zeppelin_spark_jars: "{{ zeppelin_run }}/custom-libs/demy-machine-learning-library_2.11-1.0.jar"
 zeppelin_spark_perNoteIsolation: "shared" #isolated, shared or scoped

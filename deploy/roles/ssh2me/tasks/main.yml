@@ -10,6 +10,7 @@
     group: hadoop
     groups: ssh
   with_items: "{{ hostvars[groups['namenode'][0]].created_users.results }}"
+  when: hostvars[groups['namenode'][0]].created_users is defined
   loop_control:
     label: "{{ item.name }}"
 - name: authorized keys present
@@ -19,5 +20,6 @@
     state: present
     key: "{{ item.ssh_public_key  }}"     
   with_items: "{{ hostvars[groups['namenode'][0]].created_users.results }}"
+  when: hostvars[groups['namenode'][0]].created_users is defined
   loop_control:
     label: "{{ item.name }}"

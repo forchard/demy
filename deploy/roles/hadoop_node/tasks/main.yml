@@ -1,6 +1,6 @@
 ---
 - name: get cpu
-  tags: [configure_map_reduce, upgradei, scale]
+  tags: [configure_map_reduce, upgrade, scale]
   command: "nproc --all"
   register: node_cpu
   changed_when: false
@@ -59,7 +59,7 @@
     block: |
       {{hostvars[item].app_ip}} {{ item.split('.')[0] }}-{{ hadoop_cluster_name }}
     marker: "# {mark} Managed ip for {{ item }} alias do not edit!" 
-  with_items : "{{ groups['nodes'] }}"
+  with_items : "{{ ansible_play_hosts }}"
   tags: [etc_hosts, upgrade]
 - name: installation folder
   file:
@@ -85,15 +85,15 @@
     owner: hadoop
     group: hadoop
   tags: [upgrade, packages, python]
-- name: jessie backports is activated
+- name: backports are activated
   apt_repository:
-    repo: deb http://ftp.fr.debian.org/debian jessie-backports main
+    repo: "deb http://ftp.fr.debian.org/debian {{ ansible_distribution_release }}-backports main"
   tags: upgrade
-- name: install jessie backports packages
+- name: install backports packages
   tags: [packages, upgrade]
   apt:
     name: "{{ item }}"
-    default_release: jessie-backports
+    default_release: "{{ ansible_distribution_release }}-backports"
     update_cache: true
     state: latest
   with_items: ["{{ java_package }}", "{{ java_package_spark }}", maven, r-base  ]
@@ -116,24 +116,40 @@
 - name: Ensuring a fresh version llvm is present
   tags: [packages, upgrade, python]
   apt_repository:
-    repo: deb http://apt.llvm.org/jessie/ llvm-toolchain-jessie-6.0 main 
+    repo: "deb http://apt.llvm.org/{{ ansible_distribution_release }}/ llvm-toolchain-{{ ansible_distribution_release }}-6.0 main"
     state: present
+- name: get node version
+  tags: [packages, upgrade, test]
+  shell: "if [ -f /usr/bin/nodejs  ]; then if [ `/usr/bin/nodejs --version` == 'v10.12.0' ]; then echo 'OK'; else echo 'UPDATE'; fi; else echo 'UPDATE'; fi"
+  register: updatenode
+  changed_when: false
+- name: install node if necessary
+  tags: [packages, upgrade, test]
+  shell: | 
+    export http_proxy=http://{{ proxy_host }}:{{ proxy_port }}
+    export https_proxy=http://{{ proxy_host }}:{{ proxy_port }}
+    curl -sL https://deb.nodesource.com/setup_10.x | bash -
+    apt-get install -y nodejs
+  register: updatenode
+  changed_when: true
+  when: updatenode.stdout == 'UPDATE'
+  notify: [ set_npm_proxy ]
 - name: installing packages
   tags: [packages, upgrade]
   apt:
     name: "{{ item }}"
     update_cache: true
     state: latest
-  with_items: [build-essential, g++, autoconf, automake, libtool, zlib1g-dev, pkg-config, libssl-dev, xmlstarlet, git, libfontconfig,pandoc, proj-data, locales, curl, jq, node-gyp ]
-  notify: [ set_npm_proxy, set_cran_mirror ]
+  with_items: [build-essential, g++, autoconf, automake, libtool, zlib1g-dev, pkg-config, libssl-dev, xmlstarlet, git, libfontconfig ,pandoc, proj-data, locales, curl, jq ]
+  notify: [ set_cran_mirror ]
 - name: installing backportes packages
   tags: [packages, upgrade, python]
   apt:
     name: "{{ item }}"
-    default_release: jessie-backports
+    default_release: "{{ ansible_distribution_release }}-backports"
     update_cache: true
     state: latest
-  with_items: [npm, python-setuptools, libgdal-dev, libgeos-dev, libproj-dev, cmake, llvm-6.0, libbz2-dev, libreadline-gplv2-dev, libsqlite3-dev, libncurses5-dev, libncursesw5-dev, xz-utils,tk-dev, libgdbm-dev, libc6-dev, libssl-dev ] #, python3, python3-pip, python3-numpy, python3-scipy]
+  with_items: [python-setuptools, libgdal-dev, libgeos-dev, libproj-dev, cmake, llvm-6.0, libbz2-dev, libreadline-gplv2-dev, libsqlite3-dev, libncurses5-dev, libncursesw5-dev, xz-utils,tk-dev, libgdbm-dev, libc6-dev, libssl-dev ] #, python3, python3-pip, python3-numpy, python3-scipy]
   notify: [ set_npm_proxy, set_cran_mirror ]
 - name: download python
   tags: [python, upgrade]

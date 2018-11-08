@@ -11,6 +11,6 @@ ExecStart={{ zeppelin_home }}/bin/zeppelin-start-demy.sh
 ExecStop={{ zeppelin_home }}/bin/zeppelin-stop-demy.sh
 Restart=on-failure
 PIDFile={{ zeppelin_run }}/PID/zeppelin-spark-{{ inventory_hostname.split('.')[0] }}.pid
-
+Environment="TMPDIR={{ tmp_dir }}"
 [Install]
 WantedBy=multi-user.target

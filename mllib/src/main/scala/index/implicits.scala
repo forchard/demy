@@ -28,7 +28,8 @@ object implicits {
         val partedRdd 
           = if(rdd.getNumPartitions<indexPartitions) rdd.repartition(indexPartitions)
               else rdd.coalesce(indexPartitions)
-          
+          val popPosition = popularity match {case Some(c) => Some(1) case _ => None }
+          val popPositionSet = popularity match {case Some(c) => Set(1) case _ =>Set[Int]()}
           partedRdd.mapPartitions(iter => {
               //Index creation
               var index = SparkLuceneWriter(hdfsDest=indexPath, tmpDir=workersTmpDir) 
@@ -40,8 +41,8 @@ object implicits {
                       indexInfo = index.create
                       createIndex = false
                   }
-                  indexInfo.indexRow(row = row, textFieldPosition=0, popularityPosition= (popularity match {case Some(c) => Some(1) case _ => None })
-                                     , notStoredPositions = Set(0) ++ (popularity match {case Some(c) => Set(1) case _ =>Set[Int]()}), tokenisation = tokenizeText )
+                  indexInfo.indexRow(row = row, textFieldPosition=0, popularityPosition= popPosition
+                                     , notStoredPositions = Set(0) ++ popPositionSet, tokenisation = tokenizeText )
               })
               if(indexInfo != null) {
                   indexHDFSDest = index.hdfsDest + "/" + indexInfo.tmpIndex.getDirectory().toString.split("/").last

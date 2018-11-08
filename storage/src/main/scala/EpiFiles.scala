@@ -108,76 +108,58 @@ object EpiFiles {
               (commentPattern match {case Some(pattern) => !pattern.r.findFirstIn(comment).isEmpty case _ => true})
               )})
           .take(1)
-          .map(p => p match {case (id, comment, date, name) => (name, comment)})
+          .map(p => p match {case (id, comment, date, name) => (name, comment, id, date)})
       file match {
           case Seq(p) => Some(p)
           case _ => None
       }
   }
-  def epifileDownload(namePattern:Option[String],commentPattern:Option[String], vooUrl:String, user:String, pwd:String) = {
+  def tryDownload(commentPattern:Option[String], namePattern:Option[String], vooUrl:String, user:String, pwd:String) = {
+    findFile(commentPattern = commentPattern, namePattern = namePattern, vooUrl = vooUrl, user = user, pwd = pwd) match {
+      case Some((name, comment, id, date)) => Some(download(id = id, vooUrl = vooUrl, user = user, pwd = pwd))
+      case _ => None
+    }
+  }
+  def download(id:String, vooUrl:String, user:String, pwd:String) = {
+      val endpoint = s"$vooUrl/epifiles/ws"
+      val user_encoding = new String(Base64.encodeBase64(s"$user:$pwd".getBytes("UTF-8")),  "UTF-8");
+      var chunkIndex = 1
+      var chunks = 1
+      Iterator.continually({
+        val loopClient = HttpClients.createDefault();
+        if(chunkIndex <= chunks) {
+            val getFile = new HttpGet(s"$endpoint/manifestfile/id/$id/chunk_index/$chunkIndex")
+            getFile.setHeader("Authorization", "Basic " + user_encoding);
+            val getResponse = loopClient.execute(getFile);
+            val getResponseEntity = getResponse.getEntity();    
+            val getContent = getResponseEntity.getContent()
+            val getWriter = new StringWriter();
+            IOUtils.copy(getContent, getWriter, "UTF-8");
+            val getResp = getWriter.toString();
+            val xml = XML.loadString(getResp)
+            val filename = (xml \\ "file" \ "filename").text
+            val base64 = (xml \\ "file" \ "content").text
+            chunks = (xml \\ "file" \ "total_chunks").text.toInt
+            val data = Base64.decodeBase64(base64)
+            chunkIndex = chunkIndex + 1
+            data
+        } else null
+      }).takeWhile(_ != null)
+        .map(bytes => new ByteArrayInputStream(bytes))
+        .toJavaEnumeration match { case bytesEnum => new SequenceInputStream(bytesEnum)}
+  }
+  def exists(id:String, vooUrl:String, user:String, pwd:String) = {
       val httpClient = HttpClients.createDefault();
       val endpoint = s"$vooUrl/epifiles/ws"
       val user_encoding = new String(Base64.encodeBase64(s"$user:$pwd".getBytes("UTF-8")),  "UTF-8");
-      
-      val listFiles = new HttpGet(s"$endpoint/manifest/?version=2")
-      listFiles.setHeader("Authorization", "Basic " + user_encoding);
-
-      val listResponse = httpClient.execute(listFiles);
-      val listResponseEntity = listResponse.getEntity();    
-      val listContent = listResponseEntity.getContent()
-      val listWriter = new StringWriter();
-      IOUtils.copy(listContent, listWriter, "UTF-8");
-      val listResp = listWriter.toString();
-      listContent.close()
-      val xml = XML.loadString(listResp)
-      val ids = (xml \\ "manifest" \ "manifest_files" \ "file").map(x => (x \ "id").map(i => i.text).head)
-      val names = (xml \\ "manifest" \ "manifest_files" \ "file").map(x => (x \ "name").map(i => i.text).head)
-      val comments = (xml \\ "manifest" \ "comment").map(x => x.text)
-      val dates = (xml \\ "manifest" \ "creation_date").map(x => x.text)
-      val idArray = ids.zip(comments).zip(dates.zip(names))
-          .map(p => p match {case ((id, comment),(date, name)) => (id, comment, date, name)})
-          .sortWith((p1, p2)=> (p1, p2) match {case ((_, _, date1, _), (_, _, date2, _)) => date1 > date2})
-          .filter(p => p match {case (_, comment,_ , name) => (
-              (namePattern match {case Some(pattern) => !pattern.r.findFirstIn(name).isEmpty case _ => true}) && 
-              (commentPattern match {case Some(pattern) => !pattern.r.findFirstIn(comment).isEmpty case _ => true})
-              )})
-          .take(1)
-          .map(p => p match {case (id, _, _, _) => id})
-
-      var chunkIndex = 1
-      var chunks = 1
-      idArray match {
-          case Seq(id) => 
-            Some(Iterator.continually({
-              val loopClient = HttpClients.createDefault();
-              if(chunkIndex <= chunks) {
-                  val getFile = new HttpGet(s"$endpoint/manifestfile/id/$id/chunk_index/$chunkIndex")
-                  getFile.setHeader("Authorization", "Basic " + user_encoding);
-                  val getResponse = loopClient.execute(getFile);
-                  val getResponseEntity = getResponse.getEntity();    
-                  val getContent = getResponseEntity.getContent()
-                  val getWriter = new StringWriter();
-                  IOUtils.copy(getContent, getWriter, "UTF-8");
-                  val getResp = getWriter.toString();
-                  val xml = XML.loadString(getResp)
-                  val filename = (xml \\ "file" \ "filename").text
-                  val base64 = (xml \\ "file" \ "content").text
-                  chunks = (xml \\ "file" \ "total_chunks").text.toInt
-                  val data = Base64.decodeBase64(base64)
-                  chunkIndex = chunkIndex + 1
-                  data
-              } else null
-            }).takeWhile(_ != null)
-              .map(bytes => new ByteArrayInputStream(bytes))
-              .toJavaEnumeration match { case bytesEnum => new SequenceInputStream(bytesEnum)}
-            )
-          case _ => None
-      }
+      val getFile = new HttpGet(s"$endpoint/manifestfile/id/$id/chunk_index/1")
+      getFile.setHeader("Authorization", "Basic " + user_encoding);
+      val getResponse = httpClient.execute(getFile);
+      getResponse.getStatusLine.getStatusCode match {case code => code >=200 && code <300}
   }
-
-  def epifileGetLines(linePattern:Option[String], encoding:String = "UTF-8", namePattern:Option[String],commentPattern:Option[String], vooUrl:String, user:String, pwd:String) = {
+  def getLines(linePattern:Option[String], encoding:String = "UTF-8", namePattern:Option[String],commentPattern:Option[String], vooUrl:String, user:String, pwd:String) = {
       val lineRegEx = linePattern match {case Some(s) => Some(s.r) case _ => None}
-      epifileDownload(namePattern = namePattern, commentPattern = commentPattern, vooUrl = vooUrl, user = user, pwd = pwd) match {
+      tryDownload(namePattern = namePattern, commentPattern = commentPattern, vooUrl = vooUrl, user = user, pwd = pwd) match {
           case Some(byteStream) => {
               val scanner = new Scanner(byteStream, encoding)
               Some(Iterator.continually({

@@ -11,6 +11,7 @@ import org.apache.spark.sql.types._
 import org.apache.lucene.document.{Document, TextField, StringField, IntPoint, BinaryPoint, LongPoint, DoublePoint, FloatPoint, Field, StoredField}
 import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
 import java.io.{ObjectInputStream,ByteArrayInputStream}
+import scala.collection.JavaConverters._
 
 case class SparkLuceneReaderInfo(searcher:IndexSearcher, tmpIndex:NIOFSDirectory, reader:DirectoryReader, usePopularity:Boolean = false) {
     def search(query:String, maxHits:Int, filter:Row = Row.empty, outFields:Seq[StructField]=Seq[StructField](), maxLevDistance:Int=2) = {
@@ -35,7 +36,7 @@ case class SparkLuceneReaderInfo(searcher:IndexSearcher, tmpIndex:NIOFSDirectory
            }})
         }
         val q = if(usePopularity) {
-                   val pop = new FunctionQuery(new DoubleFieldSource("__pop__"));
+                   val pop = new FunctionQuery(new DoubleFieldSource("_pop_"));
                    new org.apache.lucene.queries.CustomScoreQuery(qb.build, pop);
                 } else qb.build
         
@@ -48,7 +49,7 @@ case class SparkLuceneReaderInfo(searcher:IndexSearcher, tmpIndex:NIOFSDirectory
             new GenericRowWithSchema(
               values = outFields.toArray.map(field => {
                 val lucField = doc.getField(field.name)
-                if(field.name == null) null
+                if(field.name == null || lucField == null) null
                 else
                   field.dataType match {
                 case dt:StringType => lucField.stringValue 

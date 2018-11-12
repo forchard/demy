@@ -18,7 +18,7 @@ case class SparkLuceneReaderInfo(searcher:IndexSearcher, tmpIndex:NIOFSDirectory
         val qb = new BooleanQuery.Builder()
         val fuzzyb = new BooleanQuery.Builder()
         if(maxLevDistance>0)
-          terms.foreach(s => fuzzyb.add(new FuzzyQuery(new Term("_text_", s.toLowerCase), 1, maxLevDistance), Occur.MUST))
+          terms.foreach(s => fuzzyb.add(new FuzzyQuery(new Term("_text_", s.toLowerCase), 1, maxLevDistance), Occur.SHOULD))
         else
           terms.foreach(s => fuzzyb.add(new TermQuery(new Term("_text_", s.toLowerCase)), Occur.MUST))
         qb.add(fuzzyb.build, Occur.MUST)

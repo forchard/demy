@@ -1,5 +1,10 @@
-lazy val root = (project in file(".")).
-  settings(
+lazy val core = RootProject(file("../core"))
+lazy val storage = RootProject(file("../storage"))
+
+lazy val root = (project in file("."))
+  .dependsOn(core)
+  .dependsOn(storage)
+  .settings(
     name := "demy-machine-learning-library",
     scalaVersion := "2.11.8",
     version := "1.0",

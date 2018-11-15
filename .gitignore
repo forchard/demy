@@ -25,7 +25,7 @@ storage/project/build.properties
 storage/project/target
 storage/target
 net2demy/project/project
-net2demy/build.properties
+net2demy/project/build.properties
 net2demy/project/target
 net2demy/target
 net2demy/*.jar

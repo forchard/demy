@@ -18,15 +18,14 @@ import java.security.{MessageDigest, DigestInputStream}
 import scala.xml.XML
 
 object EpiFiles {
-  def epifileUpload(vooUrl:String, user:String, pwd:String, filename:String, comment:String) = {
+  def epifileUpload(vooUrl:String, user:String, pwd:String, path:String, name:String,  comment:String) = {
       val endpoint = s"$vooUrl/epifiles/ws"
       val user_encoding = new String(Base64.encodeBase64(s"$user:$pwd".getBytes("UTF-8")),  "UTF-8");
-      val file = new RandomAccessFile(filename, "r");
+      val file = new RandomAccessFile(path, "r");
       val chunkSize = 1024 * 1024
       val fileSize = file.length 
       val chunks = Math.ceil(1.0*fileSize / chunkSize).toInt
-      val file_md5 = LocalFS.computeMD5Hash(filename)
-      val name = filename.split("/").last    
+      val file_md5 = LocalFS.computeMD5Hash(path)
       val inChannel = file.getChannel();
       val buffer = ByteBuffer.allocate(chunkSize);
           

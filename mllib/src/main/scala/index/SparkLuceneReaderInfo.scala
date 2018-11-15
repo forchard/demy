@@ -11,16 +11,17 @@ import org.apache.spark.sql.types._
 import org.apache.lucene.document.{Document, TextField, StringField, IntPoint, BinaryPoint, LongPoint, DoublePoint, FloatPoint, Field, StoredField}
 import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
 import java.io.{ObjectInputStream,ByteArrayInputStream}
+import scala.collection.JavaConverters._
 
 case class SparkLuceneReaderInfo(searcher:IndexSearcher, tmpIndex:NIOFSDirectory, reader:DirectoryReader, usePopularity:Boolean = false) {
     def search(query:String, maxHits:Int, filter:Row = Row.empty, outFields:Seq[StructField]=Seq[StructField](), maxLevDistance:Int=2) = {
-        val terms = query.replaceAll("[^\\p{L}]+", ",").split(",").filter(s => s.length>0)
+        val terms = (if(query == null) "" else  query).replaceAll("[^\\p{L}]+", ",").split(",").filter(s => s.length>0)
         val qb = new BooleanQuery.Builder()
         val fuzzyb = new BooleanQuery.Builder()
         if(maxLevDistance>0)
           terms.foreach(s => fuzzyb.add(new FuzzyQuery(new Term("_text_", s.toLowerCase), 1, maxLevDistance), Occur.SHOULD))
         else
-          terms.foreach(s => fuzzyb.add(new TermQuery(new Term("_text_", s.toLowerCase)), Occur.MUST))
+          terms.foreach(s => fuzzyb.add(new TermQuery(new Term("_text_", s.toLowerCase)), Occur.SHOULD))
         qb.add(fuzzyb.build, Occur.MUST)
         if(filter.schema != null) {
            filter.schema.fields.zipWithIndex.foreach(p => p match { case (field, i) => 
@@ -35,7 +36,7 @@ case class SparkLuceneReaderInfo(searcher:IndexSearcher, tmpIndex:NIOFSDirectory
            }})
         }
         val q = if(usePopularity) {
-                   val pop = new FunctionQuery(new DoubleFieldSource("__pop__"));
+                   val pop = new FunctionQuery(new DoubleFieldSource("_pop_"));
                    new org.apache.lucene.queries.CustomScoreQuery(qb.build, pop);
                 } else qb.build
         
@@ -43,12 +44,13 @@ case class SparkLuceneReaderInfo(searcher:IndexSearcher, tmpIndex:NIOFSDirectory
         val outSchema = StructType(outFields.toList :+ StructField("_score_", FloatType))
         val docs = searcher.search(q, maxHits);
         val hits = docs.scoreDocs;
-        hits.map(hit => {
+        if(query!=null) {
+          hits.map(hit => {
             val doc = searcher.doc(hit.doc)
             new GenericRowWithSchema(
               values = outFields.toArray.map(field => {
                 val lucField = doc.getField(field.name)
-                if(field.name == null) null
+                if(field.name == null || lucField == null) null
                 else
                   field.dataType match {
                 case dt:StringType => lucField.stringValue 
@@ -70,6 +72,7 @@ case class SparkLuceneReaderInfo(searcher:IndexSearcher, tmpIndex:NIOFSDirectory
                 }}) ++ Array(hit.score)
               ,schema = outSchema)
         })
+      } else Array[GenericRowWithSchema]()
     }
     def deleteRecurse(path:String) {
         if(path!=null && path.length>1 && path.startsWith("/")) {

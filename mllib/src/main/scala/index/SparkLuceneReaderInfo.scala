@@ -6,6 +6,7 @@ import org.apache.lucene.index.{DirectoryReader, Term}
 import org.apache.lucene.search.BooleanClause.Occur
 import org.apache.lucene.queries.function.FunctionQuery
 import org.apache.lucene.queries.function.valuesource.DoubleFieldSource
+import org.apache.lucene.search.BoostQuery
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types._
 import org.apache.lucene.document.{Document, TextField, StringField, IntPoint, BinaryPoint, LongPoint, DoublePoint, FloatPoint, Field, StoredField}
@@ -14,14 +15,39 @@ import java.io.{ObjectInputStream,ByteArrayInputStream}
 import scala.collection.JavaConverters._
 
 case class SparkLuceneReaderInfo(searcher:IndexSearcher, tmpIndex:NIOFSDirectory, reader:DirectoryReader, usePopularity:Boolean = false) {
-    def search(query:String, maxHits:Int, filter:Row = Row.empty, outFields:Seq[StructField]=Seq[StructField](), maxLevDistance:Int=2) = {
+    def search(query:String, maxHits:Int, filter:Row = Row.empty, outFields:Seq[StructField]=Seq[StructField](), maxLevDistance:Int=2 , minScore:Double=0.0, boostAcronyms:Boolean=false) = {
         val terms = (if(query == null) "" else  query).replaceAll("[^\\p{L}]+", ",").split(",").filter(s => s.length>0)
         val qb = new BooleanQuery.Builder()
         val fuzzyb = new BooleanQuery.Builder()
-        if(maxLevDistance>0)
-          terms.foreach(s => fuzzyb.add(new FuzzyQuery(new Term("_text_", s.toLowerCase), 1, maxLevDistance), Occur.SHOULD))
-        else
-          terms.foreach(s => fuzzyb.add(new TermQuery(new Term("_text_", s.toLowerCase)), Occur.SHOULD))
+        if(maxLevDistance>0) {
+            terms.foreach(s => {
+                var allLetterUppercase = Range(0, s.length).forall(ind => s(ind).isUpper)
+
+                // if term is only in Uppercase -> double term: "TX" -> "TXTX" (ensures that term is not neglected due to too less letters)
+                if (allLetterUppercase) {
+                    fuzzyb.add(new BoostQuery(new TermQuery(new Term("_text_", s+s)), 15.00F), Occur.SHOULD) // High boosting factor to find doubles
+                    fuzzyb.add(new BoostQuery(new TermQuery(new Term("_text_", s.toLowerCase)), 4.00F), Occur.SHOULD)
+                } else {
+                    fuzzyb.add(new FuzzyQuery(new Term("_text_", s.toLowerCase), 1, maxLevDistance), Occur.SHOULD)
+                    fuzzyb.add(new BoostQuery(new TermQuery(new Term("_text_", s.toLowerCase)), 4.00F), Occur.SHOULD) 
+                }
+            })
+        }
+        else {
+            terms.foreach(s => {
+                var allLetterUppercase = Range(0, s.length).forall(ind => s(ind).isUpper)
+
+                // if term is only in Uppercase -> double term: "TX" -> "TXTX" (ensures that term is not neglected due to too less letters)
+                if (allLetterUppercase) {
+                    val bst = new BoostQuery(new TermQuery(new Term("_text_", s+s)), 4.00F)  // Boosting factor of 4.0 for exact match
+                    fuzzyb.add(bst, Occur.SHOULD)
+                } else { 
+                    val bst = new BoostQuery(new TermQuery(new Term("_text_", s.toLowerCase)), 4.00F) // boosting factor of 4.0 for exact match
+                    fuzzyb.add(bst, Occur.SHOULD)
+                }
+            })
+        }
+
         qb.add(fuzzyb.build, Occur.MUST)
         if(filter.schema != null) {
            filter.schema.fields.zipWithIndex.foreach(p => p match { case (field, i) => 
@@ -45,32 +71,35 @@ case class SparkLuceneReaderInfo(searcher:IndexSearcher, tmpIndex:NIOFSDirectory
         val docs = searcher.search(q, maxHits);
         val hits = docs.scoreDocs;
         if(query!=null) {
-          hits.map(hit => {
-            val doc = searcher.doc(hit.doc)
-            new GenericRowWithSchema(
-              values = outFields.toArray.map(field => {
-                val lucField = doc.getField(field.name)
-                if(field.name == null || lucField == null) null
-                else
-                  field.dataType match {
-                case dt:StringType => lucField.stringValue 
-                case dt:IntegerType => lucField.numericValue().intValue()
-                case dt:BooleanType => lucField.binaryValue().bytes(0) == 1.toByte
-                case dt:LongType =>  lucField.numericValue().longValue()
-                case dt:FloatType => lucField.numericValue().floatValue()
-                case dt:DoubleType => lucField.numericValue().doubleValue()
-                case dt => {
-                  var obj:Any = null
-                  val serData= lucField.binaryValue().bytes;
-                  if (serData!=null) {
-                     val in=new ObjectInputStream(new ByteArrayInputStream(serData))
-                     obj = in.readObject()
-                     in.close()
+          hits.flatMap(hit => {
+            if(hit.score < minScore) None
+            else {
+              val doc = searcher.doc(hit.doc)
+              Some(new GenericRowWithSchema(
+                values = outFields.toArray.map(field => {
+                  val lucField = doc.getField(field.name)
+                  if(field.name == null || lucField == null) null
+                  else
+                    field.dataType match {
+                  case dt:StringType => lucField.stringValue 
+                  case dt:IntegerType => lucField.numericValue().intValue()
+                  case dt:BooleanType => lucField.binaryValue().bytes(0) == 1.toByte
+                  case dt:LongType =>  lucField.numericValue().longValue()
+                  case dt:FloatType => lucField.numericValue().floatValue()
+                  case dt:DoubleType => lucField.numericValue().doubleValue()
+                  case dt => {
+                    var obj:Any = null
+                    val serData= lucField.binaryValue().bytes;
+                    if (serData!=null) {
+                       val in=new ObjectInputStream(new ByteArrayInputStream(serData))
+                       obj = in.readObject()
+                       in.close()
+                    }
+                    obj
                   }
-                  obj
-                }
-                }}) ++ Array(hit.score)
-              ,schema = outSchema)
+                  }}) ++ Array(hit.score)
+                ,schema = outSchema))
+            }
         })
       } else Array[GenericRowWithSchema]()
     }

@@ -73,10 +73,10 @@
   file:
     path: "{{ tmp_dir }}"
     state: directory
-    mode: 0771
-    owner: hadoop
-    group: hadoop
-  tags: [upgrade]
+    mode: u=rwx,g=rwx,o=rwx,g+s
+    owner: root
+    group: root
+  tags: [upgrade, tmp]
 - name: custom libs folder exists
   file:
     path: "{{ custom_libs }}"

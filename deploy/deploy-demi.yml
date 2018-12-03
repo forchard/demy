@@ -44,6 +44,9 @@
   roles: 
   - hadoop_node 
   environment:
+    TMPDIR: "{{ tmp_dir }}"
+    HTTPS_PROXY: "http://{{ proxy_host }}:{{ proxy_port }}"
+    HTTP_PROXY: "http://{{ proxy_host }}:{{ proxy_port }}"
     http_proxy: "{{ proxy_host }}:{{ proxy_port }}"
     https_proxy: "{{ proxy_host }}:{{ proxy_port }}"
 - name: install hdfs (head node)
@@ -82,6 +85,9 @@
   become: true
   roles: [spark_edge]
   environment:
+    TMPDIR: "{{ tmp_dir }}"
+    HTTPS_PROXY: "http://{{ proxy_host }}:{{ proxy_port }}"
+    HTTP_PROXY: "http://{{ proxy_host }}:{{ proxy_port }}"
     http_proxy: "{{ proxy_host }}:{{ proxy_port }}"
     https_proxy: "{{ proxy_host }}:{{ proxy_port }}"
 - name: install spark shuffle service on yarn

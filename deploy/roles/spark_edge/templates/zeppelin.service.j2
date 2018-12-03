@@ -12,5 +12,6 @@ ExecStop={{ zeppelin_home }}/bin/zeppelin-stop-demy.sh
 Restart=on-failure
 PIDFile={{ zeppelin_run }}/PID/zeppelin-spark-{{ inventory_hostname.split('.')[0] }}.pid
 Environment="TMPDIR={{ tmp_dir }}"
+Environment="JAVA_TOOL_OPTIONS=-Djava.io.tmpdir={{ tmp_dir }}"
 [Install]
 WantedBy=multi-user.target

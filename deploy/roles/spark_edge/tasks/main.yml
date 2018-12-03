@@ -248,7 +248,7 @@
 - name: upload external shuffle jar if necessary to HDFS
   tags: install_spark
   become_user: spark
-  command:  "{{ hadoop_home}}/bin/hdfs dfs -put {{ spark_home  }}/yarn/spark-{{ spark_ver }}-yarn-shuffle.jar /spark/spark-{{ spark_ver }}-yarn-shuffle.jar"
+  command:  "{{ hadoop_home}}/bin/hdfs dfs -put -f {{ spark_home  }}/yarn/spark-{{ spark_ver }}-yarn-shuffle.jar /spark/spark-{{ spark_ver }}-yarn-shuffle.jar"
   when: sparkShuffle.changed
   notify: restart zeppelin
   changed_when: true
@@ -359,7 +359,6 @@
   copy:
     content: |
       #!/bin/sh
-      sudo -u yarn {{ hadoop_home }}/bin/yarn application -list | grep zeppelin_app | grep -o "application\w*" | while read -r line; do {{ hadoop_home }}/bin/yarn application -kill "$line"; done
       sudo -u spark {{ zeppelin_home }}/bin/zeppelin-daemon.sh stop
     dest: "{{ zeppelin_home }}/bin/zeppelin-stop-demy.sh"
     owner: "hadoop"
@@ -379,6 +378,7 @@
   - {var: "zeppelin.ssl", value: "{{ zeppelin_https_enabled }}" }
   - {var: "zeppelin.ssl.keystore.path", value: "key_store.jks" }
   - {var: "zeppelin.ssl.keystore.type", value: "JKS" }
+  - {var: "zeppelin.notebook.cron.enable", value: "true" }
   - {var: "zeppelin.ssl.keystore.password", value: "{{ zeppelin_keystore_pass }}" }
   - {var: "zeppelin.ssl.key.manager.password", value: "{{ zeppelin_keystore_pass }}" }
   - {var: "zeppelin.ssl.client.auth", value: "{{ zeppelin_https_cert_auth_enabled }}" }
@@ -463,6 +463,7 @@
   - {interpreter: "spark", var: "master", value: "{{ zeppelin_spark_master }}" }
   - {interpreter: "spark", var: "zeppelin.pyspark.python", value: "{{ python }}" }
   - {interpreter: "python", var: "zeppelin.python", value: "{{ python }}" }
+  - {interpreter: "spark", var: "java.io.tmpdir", value: "{{ tmp_dir }}" }
   notify: restart zeppelin
 - name : zeppelin spark interpreter isolation options
   tags: install_zeppelin
@@ -536,15 +537,12 @@
     dest: "{{ custom_libs }}/pip_zeppelin_requirements"
     content: |
       matplotlib
+      smart_open
 - name: install python packages for zeppelin
   tags: [packages, upgrade, python, install_zeppelin]
   pip:
     requirements: "{{ custom_libs }}/pip_zeppelin_requirements"
     executable: "{{ pip }}"
-  environment:
-    TMPDIR: "{{ tmp_dir }}"
-    HTTPS_PROXY: "http://{{ proxy_host }}:{{ proxy_port }}"
-    HTTP_PROXY: "http://{{ proxy_host }}:{{ proxy_port }}"
   notify: restart zeppelin
 - meta: flush_handlers
   tags: install_zeppelin

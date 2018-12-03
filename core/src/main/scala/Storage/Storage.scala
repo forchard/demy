@@ -25,6 +25,8 @@ trait FSNode {
   def isDirectory = storage.isDirectory(this)
   def delete(recurse:Boolean = false) = storage.delete(this, recurse) 
   def getContent = storage.getContent(this)
+  def getContentAsString = storage.getContentAsString(this)
+  def getContentAsJson = storage.getContentAsJson(this)
   def setContent(content:InputStream) = {storage.setContent(this, content);this}
 }
 
@@ -56,9 +58,15 @@ trait Storage {
   def isDirectory(node:FSNode):Boolean 
   def delete(node:FSNode, recurse:Boolean = false) 
   def getContent(node:FSNode):InputStream
+  def getContentAsString(node:FSNode) = {
+    val s = new java.util.Scanner(this.getContent(node)).useDelimiter("\\A") 
+    if(s.hasNext())  s.next()
+    else "";
+  }
+  def getContentAsJson(node:FSNode) = scala.util.parsing.json.JSON.parseFull(getContentAsString(node))
+  
   def setContent(node:FSNode, data:InputStream)
   def last(path:Option[String], attrPattern:Map[String, String]):Option[FSNode]
-
   def getNode(path:String, attrs:Map[String, String]=Map[String, String]()):FSNode
 
   val tmpFiles:ArrayDeque[FSNode]= new ArrayDeque[FSNode]()
@@ -73,11 +81,13 @@ trait Storage {
   def getTmpPath(fixName:Option[String]=None):String
 
   def getTmpNode(fixName:Option[String]=None) = {
+    ensurePathExists(tmpDir)
     getNode(path = getTmpPath(fixName)) 
   }
   def markForRemoval(n:FSNode) {
     tmpFiles.push(n)
   }
+  def ensurePathExists(path:String)
 }
 
 object Storage {
@@ -115,11 +125,12 @@ case class LocalStorage(override val sparkCanRead:Boolean=false, override val tm
   def setContent(node:FSNode, data:InputStream)
        = node match { case lNode:LocalNode => {Files.copy(data, lNode.jPath, StandardCopyOption.REPLACE_EXISTING)} 
                       case _ => throw new Exception(s"HDFS Storage cannot manage ${node.getClass.getName} nodes")}
-  def last(namePattern:Option[String], attrPattern:Map[String, String] = Map[String, String]())  = throw new Exception("Not Implemented")
+  def last(path:Option[String], attrPattern:Map[String, String] = Map[String, String]())  = throw new Exception("Not Implemented")
   def getNode(path:String, attrs:Map[String, String]=Map[String, String]()):FSNode
        = LocalNode(path = path, storage = this, attrs=attrs, sparkCanRead=this.sparkCanRead)
   def getTmpPath(fixName:Option[String]=None) 
        = tmpDir+"/"+ (fixName match {case Some(name) => name case _ =>  RandomStringUtils.randomAlphanumeric(10)})
+  def ensurePathExists(path:String) = Files.createDirectories(Paths.get(path))
 }
 
 case class EpiFileStorage(vooUrl:String, user:String, pwd:String) extends Storage {
@@ -158,6 +169,7 @@ case class EpiFileStorage(vooUrl:String, user:String, pwd:String) extends Storag
   def getNode(path:String, attrs:Map[String, String]=Map[String, String]()):FSNode
        = EpiFileNode(path = path, storage = this, attrs=attrs)
   def getTmpPath(fixName:Option[String]=None):String = {throw new Exception("Not implemented")}
+  def ensurePathExists(path:String) = throw new Exception("Not implemented")
 }
 case class HDFSStorage(hadoopConf:Configuration, override val tmpPrefix:Option[String]=None) extends Storage {
   override val protocol:String="hdfs"
@@ -185,10 +197,27 @@ case class HDFSStorage(hadoopConf:Configuration, override val tmpPrefix:Option[S
                         writer.close()
                       } 
                       case _ => throw new Exception(s"HDFS Storage cannot manage ${node.getClass.getName} nodes")}
-  def last(namePattern:Option[String], attrPattern:Map[String, String] =  Map[String, String]())  = throw new Exception("Not Implemented")
+  def last(path:Option[String], attrPattern:Map[String, String] =  Map[String, String]())  = {
+    val it = fs.listFiles(new HPath(path.getOrElse("/")), true)
+    var lastModified = Long.MinValue
+    var lastFile:Option[FSNode] = None 
+    while (it.hasNext()) {
+      val file = it.next()
+      val filePath = file.getPath()
+      val fileName = filePath.getName()
+      val isMatch = attrPattern.get("name") match { case Some(pattern) => !pattern.r.findFirstIn(fileName).isEmpty case _ => true}
+      val modified = file.getModificationTime()
+      lastFile = if(isMatch && modified > lastModified) {
+        lastModified = modified
+        Some(this.getNode(path = filePath.toString))
+      } else {lastFile}
+    }
+    lastFile
+  }
   def getNode(path:String, attrs:Map[String, String]=Map[String, String]()):FSNode
        = HDFSNode(path = path, storage = this, attrs=attrs)
   def getTmpPath(fixName:Option[String]=None)
        = tmpDir+"/"+ (fixName match {case Some(name) => name case _ =>  RandomStringUtils.randomAlphanumeric(10)})
+  def ensurePathExists(path:String) = fs.mkdirs(new HPath(path))
  
 }

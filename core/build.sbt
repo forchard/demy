@@ -8,6 +8,10 @@ lazy val root = (project in file(".")).
     libraryDependencies += "org.apache.spark" %% "spark-core" % "2.3.2" % "provided",
     libraryDependencies += "org.apache.spark" %% "spark-sql" % "2.3.2" % "provided",
 
+    libraryDependencies += "org.apache.httpcomponents" % "httpmime" % "4.5.6" ,
+    //libraryDependencies += "org.scala-lang.modules" %% "scala-xml" % "1.1.1", 
+    //libraryDependencies += "commons-io" % "commons-io" % "2.6",
+
     assemblyMergeStrategy in assembly := {
       case PathList("org","aopalliance", xs @ _*) => MergeStrategy.last
       case PathList("javax", "inject", xs @ _*) => MergeStrategy.last

@@ -1,9 +1,7 @@
 lazy val core = RootProject(file("../core"))
-lazy val storage = RootProject(file("../storage"))
 
 lazy val root = (project in file("."))
   .dependsOn(core)
-  .dependsOn(storage)
   .settings(
     name := "demy-machine-learning-library",
     scalaVersion := "2.11.8",
@@ -15,6 +13,7 @@ lazy val root = (project in file("."))
     libraryDependencies += "org.apache.lucene" % "lucene-queryparser" % "7.2.1", 
     libraryDependencies += "org.scalactic" %% "scalactic" % "3.0.5",
     libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.5" % "test",
+    libraryDependencies += "org.apache.commons" % "commons-text" % "1.4" ,
 //    scalacOptions ++= Seq("-deprecation", "-feature"),
 
     assemblyMergeStrategy in assembly := {

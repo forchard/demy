@@ -3,9 +3,9 @@ package demy.mllib;
 import demy.mllib.evaluation.{BinaryMetrics, HasBinaryMetrics}
 import demy.mllib.util.log
 import demy.mllib.params._
-import org.apache.spark.ml.{Transformer, Estimator}
+import org.apache.spark.ml.{Transformer, Estimator, PipelineStage}
 import org.apache.spark.ml.param.{Params}
-import org.apache.spark.sql.{DataFrame, Row}
+import org.apache.spark.sql.{DataFrame, Row, Dataset}
 import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.functions.{col}
@@ -41,19 +41,23 @@ case class Model(project:String, model:String, modelGroup:String, steps:Seq[Mode
                 ,  logOn = None, namedDataFrames = namedDataFrames) 
     }
     def run(source:DataFrame, plan:ModelPlan=ModelPlan(), base:ModelVersion=this.fullVersion, logOn:Option[String]=None
-            , namedDataFrames:Map[String, DataFrame] = Map[String, DataFrame](), showSteps:Seq[String]=Seq[String](), stopAfter:Option[String]=None, maxVersions:Option[Int]=None) = {
+            , namedDataFrames:Map[String, DataFrame] = Map[String, DataFrame](), showSteps:Seq[String]=Seq[String](), stopAfter:Option[String]=None, maxVersions:Option[Int]=None
+            , outDataFrames:Seq[String]=Seq[String]()) = {
         var i = 0
         val versions = plan.build(base, stopAfter) match {case vers =>  maxVersions match {case Some(max) => vers.take(max) case _ => vers}}
 
         versions.map(modelVersion => {
           //modelVersion.printSchema()
-          log.msg(s"(${i}/${versions.size}:${Math.round(100.0* i/versions.size)}%) Startng Version: ${modelVersion.comment}")
+          log.msg(s"(${i}/${versions.size}:${Math.round(100.0* i/versions.size)}%) Starting Version: ${modelVersion.comment}")
           i = i + 1
           var binaryMetrics:Option[BinaryMetrics] = None
           var execMetrics = scala.collection.mutable.Map[String, Double]()
           var namedInputs = ((modelVersion.steps
                               .flatMap(s => s.input match {case Some(sName) => Some(sName -> None.asInstanceOf[Option[DataFrame]]) case _ => None})
                               .toMap) + ("#model"->Some(source))
+                            ++ modelVersion.steps
+                              .flatMap(s => s.paramInputs.filter(p => p._2.startsWith("$")).map(p => (p._2 -> None.asInstanceOf[Option[DataFrame]]))
+                              .toMap) 
                             ++ modelVersion.steps
                               .flatMap(s => s.paramInputs.filter(p => p._2.startsWith("$")).map(p => (p._2 -> None.asInstanceOf[Option[DataFrame]]))
                               .toMap) 
@@ -75,30 +79,42 @@ case class Model(project:String, model:String, modelGroup:String, steps:Seq[Mode
                         case _ => throw new Exception(s"Cannot find the specified dataframe ${dfParam._2}")
                     })
                   )
-              val (outDF, executedStep) = 
+              val (outDF, executedStep, outputDFs) = 
                 (theAction, getStepSnapshot(modelVersion, step.name, stepSource.sparkSession))  match {
-                  case (t, Some(snapshoted)) => (snapshoted, t)
-                  case (t:Transformer, _) => (t.transform(stepSource), t)
+                  case (t, Some((snapshoted, snapshotParams))) => (snapshoted, t, snapshotParams)
+                  case (t:Transformer, _) => (t.transform(stepSource), t, step.paramOutputs.map( outputName => outputName -> this.getDFParam(t, outputName)).toMap)
                   case (e:Estimator[_], _) => {
                       val model = e.fit(stepSource)
-                      (model.transform(stepSource), model)
+                      (model.transform(stepSource), model, step.paramOutputs.map( outputName => outputName -> this.getDFParam(model, outputName)).toMap)
                   }
                   case _ => throw new Exception("The current action type ${o.getClass.getName} is not supported @epi")
               }
               var df = if(step.select.size>0) outDF.select(step.select.map(s => col(s)):_*) else outDF
               df = if(step.drop.size>0) df.drop(step.drop:_*) else df
               df = step.renameCols.foldLeft(df)((current, p)=> current.drop(p._2).withColumnRenamed(p._1, p._2))
+              df = if(step.repartitionInputAs == 0) df else df.repartition(step.repartitionInputAs)
               //Caching or snapshoting the results step result dataframe if set
               df = (
                 if(step.snapshot) {
-                  this.setStepSnapshot(df, modelVersion, step.name) 
+                  this.setStepSnapshot(df, modelVersion, step.name, outputDFs) 
                 } else if(step.cache) {
                   df.cache()
                 } else {
                   df
                 })
 
-              //Storing stem result if used as named input on another step
+              //Storing output params if used as named input on another step or model output
+              outputDFs.foreach{ case(outputName, df) =>
+	        namedInputs.get("$"+step.name+"."+outputName) match {
+                  case Some(s) => 
+		    namedInputs = (namedInputs + (s"${"$"}${step.name}.$outputName" -> Some(df)))
+                  case _ => {}
+		} 	
+	        if(outDataFrames.contains("$"+step.name+"."+outputName)) {
+		    namedInputs = (namedInputs + (s"${"$"}${step.name}.$outputName" -> Some(df)))
+		} 	
+	      } 
+              //Storing result if used as named input on another step
               namedInputs.get("$"+step.name) match {
                 case Some(s) => namedInputs = namedInputs + ("$"+step.name -> Some(df))
                 case _ => {}
@@ -116,6 +132,7 @@ case class Model(project:String, model:String, modelGroup:String, steps:Seq[Mode
               //Showing  results if set
               if(step.show || showSteps.contains(step.name))
                   df.show
+
               df
           })
         
@@ -142,8 +159,23 @@ case class Model(project:String, model:String, modelGroup:String, steps:Seq[Mode
               }
               case _ =>{}
           }
-          resdf
+          (resdf, outDataFrames.map(inputName => namedInputs.get(inputName) match {
+                case Some(Some(df)) => (inputName -> df)
+                case _ => throw new Exception(s"Cannot output dataframe ${inputName} since it has not been stored")
+              }).toMap)
         })
+    }
+
+    def getDFParam(stage:PipelineStage, paramName:String) = {
+  	val param = stage.getParam(paramName)
+	stage.get(param) match {
+	  case Some(v) => v match {
+	    case v:Dataset[_] => v.toDF
+	    case _ => throw new Exception(s"Output parameters are expected to be dataframes found ${v.getClass.getName} instead")
+	  }
+	  case _ => throw new Exception(s"The output paramater ${"$"+stage+"."+paramName} cannot be used as input because is not set")
+	}
+     
     }
     def toRow(comment:String):GenericRowWithSchema = new GenericRowWithSchema(values = Array(project, model, modelGroup, new java.sql.Timestamp(System.currentTimeMillis()), comment)
                                             ,schema = StructType(fields = Array(StructField(name="project", dataType=StringType)
@@ -182,16 +214,17 @@ case class Model(project:String, model:String, modelGroup:String, steps:Seq[Mode
       val theStep = version.steps.filter(s => s.name == stepName).head
       if(theStep.reuseSnapshot) {
         val snapPath  = this.stepSnapshotPath(version, stepName)
+        val namedOutputPaths = theStep.paramOutputs.map{paramName => (paramName, this.stepSnapshotPath(version, stepName)+"."+paramName)}.toMap
         val conf = spark.sparkContext.hadoopConfiguration
         val fs = org.apache.hadoop.fs.FileSystem.get(conf)
-        if(fs.exists(new org.apache.hadoop.fs.Path(snapPath)))
-          Some(spark.read.parquet(snapPath))
+        if(fs.exists(new org.apache.hadoop.fs.Path(snapPath)) && namedOutputPaths.toSeq.forall{case(name, path) => fs.exists(new org.apache.hadoop.fs.Path(path))})
+          Some((spark.read.parquet(snapPath), namedOutputPaths.mapValues{path => spark.read.parquet(path)}))
         else None
       } else {
         None
       } 
     }
-    def setStepSnapshot(df:DataFrame, version:ModelVersion, stepName:String) = {
+    def setStepSnapshot(df:DataFrame, version:ModelVersion, stepName:String, outDataFrames:Map[String, DataFrame]) = {
       val spark = df.sparkSession
       val theStep = version.steps.filter(s => s.name == stepName).head
       val snapPath  = this.stepSnapshotPath(version, stepName)
@@ -199,6 +232,10 @@ case class Model(project:String, model:String, modelGroup:String, steps:Seq[Mode
       val fs = org.apache.hadoop.fs.FileSystem.get(conf)
       if(!theStep.reuseSnapshot || !fs.exists(new org.apache.hadoop.fs.Path(snapPath)))
         df.write.mode("overwrite").parquet(snapPath)
+      outDataFrames.toSeq.foreach{case (outName, outDF) => 
+        if(!theStep.reuseSnapshot || !fs.exists(new org.apache.hadoop.fs.Path(snapPath+"."+outName)))
+          outDF.write.mode("overwrite").parquet(snapPath+"."+outName)
+      } 
       spark.read.parquet(snapPath)
     }
     def step(step:ModelStep):Model = Model(project = this.project, model = this.model, modelGroup=this.modelGroup, steps = this.steps :+ step, snapshotPath = this.snapshotPath)

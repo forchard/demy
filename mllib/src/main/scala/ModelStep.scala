@@ -8,8 +8,9 @@ case class StepParam[+T](path:String, value:T, log:Boolean=false)
 case class StepChoice(step:String, version:String) 
 case class ModelStep(name:String, version:String, family:String, action:Params, log:Boolean=false, show:Boolean=false
                      , pathsToLog:Seq[String]=Seq[String](), cache:Boolean=false, input:Option[String]=None
-                     , select:Seq[String]=Seq[String](), drop:Seq[String]=Seq[String](), paramInputs:Seq[(String, String)]=Seq[(String, String)]()
-                     , snapshot:Boolean = false, reuseSnapshot:Boolean = false, renameCols:Seq[(String, String)]=Seq[(String, String)]()) {
+                     , select:Seq[String]=Seq[String](), drop:Seq[String]=Seq[String](), paramInputs:Seq[(String, String)]=Seq[(String, String)](), paramOutputs:Seq[String]=Seq[String]()
+                     , snapshot:Boolean = false, reuseSnapshot:Boolean = false, renameCols:Seq[(String, String)]=Seq[(String, String)]()
+                     , repartitionInputAs:Int = 0) {
     def applyParams(sParams:StepParam[Any]*) = {
         val appliedAction = sParams.foldLeft(this.action)((currentAction, sParam)=> ModelStep.applyParamToParams(currentAction, sParam))
         new ModelStep(name = this.name, version = this.version
@@ -21,9 +22,11 @@ case class ModelStep(name:String, version:String, family:String, action:Params, 
                       , select = this.select
                       , drop = this.drop
                       , paramInputs = this.paramInputs
+                      , paramOutputs = this.paramOutputs
                       , snapshot = this.snapshot
                       , reuseSnapshot = this.reuseSnapshot
                       , renameCols = this.renameCols
+                      , repartitionInputAs = this.repartitionInputAs
                       )
     }
     def structFieldAndValuesToLog() = {
@@ -56,9 +59,11 @@ case class ModelStep(name:String, version:String, family:String, action:Params, 
           , select = if(optName == "select") value.split(',').toSeq.map(s => s.trim) else current.select
           , drop = if(optName == "drop") value.split(',').toSeq.map(s => s.trim) else current.drop
           , paramInputs = if(optName == "paramInputs") value.split(',').toSeq.map(s => s.trim).map(s => (s.split("->")(0), s.split("->")(1))) else current.paramInputs
+          , paramOutputs = if(optName == "paramOutputs") value.split(',').toSeq else current.paramOutputs
           , snapshot = if(optName == "snapshot") value.toBoolean else current.snapshot
           , reuseSnapshot = if(optName == "reuseSnapshot") value.toBoolean else current.reuseSnapshot
           , renameCols = if(optName == "renameCols") value.split(',').toSeq.map(s => s.trim).map(s => (s.split("->")(0), s.split("->")(1))) else current.renameCols
+          , repartitionInputAs = if(optName == "repartitionInputAs") value.toInt else current.repartitionInputAs
         )})
 }
 

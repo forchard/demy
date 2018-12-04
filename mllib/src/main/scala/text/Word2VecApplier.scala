@@ -24,9 +24,11 @@ class Word2VecApplier(override val uid: String) extends Transformer with HasExec
     final val sumWords = new Param[Boolean](this, "sumWords", "If the word vectors shoud be added to a single vector per document")
     final val truncateWordsAt = new Param[Int](this, "truncateWordsAt", "The max number of characters to use on each word to match the vectors")
     final val repartitionCount = new Param[Int](this, "repartitionCount", "The number of partitions to of output datafralme")
+    final val maxRowsInMemory = new Param[Int](this, "maxRowsInMemory", "The number of rows that will be jept tp gether in memory for evaluation")
+    final val indexScanParallelism = new Param[Int](this, "indexScanParallelism", "The number of threads tha will be used for performing indexes lookups")
     final val accentSensitive = new Param[Boolean](this, "accentSensitive", "If accents are to be considered when matching vectors")
     final val caseSensitive = new Param[Boolean](this, "caseSensitive", "If case is to be considered when matching vectors")
-    setDefault(reuseIndexFile -> true, sumWords -> true, truncateWordsAt-> 0, accentSensitive -> true, caseSensitive->false)
+    setDefault(reuseIndexFile -> true, sumWords -> true, truncateWordsAt-> 0, accentSensitive -> true, caseSensitive->false, maxRowsInMemory->100, indexScanParallelism->1)
     def setInputCol(value: String): this.type = set(inputCol, value)
     def setOutputCol(value: String): this.type = set(outputCol, value)
     def setFormat(value: String): this.type = set(format, value)
@@ -37,6 +39,8 @@ class Word2VecApplier(override val uid: String) extends Transformer with HasExec
     def setWorkersTmp(value: String): this.type = set(workersTmp, value)
     def setTruncateWordsAt(value: Int): this.type = set(truncateWordsAt, value)
     def setRepartitionCount(value: Int): this.type = set(repartitionCount, value)
+    def setMaxRowsInMemory(value: Int): this.type = set(maxRowsInMemory, value)
+    def setIndexScanParallelism(value: Int): this.type = set(indexScanParallelism, value)
     def setAccentSensitive(value: Boolean): this.type = set(accentSensitive, value)
     def setCaseSensitive(value: Boolean): this.type = set(caseSensitive, value)
     override def transform(dataset: Dataset[_]): DataFrame = {
@@ -64,8 +68,8 @@ class Word2VecApplier(override val uid: String) extends Transformer with HasExec
                                  , popularity=None
                                  , workersTmpDir=get(workersTmp).get
                                  , indexPartitions = 1
-                                 , maxRowsInMemory=100
-                                 , indexScanParallelism= 5
+                                 , maxRowsInMemory=getOrDefault(maxRowsInMemory)
+                                 , indexScanParallelism= getOrDefault(indexScanParallelism)
                                  , tokenizeText = false)
                     .withColumn(vectorColName, 
                       (if(getOrDefault(sumWords))

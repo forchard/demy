@@ -17,10 +17,12 @@ import org.apache.spark.storage.StorageLevel
 trait BinaryOptimalEvaluatorBase extends HasLabelCol with HasScoreCol with HasPredictionCol {
     val uid: String
     final val bins = new Param[Int](this, "bins", "The number of bins for thresholds")
-    final val optimize = new Param[String](this, "optimize", "The optimization mode (f1Score, precisio:0.85, recall:0.7")
+    final val optimize = new Param[String](this, "optimize", "The optimization mode (f1Score, precisio:0.85, recall:0.7)")
+    final val evaluationFilter = new Param[String](this, "evaluationFilter", "A sql forlula on input dataframe to limit the rows that are going to ber evaluated")
     setDefault(bins->100, optimize->"f1score")
     def setLabelCol(value: String): this.type = set(labelCol, value)
     def setPredictionCol(value: String): this.type = set(predictionCol, value)
+    def setEvaluationFilter(value: String): this.type = set(evaluationFilter, value)
     def setBins(value: Int): this.type = set(bins, value)
     def setOptimize(value: String): this.type = set(optimize, value)
     def validateAndTransformSchema(schema: StructType): StructType = StructType(schema.filterNot(f => f.name == getOrDefault(predictionCol)) :+ (new AttributeGroup(name=get(predictionCol).get).toStructField))
@@ -30,7 +32,8 @@ object BinaryOptimalEvaluatorBase {
 
 class BinaryOptimalEvaluator(override val uid: String) extends Estimator[BinaryOptimalEvaluatorModel] with BinaryOptimalEvaluatorBase {
 
-    override def fit(dataset: Dataset[_]): BinaryOptimalEvaluatorModel = {
+    override def fit(ds: Dataset[_]): BinaryOptimalEvaluatorModel = {
+      val dataset = get(evaluationFilter) match {case Some(s) => ds.where(s) case _ => ds}
       import dataset.sparkSession.implicits._
       val labelType = dataset.select(getOrDefault(labelCol)).schema.fields(0).dataType
       val labelExp = (labelType match {

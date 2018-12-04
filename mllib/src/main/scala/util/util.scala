@@ -20,6 +20,12 @@ object util {
             .dataType
             .asInstanceOf[StructType] // cast it to a StructType, what spark requires as its Schema
     }*/
+    def getStackTrace(e:Exception) = {
+      val sw = new java.io.StringWriter();
+      val pw = new java.io.PrintWriter(sw, true)
+      e.printStackTrace(pw)
+      sw.getBuffer().toString()
+    }
 }
 case class MergedIterator[T, U](a:Iterator[T], b:Iterator[U], defA:T, defB:U) extends Iterator[(T, U)] {
       def hasNext = a.hasNext || b.hasNext

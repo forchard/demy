@@ -13,7 +13,7 @@ object implicits {
     def luceneLookup(right:Dataset[_], query:Column, text:Column, maxLevDistance:Int=0, indexPath:String, reuseExistingIndex:Boolean=false
                    , leftSelect:Array[Column]=Array(col("*")), rightSelect:Array[Column]=Array(col("*")), popularity:Option[Column]=None
                    , workersTmpDir:String="/tmp", indexPartitions:Int = 1, maxRowsInMemory:Int=100, indexScanParallelism:Int = 2
-                   , tokenizeText:Boolean=true) = {
+                   , tokenizeText:Boolean=true, minScore:Double=0.0, boostAcronyms:Boolean=false) = {
       val rightApplied = right.select((Array(text.as("_text_")) ++ (popularity match {case Some(c) => Array(c.as("_pop_")) case _ => Array[Column]()}) ++ rightSelect) :_*)
       //Building index if does not exists
       val fs = FileSystem.get(new Configuration())
@@ -32,7 +32,7 @@ object implicits {
           val popPositionSet = popularity match {case Some(c) => Set(1) case _ =>Set[Int]()}
           partedRdd.mapPartitions(iter => {
               //Index creation
-              var index = SparkLuceneWriter(hdfsDest=indexPath, tmpDir=workersTmpDir) 
+              var index = SparkLuceneWriter(hdfsDest=indexPath, tmpDir=workersTmpDir, boostAcronyms=boostAcronyms) 
               var createIndex = true
               var indexInfo:SparkLuceneWriterInfo = null
               var indexHDFSDest:String = null
@@ -98,7 +98,7 @@ object implicits {
                        val resultsArray = righResults match {case Some(array) => array case None => queries.map(q => None)} //If first index then an array to contain the results   
                        Some(
                            queries.zipWithIndex.map(p => p match {case (query, i) => {
-                               val res = rInfo.search(query=query, maxHits=1, filter = Row.empty, outFields=rightRequestFields, maxLevDistance=maxLevDistance)
+                               val res = rInfo.search(query=query, maxHits=1, filter = Row.empty, outFields=rightRequestFields, maxLevDistance=maxLevDistance, minScore=minScore, boostAcronyms=boostAcronyms)
                                //println(query)
                                if(res.size == 0)
                                  resultsArray(i)

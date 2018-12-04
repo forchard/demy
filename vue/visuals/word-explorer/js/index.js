@@ -714,7 +714,7 @@ function refreshColors() {
    });  
    defaultColor =  d3.scaleLinear()
        .domain([1, 10])
-       .range(["hsl(152,80%,80%)", "hsl(228,30%,40%)"])
+       .range(["hsl(40,100%,67%)", "hsl(201, 58%, 34%)"])
        .interpolate(d3.interpolateHcl);
 }
 

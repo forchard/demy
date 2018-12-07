@@ -35,7 +35,7 @@ trait Application {
 	""")
     } else {
       val spark = getSparkSession(appName, master)
-      val storage = Storage.getSparkStorage(spark)
+      val storage = Storage.getSparkStorage
       val configuration = 
         config match {
           case Some(confPath) => Configuration(Some(storage.getNode(path = confPath)), this.defaultConfValues)

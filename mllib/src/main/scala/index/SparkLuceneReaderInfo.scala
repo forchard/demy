@@ -13,8 +13,9 @@ import org.apache.lucene.document.{Document, TextField, StringField, IntPoint, B
 import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
 import java.io.{ObjectInputStream,ByteArrayInputStream}
 import scala.collection.JavaConverters._
+import demy.storage.LocalNode
 
-case class SparkLuceneReaderInfo(searcher:IndexSearcher, tmpIndex:NIOFSDirectory, reader:DirectoryReader, usePopularity:Boolean = false) {
+case class SparkLuceneReaderInfo(searcher:IndexSearcher, indexDirectory:LocalNode, reader:DirectoryReader, usePopularity:Boolean = false) {
     def search(query:String, maxHits:Int, filter:Row = Row.empty, outFields:Seq[StructField]=Seq[StructField](), maxLevDistance:Int=2 , minScore:Double=0.0, boostAcronyms:Boolean=false) = {
         val terms = (if(query == null) "" else  query).replaceAll("[^\\p{L}]+", ",").split(",").filter(s => s.length>0)
         val qb = new BooleanQuery.Builder()
@@ -103,24 +104,11 @@ case class SparkLuceneReaderInfo(searcher:IndexSearcher, tmpIndex:NIOFSDirectory
         })
       } else Array[GenericRowWithSchema]()
     }
-    def deleteRecurse(path:String) {
-        if(path!=null && path.length>1 && path.startsWith("/")) {
-            val f = java.nio.file.Paths.get(path).toFile
-            if(!f.isDirectory)
-              f.delete
-            else {
-                f.listFiles.filter(ff => ff.toString.size > path.size).foreach(s => this.deleteRecurse(s.toString))
-                f.delete
-            }
-        }
-    }
-    def close(deleteLocal:Boolean = false) {
-        val dir = tmpIndex.getDirectory().toString
-        if(new java.io.File(dir).exists()) {
-            if(deleteLocal) 
-                this.deleteRecurse(dir)
-        }
-        tmpIndex.close
-        reader.close
+    def close(deleteSnapShot:Boolean = false) {
+      reader.close
+      reader.directory().close
+      if(deleteSnapShot && indexDirectory.exists) {
+        indexDirectory.deleteIfTemporary(recurse = true)
+      }
     }
 }

@@ -19,7 +19,6 @@ class Word2VecApplier(override val uid: String) extends Transformer with HasExec
     final val format = new Param[String](this, "format", "The vectors format")
     final val vectorsPath = new Param[String](this, "vectorsPath", "The vectors location")
     final val indexPath = new Param[String](this, "indexPath", "A temporary shared path to build the lucene index containing the vectors for map-like lookup")
-    final val workersTmp = new Param[String](this, "workersTmp", "A temporary local path to store local index copy")
     final val reuseIndexFile = new Param[Boolean](this, "reuseIndexFile", "If the index file can be reused when already exists")
     final val sumWords = new Param[Boolean](this, "sumWords", "If the word vectors shoud be added to a single vector per document")
     final val truncateWordsAt = new Param[Int](this, "truncateWordsAt", "The max number of characters to use on each word to match the vectors")
@@ -36,7 +35,6 @@ class Word2VecApplier(override val uid: String) extends Transformer with HasExec
     def setIndexPath(value: String): this.type = set(indexPath, value)
     def setReuseIndexFile(value: Boolean): this.type = set(reuseIndexFile, value)
     def setSumWords(value: Boolean): this.type = set(sumWords, value)
-    def setWorkersTmp(value: String): this.type = set(workersTmp, value)
     def setTruncateWordsAt(value: Int): this.type = set(truncateWordsAt, value)
     def setRepartitionCount(value: Int): this.type = set(repartitionCount, value)
     def setMaxRowsInMemory(value: Int): this.type = set(maxRowsInMemory, value)
@@ -66,7 +64,6 @@ class Word2VecApplier(override val uid: String) extends Transformer with HasExec
                                  , leftSelect=Array(col("*"))
                                  , rightSelect=Array(col("*"))
                                  , popularity=None
-                                 , workersTmpDir=get(workersTmp).get
                                  , indexPartitions = 1
                                  , maxRowsInMemory=getOrDefault(maxRowsInMemory)
                                  , indexScanParallelism= getOrDefault(indexScanParallelism)

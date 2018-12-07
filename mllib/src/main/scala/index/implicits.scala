@@ -5,22 +5,24 @@ import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
 import org.apache.spark.sql.{Column, Dataset, Row}
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.functions._
-import org.apache.hadoop.fs.{FileSystem, Path => HPath}
 import org.apache.hadoop.conf.Configuration
+import demy.storage.Storage
+import demy.util.log
 
 object implicits {
   implicit class DatasetUtil(val left: Dataset[_]) {
     def luceneLookup(right:Dataset[_], query:Column, text:Column, maxLevDistance:Int=0, indexPath:String, reuseExistingIndex:Boolean=false
                    , leftSelect:Array[Column]=Array(col("*")), rightSelect:Array[Column]=Array(col("*")), popularity:Option[Column]=None
-                   , workersTmpDir:String="/tmp", indexPartitions:Int = 1, maxRowsInMemory:Int=100, indexScanParallelism:Int = 2
+                   , indexPartitions:Int = 1, maxRowsInMemory:Int=100, indexScanParallelism:Int = 2
                    , tokenizeText:Boolean=true, minScore:Double=0.0, boostAcronyms:Boolean=false) = {
       val rightApplied = right.select((Array(text.as("_text_")) ++ (popularity match {case Some(c) => Array(c.as("_pop_")) case _ => Array[Column]()}) ++ rightSelect) :_*)
       //Building index if does not exists
-      val fs = FileSystem.get(new Configuration())
-      val indexHPath = new HPath(indexPath)
-      val exists = fs.exists(indexHPath)
-      if(!reuseExistingIndex && exists)
-          fs.delete(indexHPath, true)
+      val sparkStorage = Storage.getSparkStorage
+
+      val indexNode = sparkStorage.getNode(path = indexPath)
+      val exists = indexNode.exists
+      if(!reuseExistingIndex && exists) 
+        indexNode.delete(recurse = true)
 
       //writing the index with the right part dataset
       if(!exists || !reuseExistingIndex) {
@@ -32,7 +34,7 @@ object implicits {
           val popPositionSet = popularity match {case Some(c) => Set(1) case _ =>Set[Int]()}
           partedRdd.mapPartitions(iter => {
               //Index creation
-              var index = SparkLuceneWriter(hdfsDest=indexPath, tmpDir=workersTmpDir, boostAcronyms=boostAcronyms) 
+              var index = SparkLuceneWriter(indexDestination=indexPath,  boostAcronyms=boostAcronyms) 
               var createIndex = true
               var indexInfo:SparkLuceneWriterInfo = null
               var indexHDFSDest:String = null
@@ -43,10 +45,10 @@ object implicits {
                   }
                   indexInfo.indexRow(row = row, textFieldPosition=0, popularityPosition= popPosition
                                      , notStoredPositions = Set(0) ++ popPositionSet, tokenisation = tokenizeText )
+                  //println(row.getAs[String](0))
               })
               if(indexInfo != null) {
-                  indexHDFSDest = index.hdfsDest + "/" + indexInfo.tmpIndex.getDirectory().toString.split("/").last
-                  indexInfo.push(index.hdfsDest, true)
+                  indexInfo.push(deleteSource = true)
                   Array(indexHDFSDest).iterator
               } else {
                   Array[String]().iterator
@@ -56,9 +58,8 @@ object implicits {
       }
       
       //Reading the index 
-      val indexFiles = fs.listStatus(new HPath(indexPath))
-                          .map(p => p.getPath.toString)
-                          .map(p => SparkLuceneReader(hdfsIndexPartition=p, tmpDir= workersTmpDir, reuseExisting = true
+      val indexFiles =  indexNode.list.toArray
+                          .map(node => SparkLuceneReader(indexPartition=node.path,  reuseSnapShot = true
                                                       , useSparkFiles= false, usePopularity=popularity match {case Some(c) => true case None => false}))
       //Preparing the results
       val leftApplied = left.select((Array(query.as("_text_")) ++ leftSelect) :_*)
@@ -78,7 +79,8 @@ object implicits {
       
       val rightOutSchema = if(!isArrayJoin) new StructType(rightOutFields) 
                            else new StructType(fields = Array(StructField(name = "array", dataType = ArrayType(elementType=new StructType(rightOutFields) , containsNull = true)))) 
-      val resultRdd = leftApplied.rdd
+
+      val resultRdd0 = leftApplied.rdd
         .mapPartitions(iter => {
           var indexLocation = ""
           var rInfo:SparkLuceneReaderInfo = null
@@ -87,10 +89,11 @@ object implicits {
              var rowsChunk = (scala.collection.mutable.ArrayBuffer((r, noRows)) ++ (for(i <- 1 to maxRowsInMemory if iter.hasNext) yield (iter.next(), noRows))).par 
              rowsChunk.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(indexScanParallelism))
              indexFiles.foreach(iReader => {
-               if(indexLocation != iReader.hdfsIndexPartition) {
+               if(indexLocation != iReader.indexPartition) {
                  if(rInfo!=null) rInfo.close(false)
                  rInfo = iReader.open
-                 indexLocation = iReader.hdfsIndexPartition
+                 
+                 indexLocation = iReader.indexPartition
                }
                rowsChunk = rowsChunk.map(elem => elem match{ case (leftRow, righResults) => 
                  (leftRow, {
@@ -113,6 +116,7 @@ object implicits {
              rowsChunk
           })
         })
+        val resultRdd = resultRdd0
         .map(p => p match {case (left, right) => {
                         val leftRow = new GenericRowWithSchema(left.toSeq.slice(1, leftOutFields.size+1).toArray, leftOutSchema)
                         val rightRow = if(!isArrayJoin) right.get(0) match { case Some(row) => row

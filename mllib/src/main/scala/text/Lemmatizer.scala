@@ -16,7 +16,6 @@ class Lemmatiser(override val uid: String) extends Transformer {
     final val outputCol = new Param[String](this, "outputCol", "The new column column")
     final val lexiconPath = new Param[String](this, "lexiconPath", "The lexyque parquet file")
     final val indexPath = new Param[String](this, "indexPath", "The HDFS index path to build")
-    final val workersTmp = new Param[String](this, "workersTmp", "The workers temporrary directory to copy index file")
     final val reuseIndexFile = new Param[Boolean](this, "reuseIndexFile", "The workers temporrary directory to copy index file")
     final val rowChunkSize = new Param[Int](this, "rowChunkSize", "The chunk size for querying the lucene index")
     final val indexParallelismLevel = new Param[Int](this, "indexParallelismLevel", "The number of threads to use for reading the index")
@@ -27,7 +26,6 @@ class Lemmatiser(override val uid: String) extends Transformer {
     def setOutputCol(value: String): this.type = set(outputCol, value)
     def setLexiconPath(value: String): this.type = set(lexiconPath, value)
     def setIndexPath(value: String): this.type = set(indexPath, value)
-    def setWorkersTmp(value: String): this.type = set(workersTmp, value)
     def setReuseIndexFile(value: Boolean): this.type = set(reuseIndexFile, value)
     def setRowChunkSize(value:Int):this.type = set(rowChunkSize, value)
     def setIndexParallelismLevel(value:Int):this.type = set(indexParallelismLevel, value)
@@ -37,7 +35,20 @@ class Lemmatiser(override val uid: String) extends Transformer {
 //    def setMaxLevDistance(value: Int): this.type = set(maxLevDistance, value)
     override def transform(dataset: Dataset[_]): DataFrame =
         dataset
-          .luceneLookup(right = dataset.sparkSession.read.parquet(get(lexiconPath).get), query = udf((tokens:Seq[String])=> tokens.map(w => Word.simplifyText(w))).apply(col(get(inputCol).get)), text= col("simplified"), maxLevDistance=0, indexPath=get(indexPath).get, reuseExistingIndex=get(reuseIndexFile).get, leftSelect=Array(col("*")), rightSelect=Array(col("*")), popularity=None, workersTmpDir=get(workersTmp).get, indexPartitions = 1, maxRowsInMemory=getOrDefault(rowChunkSize), indexScanParallelism= getOrDefault(indexParallelismLevel), tokenizeText = false)
+          .luceneLookup(
+            right = dataset.sparkSession.read.parquet(get(lexiconPath).get)
+            , query = udf((tokens:Seq[String])=> tokens.map(w => Word.simplifyText(w))).apply(col(get(inputCol).get))
+            , text= col("simplified")
+            , maxLevDistance=0
+            , indexPath=get(indexPath).get
+            , reuseExistingIndex=get(reuseIndexFile).get
+            , leftSelect=Array(col("*"))
+            , rightSelect=Array(col("*"))
+            , popularity=None
+            , indexPartitions = 1
+            , maxRowsInMemory=getOrDefault(rowChunkSize)
+            , indexScanParallelism= getOrDefault(indexParallelismLevel)
+            , tokenizeText = false)
           .withColumn(get(outputCol).get, udf((words:Seq[String], lexyqueMatchRow:Seq[Row], simplify:Boolean, stem:Boolean) => {
             val lexyqueMatchs = lexyqueMatchRow.map(r => (r.getAs[String](0), r.getAs[Seq[String]](1), r.getAs[Seq[String]](2), r.getAs[Seq[Seq[Double]]](3) match {case v => if(v==null) Seq[Seq[Double]]() else v}, r.getAs[Seq[Seq[Double]]](4) match {case v => if(v==null) Seq[Seq[Double]]() else v}, r.getAs[Seq[Seq[Double]]](5) match {case v => if(v==null) Seq[Seq[Double]]() else v}))
             val toSteam = Seq("er"->"", "ereux"->"", "se"->"s", "me"->"m", "ne"->"n", "aux"->"", "re"->"r", "ge"->"g", "e"-> "", "te"-> "t", "ion"->""

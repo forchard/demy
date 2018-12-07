@@ -2,6 +2,7 @@ package demy.mllib.test
 
 import org.apache.spark.sql.SparkSession
 import org.scalatest._
+import demy.storage.Storage
 
 object SharedSpark {
   var baseSpark:Option[SparkSession] = None
@@ -16,17 +17,21 @@ object SharedSpark {
   def stop { getSpark.stop }
 }
 class SparkTest  extends UnitTest with BeforeAndAfterAll
-  with linalg.implicitsSpec
+/*  with linalg.implicitsSpec
   with tuning.RandomSplitSpec
   with feature.ArrayHasherSpec
+*/  with index.ImplicitsSpec
 {
   override def beforeAll() {
     SharedSpark.init
-    println("Spark Session creted!")
+    println("Spark Session created!")
   }
 
   override def afterAll() {
     SharedSpark.stop
+    println(Storage.getLocalStorage.getTmpPath())
+    Storage.getLocalStorage.removeMarkedFiles(cleanSandBox = true)
+    Storage.getSparkStorage.removeMarkedFiles(cleanSandBox = true)
   }  
 }
 

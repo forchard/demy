@@ -1,84 +1,76 @@
 package demy.mllib.index;
 
 import org.apache.lucene.analysis.standard.StandardAnalyzer
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.lucene.store.NIOFSDirectory
 import org.apache.lucene.index.{DirectoryReader}
 import org.apache.lucene.search.{IndexSearcher}
 import org.apache.lucene.index.{IndexWriter, IndexWriterConfig}
 import java.nio.file.{Paths}
+import org.apache.spark.sql.SparkSession
+import demy.storage.{Storage, LocalNode}
+import demy.storage.WriteMode
 
 
-
-case class SparkLuceneReader(hdfsIndexPartition:String, tmpDir:String, reuseExisting:Boolean = false, useSparkFiles:Boolean = false, usePopularity:Boolean=false) {
-    def open = {
-        if(!useSparkFiles) {
-            val fs = FileSystem.get(new Configuration())
-            val dest = new org.apache.hadoop.fs.Path(this.tmpDir+"/")
-            val src = new org.apache.hadoop.fs.Path(this.hdfsIndexPartition)
-
-            //Intra JVM lock 
-            SparkLuceneReader.readLock.synchronized {
-              //Inter JVM lock
-              val lockFile = new java.io.File(this.tmpDir+"/"+src.getName+".lock")
-              lockFile.createNewFile()
-              val wr = new java.io.RandomAccessFile(lockFile, "rw")
+case class SparkLuceneReader(indexPartition:String, reuseSnapShot:Boolean = false, useSparkFiles:Boolean = false, usePopularity:Boolean=false) {
+  lazy val sparkStorage = Storage.getSparkStorage
+  lazy val indexNode = {
+    if(this.sparkStorage.isLocal)
+      sparkStorage.getNode(indexPartition)
+    else if(this.useSparkFiles) 
+      sparkStorage.localStorage.getNode(org.apache.spark.SparkFiles.get(this.indexPartition))
+    else 
+      sparkStorage.localStorage.getTmpNode(fixName = Some(indexPartition), markForDeletion = !reuseSnapShot ,sandBoxed = !reuseSnapShot)
+  }
+  def open() = {
+    if(!sparkStorage.isLocal && !this.useSparkFiles) {
+        val indexName = Paths.get(this.indexPartition).getFileName().toString
+        val source = sparkStorage.getNode(indexPartition)
+        val dest = this.indexNode
+        //Intra JVM lock 
+        SparkLuceneReader.readLock.synchronized {
+          //Inter JVM lock
+          val lockFile = new java.io.File(dest.path+"/"+indexName+".lock")
+          lockFile.createNewFile()
+          val wr = new java.io.RandomAccessFile(lockFile, "rw")
+          try {
+              val lock = wr.getChannel().lock();
               try {
-                  val lock = wr.getChannel().lock();
-                  try {
-                      //Critical section for downloading index file
-                      val exists = new java.io.File(this.tmpDir+"/"+src.getName).exists()
-                      if(exists && !reuseExisting) {
-                          this.deleteRecurse(this.tmpDir+"/"+src.getName)
-                      }
-                      if(!exists || !reuseExisting) {
-                          fs.copyToLocalFile(false,src,dest)
-                      }
-                  } finally {
-                      lock.release();
-                  }
+                  //Critical section for downloading index file
+                  sparkStorage.localStorage.copy(from=source
+                                                , to = dest
+                                                , writeMode = if(reuseSnapShot) WriteMode.ignoreIfExists else WriteMode.overwrite
+                                                )
+              } catch { case(e:Exception) => throw e
               } finally {
-                  wr.close();
+                  lock.release();
               }
-            }
-            val index = new NIOFSDirectory(Paths.get(s"${this.tmpDir}/${src.getName}"), org.apache.lucene.store.NoLockFactory.INSTANCE);
-            val reader = DirectoryReader.open(index);
-            val searcher = new IndexSearcher(reader);
-            SparkLuceneReaderInfo(searcher, index, reader, usePopularity);
-        } else {
-            val index = new NIOFSDirectory(Paths.get(org.apache.spark.SparkFiles.get(this.hdfsIndexPartition)), org.apache.lucene.store.NoLockFactory.INSTANCE);
-            val reader = DirectoryReader.open(index);
-            val searcher = new IndexSearcher(reader);
-            SparkLuceneReaderInfo(searcher, index, reader, usePopularity);
+          } catch { case(e:Exception) => throw e
+          } finally {
+              wr.close();
+          }
         }
     }
-    def mergeWith(that:SparkLuceneReader) = {
-        val analyzer = new StandardAnalyzer();
-        val config = new IndexWriterConfig(analyzer);
-        config.setOpenMode(IndexWriterConfig.OpenMode.APPEND)
+    val index = new NIOFSDirectory(Paths.get(this.indexNode.path), org.apache.lucene.store.NoLockFactory.INSTANCE)
+    val reader = DirectoryReader.open(index)
+    val searcher = new IndexSearcher(reader);
+    SparkLuceneReaderInfo(searcher = searcher, indexDirectory=indexNode.asInstanceOf[LocalNode], reader = reader, usePopularity = usePopularity);
+  }
+  def mergeWith(that:SparkLuceneReader) = {
+      val analyzer = new StandardAnalyzer();
+      val config = new IndexWriterConfig(analyzer);
+      config.setOpenMode(IndexWriterConfig.OpenMode.APPEND)
 
-        val thisInfo = this.open
-        val thatInfo = that.open
-        val writer = new IndexWriter(thisInfo.tmpIndex,config)
-        writer.addIndexes(thatInfo.tmpIndex)
-        val winfo = SparkLuceneWriterInfo(writer, thisInfo.tmpIndex)
-        winfo.push((this.hdfsIndexPartition.split("/") match {case s => s.slice(0, s.size-1)}).mkString("/"), false)
-        thatInfo.close(true)
-        FileSystem.get(new Configuration()).delete(new org.apache.hadoop.fs.Path(that.hdfsIndexPartition), true)
-        this
-    }
-    def deleteRecurse(path:String) {
-        if(path!=null && path.length>1 && path.startsWith("/")) {
-            val f = java.nio.file.Paths.get(path).toFile
-            if(!f.isDirectory)
-              f.delete
-            else {
-                f.listFiles.filter(ff => ff.toString.size > path.size).foreach(s => this.deleteRecurse(s.toString))
-                f.delete
-            }
-        }
-    }
+      val thisInfo = this.open
+      val thatInfo = that.open
+      val writer = new IndexWriter(thisInfo.reader.directory(),config)
+      writer.addIndexes(thatInfo.reader.directory())
+      val newDestPath = (this.indexPartition.split("/") match {case s => s.slice(0, s.size-1)}).mkString("/")+"/"+that.indexNode.path.split("/").head 
+      val winfo = SparkLuceneWriterInfo(writer = writer, index = thisInfo.reader.directory().asInstanceOf[NIOFSDirectory], destination = this.indexNode.storage.getNode(path = newDestPath))
+      winfo.push(deleteSource = false)
+      thatInfo.close(true)
+      that.sparkStorage.getNode(path = that.indexPartition).delete(recurse = true)
+      this
+  }
 }
 object SparkLuceneReader {
   val readLock = new Object()

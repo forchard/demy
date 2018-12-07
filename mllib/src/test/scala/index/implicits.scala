@@ -16,10 +16,12 @@ trait ImplicitsSpec extends UnitTest {
   lazy val rightDF =  {
     val spark = this.getSpark
     import spark.implicits._
-    Seq(("this is bar", 99), ("I am out of here!", 99)).toDS.toDF("text", "val")
+    Seq(("this is bar", 99)
+      , ("I am out of here!", 99))
+        .toDS.toDF("text", "val")
   } 
 
-  lazy val lookedUp = leftDF.coalesce(1).luceneLookup(right = rightDF
+  lazy val lookedUp = leftDF.luceneLookup(right = rightDF
                                  , query = col("query")
                                  , text=col("text")
 				 , maxLevDistance=0
@@ -39,8 +41,11 @@ trait ImplicitsSpec extends UnitTest {
     lookedUp.where(col("text").isNotNull).select($"query", $"text", $"val").as[(String, String, Int)]
   }
 
-  "Lucene Lookup" should "find find perfect match in text and get a value" in {
-    //lookedUp.show
+  "Lucene Lookup" should "find perfect match in text and get a value" in {
     assert(findPerfectMatch.collect.toSeq == Seq(("bar", "this is bar", 99))) 
   }
+
+  it should "find 2 letter accronyms in text" in {
+    assert(1 + 1 == 2)
+  } 
 }

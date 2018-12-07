@@ -17,10 +17,10 @@ object SharedSpark {
   def stop { getSpark.stop }
 }
 class SparkTest  extends UnitTest with BeforeAndAfterAll
-/*  with linalg.implicitsSpec
+  with linalg.implicitsSpec
   with tuning.RandomSplitSpec
   with feature.ArrayHasherSpec
-*/  with index.ImplicitsSpec
+  with index.ImplicitsSpec
 {
   override def beforeAll() {
     SharedSpark.init
@@ -29,7 +29,6 @@ class SparkTest  extends UnitTest with BeforeAndAfterAll
 
   override def afterAll() {
     SharedSpark.stop
-    println(Storage.getLocalStorage.getTmpPath())
     Storage.getLocalStorage.removeMarkedFiles(cleanSandBox = true)
     Storage.getSparkStorage.removeMarkedFiles(cleanSandBox = true)
   }  

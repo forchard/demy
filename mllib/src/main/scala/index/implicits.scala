@@ -55,7 +55,7 @@ object implicits {
               }
           })
           .collect
-
+      }
       //Reading the index 
       val indexFiles =  indexNode.list.toArray
                           .map(node => SparkLuceneReader(indexPartition=node.path,  reuseSnapShot = true

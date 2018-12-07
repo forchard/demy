@@ -21,10 +21,6 @@ import demy.storage.LocalNode
 //    def search(query:String, maxHits:Int, filter:Row = Row.empty, outFields:Seq[StructField]=Seq[StructField](), maxLevDistance:Int=2 , minScore:Double=0.0, boostAcronyms:Boolean=false) = {
 //=======
 
-
-
-
-
 case class SparkLuceneReaderInfo(searcher:IndexSearcher, indexDirectory:LocalNode, reader:DirectoryReader, usePopularity:Boolean = false) {
 
 
@@ -369,6 +365,7 @@ case class SparkLuceneReaderInfo(searcher:IndexSearcher, indexDirectory:LocalNod
       if(deleteSnapShot && indexDirectory.exists) {
         indexDirectory.deleteIfTemporary(recurse = true)
       }
+    }
 
 
     def deleteRecurse(path:String) {

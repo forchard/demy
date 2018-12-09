@@ -15,7 +15,7 @@ import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
 import java.io.{ObjectInputStream,ByteArrayInputStream}
 import scala.collection.JavaConverters._
 import demy.storage.LocalNode
-
+import demy.util.log
 //<<<<<<< HEAD
 //case class SparkLuceneReaderInfo(searcher:IndexSearcher, indexDirectory:LocalNode, reader:DirectoryReader, usePopularity:Boolean = false) {
 //    def search(query:String, maxHits:Int, filter:Row = Row.empty, outFields:Seq[StructField]=Seq[StructField](), maxLevDistance:Int=2 , minScore:Double=0.0, boostAcronyms:Boolean=false) = {
@@ -293,7 +293,7 @@ case class SparkLuceneReaderInfo(searcher:IndexSearcher, indexDirectory:LocalNod
           val (ngram, score, doc, info, outSchema) = maxScoreLocal
 
 //          if(score < minScore) //None
-          if(score < minScore) Array[GenericRowWithSchema]()
+          if(score < minScore || doc == null) Array[GenericRowWithSchema]()
           else {
             Array(new GenericRowWithSchema(
               values = outFields.toArray.map(field => {

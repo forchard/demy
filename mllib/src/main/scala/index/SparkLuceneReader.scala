@@ -19,7 +19,7 @@ case class SparkLuceneReader(indexPartition:String, reuseSnapShot:Boolean = fals
     else if(this.useSparkFiles) 
       sparkStorage.localStorage.getNode(org.apache.spark.SparkFiles.get(this.indexPartition))
     else 
-      sparkStorage.localStorage.getTmpNode(fixName = Some(indexPartition), markForDeletion = !reuseSnapShot ,sandBoxed = !reuseSnapShot)
+      sparkStorage.localStorage.getNode(path = "/space/tmp/"+indexPartition.split("/").last)
   }
   def open() = {
     if(!sparkStorage.isLocal && !this.useSparkFiles) {
@@ -29,16 +29,17 @@ case class SparkLuceneReader(indexPartition:String, reuseSnapShot:Boolean = fals
         //Intra JVM lock 
         SparkLuceneReader.readLock.synchronized {
           //Inter JVM lock
-          val lockFile = new java.io.File(dest.path+"/"+indexName+".lock")
+          sparkStorage.localStorage.ensurePathExists("/space/tmp")
+          val lockFile = new java.io.File("/space/tmp/"+indexName+".lock")
           lockFile.createNewFile()
           val wr = new java.io.RandomAccessFile(lockFile, "rw")
           try {
               val lock = wr.getChannel().lock();
               try {
                   //Critical section for downloading index file
-                  sparkStorage.localStorage.copy(from=source
-                                                , to = dest
-                                                , writeMode = if(reuseSnapShot) WriteMode.ignoreIfExists else WriteMode.overwrite
+                  sparkStorage.copy(from=source
+                                     , to = dest
+                                     ,  writeMode = if(reuseSnapShot) WriteMode.ignoreIfExists else WriteMode.overwrite
                                                 )
               } catch { case(e:Exception) => throw e
               } finally {

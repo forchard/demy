@@ -39,3 +39,4 @@ fulltext
 vue/server/node_modules/*
 private
 vue/data/fod/workspaces/*
+buildPush.sh

@@ -49,14 +49,16 @@ case class SparkLuceneWriterInfo(writer:IndexWriter, index:NIOFSDirectory, desti
 
     def push(deleteSource:Boolean = false) = {
         val src_str = index.getDirectory().toString
+        val source = this.sourceNode 
         log.msg(s"going to close $index")
         this.writer.commit
         this.writer.close()
         this.index.close()
         if(!this.destination.isLocal) { 
-          this.destination.storage.copy(from = this.sourceNode, to = this.destination, writeMode = WriteMode.overwrite )
-          if(destination.exists) 
-            destination.delete(recurse = true)
+          this.destination.storage.ensurePathExists(path = this.destination.path)
+          this.destination.storage.copy(from = source, to = this.destination, writeMode = WriteMode.overwrite )
+          if(source.exists) 
+            source.delete(recurse = true)
         } else {
           log.msg("no need to push")
         }

@@ -48,4 +48,111 @@ trait ImplicitsSpec extends UnitTest {
   it should "find 2 letter accronyms in text" in {
     assert(1 + 1 == 2)
   } 
+
+
+
+  lazy val leftDFMinScore  =  {
+    val spark = this.getSpark
+    import spark.implicits._
+    Seq("Twitter", "Fort Worth").toDS.toDF("query")
+  } 
+  lazy val rightDFMinScore =  {
+    val spark = this.getSpark
+    import spark.implicits._
+    Seq(("Titter Khel")
+      , ("I am out of here!")
+      , ("Fort Worth, TX"))
+        .toDS.toDF("text")
+  } 
+
+  lazy val lookedUpMinScore = leftDFMinScore.luceneLookup(right = rightDFMinScore
+                                 , query = col("query")
+                                 , text=col("text")
+				 , maxLevDistance=0
+                                 , indexPath=Storage.getLocalStorage.getTmpPath()
+                                 , reuseExistingIndex=false
+                                 , leftSelect=Array(col("*"))
+                                 , rightSelect=Array(col("*"))
+                                 , popularity=None
+                                 , indexPartitions = 1
+                                 , maxRowsInMemory=10
+                                 , indexScanParallelism= 1
+                                 , tokenizeText = true
+                                 , minScore = 1.0
+                                 )
+
+
+
+  lazy val findPerfectMatchMinScore = {
+    val spark = this.getSpark
+    import spark.implicits._
+    lookedUpMinScore.where(col("text").isNotNull).select($"query", $"text").as[(String, String)]
+  }
+
+  it should "exclude Spam like 'Twitter' with a low score (minScore=1.0)" in {
+    assert(findPerfectMatchMinScore.collect.toSeq == Seq(("Fort Worth", "Fort Worth, TX"))) 
+  }
+
+
+
+
+
+  lazy val leftDFAcronyms  =  {
+    val spark = this.getSpark
+    import spark.implicits._
+    Seq("Fort Worth, TX", "Des Plaines, IL", "IL", "OH", "Columbus, OH").toDS.toDF("query")
+  } 
+  lazy val rightDFAcronyms=  {
+    val spark = this.getSpark
+    import spark.implicits._
+    Seq(("Illinois, IL")
+      , ("Wœrth, FR")
+      , ("Fort Worth, TX")
+      , ("Des Plaines, US, IL")
+      , ("Sainte-Anne-des-Plaines, CA")
+      , ("Beau Bassin MU")
+      , ("Ohio, OH, US")
+      , ("Columbus, US, OH")
+      , ("Columbus, NI")
+      )
+        .toDS.toDF("text")
+  } 
+
+  lazy val lookedUpAcronyms = leftDFAcronyms.luceneLookup(right = rightDFAcronyms
+                                 , query = col("query")
+                                 , text=col("text")
+				 , maxLevDistance=0
+                                 , indexPath=Storage.getLocalStorage.getTmpPath()
+                                 , reuseExistingIndex=false
+                                 , leftSelect=Array(col("*"))
+                                 , rightSelect=Array(col("*"))
+                                 , popularity=None
+                                 , indexPartitions = 1
+                                 , maxRowsInMemory=10
+                                 , indexScanParallelism= 1
+                                 , tokenizeText = true
+                                 , boostAcronyms=true
+                                 )
+
+
+
+  lazy val findPerfectMatchAcronyms = {
+    val spark = this.getSpark
+    import spark.implicits._
+    lookedUpAcronyms.where(col("text").isNotNull).select($"query", $"text").as[(String, String)]
+  }
+
+  it should "find 2 letter acronyms in text" in {
+    assert(findPerfectMatchAcronyms.collect.toSeq == Seq(("Fort Worth, TX", "Fort Worth, TX"),
+                                                         ("Des Plaines, IL", "Des Plaines, US, IL"),
+                                                         ("IL", "Illinois, IL"),
+                                                         ("OH", "Ohio, OH, US"),
+                                                         ("Columbus, OH", "Columbus, US, OH")
+                                                         )) 
+  }
+
+//  it should 
+
+
 }
+

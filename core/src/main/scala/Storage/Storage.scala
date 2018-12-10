@@ -315,8 +315,11 @@ case class HDFSStorage(hadoopConf:Configuration, override val tmpPrefix:String="
     else if(from.isLocal && to.storage == this) {
       if(writeMode != WriteMode.ignoreIfExists || !to.exists )
         fs.copyFromLocalFile(false, writeMode == WriteMode.overwrite, new HPath(from.path), new HPath(to.path))
-      else 
-        throw new Exception("Not local to hdfs directory move is not yet implemented")
+    } else if(from.storage == this && to.isLocal) {
+       if(writeMode != WriteMode.ignoreIfExists || !to.exists )
+         fs.copyToLocalFile(false, new HPath(from.path), new HPath(to.path))
+    } else {
+      throw new Exception("Copy opreation not supportes @epi")
     }
   }
  

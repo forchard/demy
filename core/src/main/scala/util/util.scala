@@ -30,6 +30,12 @@ object util {
         df.write.mode("overwrite").parquet(path)
         df.sparkSession.read.parquet(path)
     }
+    def getStackTraceString(e:Exception) = {
+     val sw = new java.io.StringWriter();
+     val pw = new java.io.PrintWriter(sw, true)
+     e.printStackTrace(pw)
+     sw.getBuffer().toString()
+    }
 /*    def schemaOf[T: scala.reflect.runtime.universe.TypeTag]: StructType = { 
         org.apache.spark.sql.catalyst.ScalaReflection
             .schemaFor[T] // this method requires a TypeTag for T

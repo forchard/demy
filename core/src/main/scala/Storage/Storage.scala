@@ -187,9 +187,14 @@ case class LocalStorage(override val sparkCanRead:Boolean=false, override val tm
        }
   def last(path:Option[String], attrPattern:Map[String, String] = Map[String, String]())  = throw new Exception("Not Implemented")
   def list(node:FSNode)  = 
-     node match { case lNode:LocalNode => 
-                            Files.list(lNode.jPath).iterator().asScala.toSeq.map{ cPath => LocalNode(path = cPath.toAbsolutePath().toString(), storage=lNode.storage, sparkCanRead = this.sparkCanRead)}
-                   case _ => throw new Exception(s"HDFS Storage cannot manage ${node.getClass.getName} nodes")
+     node match { 
+       case lNode:LocalNode => 
+         (if(Files.isDirectory(lNode.jPath)) 
+              Files.list(lNode.jPath).iterator().asScala
+          else 
+            Seq(lNode.jPath)
+         ).toSeq.map{ cPath => LocalNode(path = cPath.toAbsolutePath().toString(), storage=lNode.storage, sparkCanRead = this.sparkCanRead)}
+       case _ => throw new Exception(s"HDFS Storage cannot manage ${node.getClass.getName} nodes")
     }
   def getNode(path:String, attrs:Map[String, String]=Map[String, String]()):FSNode
        = LocalNode(path = path, storage = this, attrs=attrs, sparkCanRead=this.sparkCanRead)

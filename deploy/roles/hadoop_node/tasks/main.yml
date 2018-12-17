@@ -61,6 +61,14 @@
     marker: "# {mark} Managed ip for {{ item }} alias do not edit!" 
   with_items : "{{ ansible_play_hosts }}"
   tags: [etc_hosts, upgrade]
+- name: set ips alias on /etc/hosts for internal custom serviecs
+  blockinfile:
+    path: /etc/hosts
+    block: |
+      {{item.ip}} {{ item.name }}
+    marker: "# {mark} Managed ip for {{ item.name }} alias do not edit!" 
+  with_items : "{{ demy_custom_hosts }}"
+  tags: [etc_hosts, upgrade]
 - name: installation folder
   file:
     path: "{{ hadoop_install }}"

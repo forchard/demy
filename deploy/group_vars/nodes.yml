@@ -187,3 +187,10 @@ mapreduce_jobhistory_webapp_port: 19888
 mapreduce_jobhistory_intermediate_done_dir: "/mr-history/tmp" 
 mapreduce_jobhistory_done_dir: "/mr-history/done"
 mapreduce_jobhistory_memory_mb: 512
+
+#Custom service ips
+demy_custom_hosts:
+- {ip: "10.1.4.93", name: "epifiles.voozanoo.net"}
+- {ip: "10.1.16.125", name: "epifiles.preprod.voozanoo.net"}
+     
+

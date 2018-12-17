@@ -185,7 +185,28 @@ case class LocalStorage(override val sparkCanRead:Boolean=false, override val tm
                           } 
                       case _ => throw new Exception(s"HDFS Storage cannot manage ${node.getClass.getName} nodes")
        }
-  def last(path:Option[String], attrPattern:Map[String, String] = Map[String, String]())  = throw new Exception("Not Implemented")
+  def last(path:Option[String], attrPattern:Map[String, String] = Map[String, String]())  = {
+    val it = this.getNode(path = path.getOrElse("/")) match { 
+       case lNode => 
+         if(Files.isDirectory(Paths.get(lNode.path))) 
+              Files.list(Paths.get(lNode.path)).iterator().asScala
+          else 
+            Seq(Paths.get(lNode.path)).iterator
+    }
+    var lastModified = Long.MinValue
+    var lastFile:Option[FSNode] = None 
+    while (it.hasNext) {
+      val filePath = it.next()
+      val fileName = filePath.getFileName().toString
+      val isMatch = attrPattern.get("name") match { case Some(pattern) => !pattern.r.findFirstIn(fileName).isEmpty case _ => true}
+      val modified = Files.getLastModifiedTime(filePath).toMillis()
+      lastFile = if(isMatch && modified > lastModified) {
+        lastModified = modified
+        Some(this.getNode(path = filePath.toString))
+      } else {lastFile}
+    }
+    lastFile
+  }
   def list(node:FSNode)  = 
      node match { 
        case lNode:LocalNode => 

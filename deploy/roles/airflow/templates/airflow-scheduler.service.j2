@@ -1,0 +1,18 @@
+[Unit]
+Description=Airflow scheduler service
+After=network.target mariadb.service
+ConditionPathExists={{ python_home }}/bin/airflow
+
+[Service]
+Type=simple
+User=airflow
+WorkingDirectory={{ af_run }}
+ExecStart={{ python_home }}/bin/airflow scheduler --n -1 --pid {{ af_run }}/scheduler.pid --stdout {{ af_run }}/logs/scheduler.log --stderr {{ af_run }}/logs/scheduler.err
+Restart=on-failure
+PIDFile={{ af_run }}/scheduler.pid
+Environment="TMPDIR={{ tmp_dir }}"
+Environment="AIRFLOW_HOME={{ af_home }}"
+Environment="SCHEDULER_RUNS=-1"
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:{{ python_home }}/bin"
+[Install]
+WantedBy=multi-user.target

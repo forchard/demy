@@ -74,4 +74,24 @@
     command: |
       {{ hadoop_home }}/bin/yarn rmadmin -refreshQueues 
     listen: apply queues
+  - name: airflow webserver service exists
+    stat: path=/lib/systemd/system/airflow-webserver.service
+    register: af_webserver_status
+    listen: restart airflow webserver
+  - name: restart airflow webserver
+    service:
+      name: airflow-webserver
+      state: restarted
+    when: af_webserver_status.stat.exists
+    listen: restart airflow webserver
+  - name: airflow scheduler service exists
+    stat: path=/lib/systemd/system/airflow-scheduler.service
+    register: af_scheduler_status
+    listen: restart airflow scheduler
+  - name: restart airflow scheduler
+    service:
+      name: airflow-scheduler
+      state: restarted
+    when: af_scheduler_status.stat.exists
+    listen: restart airflow scheduler
 

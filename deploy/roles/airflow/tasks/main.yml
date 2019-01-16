@@ -1,0 +1,226 @@
+---
+- name: airflow folders exists
+  tags: airflow
+  file:
+    path: "{{ item }}" 
+    owner: airflow
+    group: hadoop
+    state: directory
+  with_items:
+  - "{{ af_home }}"
+  - "{{ af_run }}"
+  - "{{ af_run }}/logs"
+- name: necessary dependency packages
+  tags: [airflow, packages]
+  apt:
+    name: "{{ item }}"
+    default_release: "{{ ansible_distribution_release }}-backports"
+    update_cache: true
+    state: latest
+  with_items: [mariadb-server, libmariadbclient-dev, libkrb5-dev, python-dev, libsasl2-dev ]
+- name: initial database setup
+  tags: [airflow]
+  shell:
+    cmd: |
+      mysql -u root -N <<-EOF
+      SELECT (SELECT sum(case when Host='localhost' and User='airflow' then 1 else 0 end)=0 FROM mysql.user) + (SELECT count(*)=0 FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = 'airflow') as tochange;
+      DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');
+      DELETE FROM mysql.user WHERE User='';
+      DELETE FROM mysql.db WHERE Db='test' OR Db='test_%';
+      CREATE USER IF NOT EXISTS 'airflow'@'localhost' IDENTIFIED WITH unix_socket;
+      CREATE DATABASE IF NOT EXISTS airflow;
+      FLUSH PRIVILEGES;
+      EOF
+  args:
+    executable: /bin/bash
+  register: out
+  changed_when: out.stdout != '0'
+- name: check if we need to move mysql database
+  tags: [airflow]
+  shell: |
+    mysql -u root -s -e "select @@datadir" | grep -v @@datadir
+  changed_when: false
+  register: mysqldatadir
+- name: set move datadir variable
+  tags: [airflow]
+  set_fact:
+    move_database: "{{ mysqldatadir.stdout != af_database + '/'}}"
+- name: stop maria db server if we need to move databases
+  tags: [airflow]
+  service: 
+    name: mariadb
+    state: stopped
+  when: move_database
+- name: Move database folder
+  tags: [airflow]
+  command: mv {{ mysqldatadir.stdout }} {{ af_database  }}
+  when: move_database
+- name: changing configuration file to use new folder
+  tags: [airflow]
+  lineinfile: 
+    path: "/etc/mysql/my.cnf" #"/etc/mysql/mariadb.conf.d/50-server.cnf" 
+    regexp: '^datadir'
+    line: "datadir         = {{ af_database }}"
+  when: move_database
+- name: start maria db server after database dir change
+  tags: [airflow]
+  service: 
+    name: mariadb
+    state: started
+  when: move_database
+- name: create pip requirement file for airflow
+  tags: [airflow]
+  copy:
+    dest: "{{ custom_libs }}/pip_requirements_airflow"
+    content: |
+      apache-airflow[mysql,crypto,devel_hadoop,devel,async,hdfs]=={{ af_version  }}
+- name: install python packages
+  tags: [airflow]
+  pip:
+    requirements: "{{ custom_libs }}/pip_requirements_airflow"
+    executable: "{{ pip }}"
+  environment:
+    TMPDIR: "{{ tmp_dir }}"
+    AIRFLOW_HOME: "{{ af_home  }}"
+    SLUGIFY_USES_TEXT_UNIDECODE: "yes"
+- name: check airflow access to dabatase
+  tags: [airflow]
+  shell: |
+    mysql -u root -s -e "show grants for airflow@localhost" | grep -v Grants | grep "ALL PRIVILEGES ON" | grep airflow
+  register: db_access
+  changed_when: false
+  failed_when: db_access.rc==2
+- name: define if acces are to be granted
+  tags: [airflow]
+  set_fact:
+    grant_rights: "{{ db_access.stdout | length == 0 }}"
+- name: grant access to database on use airflow if necessary
+  tags: [airflow]
+  shell:
+    cmd: |
+      mysql -u root -N <<-EOF
+      GRANT ALL PRIVILEGES on airflow.* to 'airflow'@'localhost';
+      FLUSH PRIVILEGES;
+      EOF
+  args:
+    executable: /bin/bash
+  register: out
+  when: grant_rights
+#- name: remove sample dags
+#  tags: [airflow]
+#  file:
+#    state: absent
+#    path: "{{ python_home }}/lib/python{{ python_ver[:-2]}}/site-packages/airflow/example_dags"
+- name: set mysql explicit defaults for timestamp 
+  tags: [airflow]
+  lineinfile:
+    path: "/etc/mysql/my.cnf" #"/etc/mysql/mariadb.conf.d/50-server.cnf" 
+    regexp: '^explicit_defaults_for_timestamp'
+    insertafter: '^\[mysqld\]'
+    line: 'explicit_defaults_for_timestamp = 1'
+  register: out
+- name: restart maria db server if configuration was changed
+  tags: [airflow]
+  service: 
+    name: mariadb
+    state: restarted
+  when: out.changed
+- name: initialize database
+  tags: [airflow]
+  command: "{{ python_home}}/bin/airflow initdb"
+  args:
+    creates: "{{ af_home }}/airflow.cfg"
+  register: out
+  failed_when: '"Exception" in out.stderr | default("ok") or "Exception" in out.stdout | default("ok")'
+  environment: 
+    AIRFLOW__CORE__SQL_ALCHEMY_CONN: "mysql://localhost/airflow"
+    AIRFLOW_HOME: "{{ af_home  }}"
+- name: get ip to use
+  tags: [airflow]
+  shell: "ip addr list | grep \"{{ front_network  }}\\|{{ back_network  }}\" | grep \"inet \" | awk {'print $2'} | awk -F \"/\" {'print $1'}" 
+  register: app_ip
+  changed_when: false
+- tags: [airflow]
+  set_fact:
+    app_ip: "{{ app_ip.stdout }}"
+- name: setting airflow configuration
+  tags: [airflow]
+  lineinfile:
+    path: "{{ af_home }}/airflow.cfg" 
+    regexp: "{{ item.regexp }}"
+    insertafter: "^\\[{{ item.section }}\\]"
+    line: "{{ item.line }}"
+    state: "{{ item.state }}"
+  with_items:
+  - {section: "core", regexp: "^airflow_home", line: "airflow_home = {{ af_home }}", state: "present" }
+  - {section: "core", regexp: "^executor", line: "executor = LocalExecutor", state: "present" }
+  - {section: "core", regexp: "^default_timezone", line: "default_timezone = {{ af_timezone }}" , state: "present" }
+  - {section: "core", regexp: "^dags_folder", line: "dags_folder = {{ af_run }}/dags", state: "present" }
+  - {section: "core", regexp: "^base_log_folder", line: "base_log_folder = {{ af_run }}/logs", state: "present" }
+  - {section: "core", regexp: "^sql_alchemy_conn", line: "sql_alchemy_conn = mysql://localhost/airflow", state: "present" }
+  - {section: "core", regexp: "^parallelism", line: "parallelism = {{ af_max_active_tasks }}", state: "present" }
+  - {section: "core", regexp: "^dag_concurrency", line: "dag_concurrency = {{ af_max_active_tasks }}", state: "present" }
+  - {section: "core", regexp: "^max_active_runs_per_dag", line: "max_active_runs_per_dag = {{ af_max_active_tasks  }}", state: "present" }
+  - {section: "core", regexp: "^load_examples", line: "load_examples = false", state: "present" }
+  - {section: "core", regexp: "^plugins_folder", line: "plugins_folder = {{ af_home  }}/plugins", state: "present" }
+  - {section: "webserver", regexp: "^base_url", line: "base_url = https://{{ app_ip }}:{{ af_port  }}", state: "present" }
+  - {section: "webserver", regexp: "^web_server_host", line: "web_server_host = {{ app_ip  }}", state: "present" }
+  - {section: "webserver", regexp: "^web_server_port", line: "web_server_port = {{ af_port }}", state: "present" }
+  - {section: "webserver", regexp: "^web_server_ssl_cert", line: "web_server_ssl_cert = {{ af_ssl_cert }}", state: "present" }
+  - {section: "webserver", regexp: "^web_server_ssl_key", line: "web_server_ssl_key = {{ af_ssl_key }}", state: "present" }
+  - {section: "webserver", regexp: "^access_logfile", line: "access_logfile = {{ af_run }}/logs/web_access.log", state: "present" }
+  - {section: "webserver", regexp: "^error_logfile", line: "error_logfile = {{ af_run }}/logs/web_access.log", state: "present" }
+  - {section: "smtp", regexp: "^smtp_host", line: "smtp_host = {{ smtp_host }}", state: "present" }
+  - {section: "smtp", regexp: "^smtp_port", line: "smtp_port = {{ smtp_port }}", state: "present" }
+  - {section: "smtp", regexp: "^smtp_starttls", line: "smtp_starttls = {{ smtp_starttls }}", state: "present" }
+  - {section: "smtp", regexp: "^smtp_ssl", line: "smtp_ssl = {{ smtp_ssl }}", state: "present" }
+  - {section: "smtp", regexp: "^smtp_user", line: "smtp_user = {{ smtp_user }}", state: "{{ 'present' if smtp_user!='' else 'absent' }}" }
+  - {section: "smtp", regexp: "^smtp_password", line: "smtp_password = {{ smtp_password  }}", state: "{{ 'present' if smtp_password!='' else 'absent' }}" }
+  - {section: "smtp", regexp: "^smtp_mail_from", line: "smtp_mail_from = {{ af_mailfrom }}", state: "present" }
+  - {section: "scheduler", regexp: "^child_process_log_directory", line: "child_process_log_directory = {{ af_run }}/logs/scheduler", state: "present" }
+  - {section: "scheduler", regexp: "^max_threads", line: "max_threads = {{ af_max_threads }}", state: "present" }
+  notify: [restart airflow webserver, restart airflow scheduler]
+- name: airflow web server installed
+  tags: [airflow, all_up, airflow_up]
+  template:
+    src: templates/airflow-webserver.service.j2
+    dest: /lib/systemd/system/airflow-webserver.service
+    owner: root
+    group: root
+  register: out
+  notify: restart airflow webserver
+- name: reload systemctl if needed
+  tags: [airflow, all_up, airflow_up]
+  command: systemctl daemon-reload
+  when: out.changed
+- name: airflow scheduler installed
+  tags: [airflow, all_up, airflow_up]
+  template:
+    src: templates/airflow-scheduler.service.j2
+    dest: /lib/systemd/system/airflow-scheduler.service
+    owner: root
+    group: root
+  register: out
+  notify: restart airflow scheduler
+- name: reload systemctl if needed
+  tags: [airflow, all_up, airflow_up]
+  command: systemctl daemon-reload
+  when: out.changed
+- name: airflow web server is running
+  tags: [airflow, all_up, airflow_up]
+  service:
+    name: airflow-webserver
+    state: started
+- name: airflow scheduler is running
+  tags: [airflow, all_up, airflow_up]
+  service:
+    name: airflow-scheduler
+    state: started
+- name: push default dags
+  tags: [airflow, airflow_dags]
+  copy:
+    src: ../airflow/dags/
+    dest: "{{ af_run }}/dags/"
+    owner: airflow
+    group: hadoop
+    force: yes

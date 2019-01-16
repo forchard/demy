@@ -1,6 +1,6 @@
 ---
 - name: authorized keys present
-  tags: ssh4admins
+  tags: [ssh4admins, create_users]
   authorized_key:
     user: "{{ item.1 }}"
     state: present

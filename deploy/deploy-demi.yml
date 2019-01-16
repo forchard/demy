@@ -103,6 +103,17 @@
   environment:
     http_proxy: "{{ proxy_host }}:{{ proxy_port }}"
     https_proxy: "{{ proxy_host }}:{{ proxy_port }}"
+- name: install airflow
+  hosts: orchestrator
+  gather_facts: false
+  become: true
+  roles: [airflow]
+  environment:
+    TMPDIR: "{{ tmp_dir }}"
+    HTTPS_PROXY: "http://{{ proxy_host }}:{{ proxy_port }}"
+    HTTP_PROXY: "http://{{ proxy_host }}:{{ proxy_port }}"
+    http_proxy: "{{ proxy_host }}:{{ proxy_port }}"
+    https_proxy: "{{ proxy_host }}:{{ proxy_port }}"
 - name: finalize upgrade
   hosts: namenode
   gather_facts: false

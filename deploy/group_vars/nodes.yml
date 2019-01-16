@@ -13,14 +13,13 @@ java_package: openjdk-8-jdk
 java_package_spark: openjdk-8-jdk
 java_default: java-1.8.0-openjdk-amd64
 protobuf_ver: 2.5.0
-hadoopusers: [hadoop, spark, hive, hdfs, yarn, mapred]
+hadoopusers: [hadoop, spark, hive, hdfs, yarn, mapred, airflow]
 crypted_disk: space
 
 #admin public keys:
 admins:
 - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDZk3latkv/+SVInPZpEicwoQ3huM2cJXfrdrjB25PQ/4flJM27j+f/I4XJM4I87KNwDJRiOWH0POVIcYLoMeVVR5PHM5rSxVe6bfcn1cJSgEMms/vLJNGpXn9HvK13YEXgBSKj/3u6s3+E6MrxKNDIX/hEfro5zrFzRqYDH25FrkeFyuW1CB2B7pLnTGdHOb+PTY/2/gQzVjteORlcg/XsPq1AdzZfHpwoDOXGVN0HtGjQYQ6B8un6YzgI9yEJdiEfqR8etYAD5cLoQKMLnObEaXSI2KwrGQn8cOmKuRYmQjyFyeFx4+KLnlnq1Upkv6F/UVh8vJJ2IFn+wCeQaqE1 fod@bastillito"
 - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCsE4uVsObrtPveYeoVtXGhxmeAtWEsr3mM3QQlIHaXgUy3wEaxH17fL3n75Ml9gFivID1rlogiaD5fo/Y5HR/AOIeIUu8DZRz5JUg7fmT3eUJUBHGMUHAJYvbFclkOCs0S7vxAURZRk1xS+9OtglHQ8RgbaLbECchHJp/pdr5XBeva/8z6CrdZ4KMAbMTpbPKh8G9fRsZdNDxdHSaDLoNTX0VanlPjSm8BblReLZtVU9sj8Y7SpHoidYfzJRhV/y8rnma659cPdRduybMd8LXkcn3TPehljK148I1AeI+uzA3JEx5FD12gKyz1ApesyOaM27Cm7tMrZV6XZLuYhEQR stage@epi-stage-bd"
-
 
 #Hadoop
 hadoop_cluster_name: "demy"
@@ -194,3 +193,23 @@ demy_custom_hosts:
 - {ip: "10.1.16.125", name: "epifiles.preprod.voozanoo.net"}
      
 
+#mail
+smtp_host: "smtp.admin2.oxa.tld"
+smtp_port: 25
+smtp_starttls: False
+smtp_ssl: False
+smtp_user: ""
+smtp_password: ""
+
+#airflow
+af_version: "1.10.1"
+af_home: "{{ hadoop_install }}/airflow_home"
+af_run: "{{ hadoop_install }}/airflow_run"
+af_database: "{{ hadoop_install }}/database"
+af_timezone: "utc"
+af_max_active_tasks: 32
+af_port: 8444
+af_ssl_cert: "/space/etc/ssl/wildcard.voozanoo.net.crt"
+af_ssl_key: "/space/etc/ssl/wildcard.voozanoo.net.key"
+af_mailfrom: "datascience@epiconcept.fr"
+af_max_threads: 2

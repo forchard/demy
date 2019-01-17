@@ -45,10 +45,6 @@ trait ImplicitsSpec extends UnitTest {
     assert(findPerfectMatch.collect.toSeq == Seq(("bar", "this is bar", 99))) 
   }
 
-  it should "find 2 letter accronyms in text" in {
-    assert(1 + 1 == 2)
-  } 
-
 
 
   lazy val leftDFMinScore  =  {
@@ -151,7 +147,7 @@ trait ImplicitsSpec extends UnitTest {
                                                          )) 
   }
 
-//  it should 
+ 
 
 
 }

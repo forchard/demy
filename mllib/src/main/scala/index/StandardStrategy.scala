@@ -18,7 +18,7 @@ import demy.storage.LocalNode
 import demy.util.log
 
 
-case class SparkLuceneReaderInfo(searcher:IndexSearcher, indexDirectory:LocalNode, reader:DirectoryReader, usePopularity:Boolean = false) extends IndexReaderStrategy {
+case class StandardStrategy(searcher:IndexSearcher, indexDirectory:LocalNode, reader:DirectoryReader, usePopularity:Boolean = false) extends IndexReaderStrategy {
 
     def searchDoc(query:String, maxHits:Int, filter:Row = Row.empty, maxLevDistance:Int=2 , minScore:Double=0.0,
               boostAcronyms:Boolean=false ) = {
@@ -80,7 +80,5 @@ case class SparkLuceneReaderInfo(searcher:IndexSearcher, indexDirectory:LocalNod
         // return hits with the two methods: hits.doc and hits.score
         hits
     }
-
-
 
 }

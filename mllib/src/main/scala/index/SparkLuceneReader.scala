@@ -9,24 +9,28 @@ import java.nio.file.{Paths}
 import org.apache.spark.sql.SparkSession
 import demy.storage.{Storage, LocalNode}
 import demy.storage.WriteMode
+import scala.reflect._
+import scala.reflect.runtime.universe
 
-
-case class SparkLuceneReader(indexPartition:String, reuseSnapShot:Boolean = false, useSparkFiles:Boolean = false, usePopularity:Boolean=false) {
+//case class SparkLuceneReader(indexPartition:String, reuseSnapShot:Boolean = false, useSparkFiles:Boolean = false, usePopularity:Boolean=false) {
+case class SparkLuceneReader(indexPartition:String, reuseSnapShot:Boolean = false, useSparkFiles:Boolean = false,
+                             usePopularity:Boolean=false, indexStrategy:String, strategyParams:Map[String,String]) {
   lazy val sparkStorage = Storage.getSparkStorage
   lazy val indexNode = {
     if(this.sparkStorage.isLocal)
       sparkStorage.getNode(indexPartition)
-    else if(this.useSparkFiles) 
+    else if(this.useSparkFiles)
       sparkStorage.localStorage.getNode(org.apache.spark.SparkFiles.get(this.indexPartition))
-    else 
+    else
       sparkStorage.localStorage.getNode(path = "/space/tmp/"+indexPartition.split("/").last)
   }
+
   def open() = {
     if(!sparkStorage.isLocal && !this.useSparkFiles) {
         val indexName = Paths.get(this.indexPartition).getFileName().toString
         val source = sparkStorage.getNode(indexPartition)
         val dest = this.indexNode
-        //Intra JVM lock 
+        //Intra JVM lock
         SparkLuceneReader.readLock.synchronized {
           //Inter JVM lock
           sparkStorage.localStorage.ensurePathExists("/space/tmp")
@@ -54,8 +58,19 @@ case class SparkLuceneReader(indexPartition:String, reuseSnapShot:Boolean = fals
     val index = new NIOFSDirectory(Paths.get(this.indexNode.path), org.apache.lucene.store.NoLockFactory.INSTANCE)
     val reader = DirectoryReader.open(index)
     val searcher = new IndexSearcher(reader);
-    SparkLuceneReaderInfo(searcher = searcher, indexDirectory=indexNode.asInstanceOf[LocalNode], reader = reader, usePopularity = usePopularity);
+    //StandardStrategy(searcher = searcher, indexDirectory=indexNode.asInstanceOf[LocalNode], reader = reader, usePopularity = usePopularity);
+
+    val mirror = universe.runtimeMirror(getClass.getClassLoader);
+    val classInstance = Class.forName(indexStrategy);
+    val classSymbol = mirror.classSymbol(classInstance);
+    val classType = classSymbol.toType;
+    val baseStrategy = classInstance.newInstance(/*Array(searcher, indexNode.asInstanceOf[LocalNode], reader)*/).asInstanceOf[IndexStrategy]
+      .set(searcher = searcher, indexDirectory=indexNode.asInstanceOf[LocalNode], reader = reader)
+    strategyParams.toSeq.foldLeft(baseStrategy)((current, prop)=> current.setProperty(prop._1, prop._2))
+      .getReadStrategy() //buildStrategy
+
   }
+
   def mergeWith(that:SparkLuceneReader) = {
       val analyzer = new StandardAnalyzer();
       val config = new IndexWriterConfig(analyzer);
@@ -65,7 +80,7 @@ case class SparkLuceneReader(indexPartition:String, reuseSnapShot:Boolean = fals
       val thatInfo = that.open
       val writer = new IndexWriter(thisInfo.reader.directory(),config)
       writer.addIndexes(thatInfo.reader.directory())
-      val newDestPath = (this.indexPartition.split("/") match {case s => s.slice(0, s.size-1)}).mkString("/")+"/"+that.indexNode.path.split("/").head 
+      val newDestPath = (this.indexPartition.split("/") match {case s => s.slice(0, s.size-1)}).mkString("/")+"/"+that.indexNode.path.split("/").head
       val winfo = SparkLuceneWriterInfo(writer = writer, index = thisInfo.reader.directory().asInstanceOf[NIOFSDirectory], destination = this.indexNode.storage.getNode(path = newDestPath))
       winfo.push(deleteSource = false)
       thatInfo.close(true)

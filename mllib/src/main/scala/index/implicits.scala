@@ -14,14 +14,16 @@ object implicits {
     def luceneLookup(right:Dataset[_], query:Column, text:Column, maxLevDistance:Int=0, indexPath:String, reuseExistingIndex:Boolean=false
                    , leftSelect:Array[Column]=Array(col("*")), rightSelect:Array[Column]=Array(col("*")), popularity:Option[Column]=None
                    , indexPartitions:Int = 1, maxRowsInMemory:Int=100, indexScanParallelism:Int = 2
-                   , tokenizeText:Boolean=true, minScore:Double=0.0, boostAcronyms:Boolean=false, Nngrams:Int = -1) = {
+                   , tokenizeText:Boolean=true, minScore:Double=0.0, boostAcronyms:Boolean=false, Nngrams:Int = -1
+                   , strategy:String = "demy.mllib.index.DefaultIndexStrategy", strategyParams: Map[String, String]=Map.empty[String,String]) = {
+
       val rightApplied = right.select((Array(text.as("_text_")) ++ (popularity match {case Some(c) => Array(c.as("_pop_")) case _ => Array[Column]()}) ++ rightSelect) :_*)
       //Building index if does not exists
       val sparkStorage = Storage.getSparkStorage
 
       val indexNode = sparkStorage.getNode(path = indexPath)
       val exists = indexNode.exists
-      if(!reuseExistingIndex && exists) 
+      if(!reuseExistingIndex && exists)
         indexNode.delete(recurse = true)
 
       //writing the index with the right part dataset
@@ -34,7 +36,7 @@ object implicits {
           val popPositionSet = popularity match {case Some(c) => Set(1) case _ =>Set[Int]()}
           partedRdd.mapPartitions(iter => {
               //Index creation
-              var index = SparkLuceneWriter(indexDestination=indexPath,  boostAcronyms=boostAcronyms) 
+              var index = SparkLuceneWriter(indexDestination=indexPath,  boostAcronyms=boostAcronyms)
               var createIndex = true
               var indexInfo:SparkLuceneWriterInfo = null
               var indexHDFSDest:String = null
@@ -56,10 +58,11 @@ object implicits {
           })
           .collect
       }
-      //Reading the index 
+      //Reading the index
       val indexFiles =  indexNode.list.toArray
                           .map(node => SparkLuceneReader(indexPartition=node.path,  reuseSnapShot = true
-                                                      , useSparkFiles= false, usePopularity=popularity match {case Some(c) => true case None => false}))
+                                                      , useSparkFiles= false, usePopularity=popularity match {case Some(c) => true case None => false}
+                                                      , indexStrategy = strategy, strategyParams = strategyParams))
       //Preparing the results
       val leftApplied = left.select((Array(query.as("_text_")) ++ leftSelect) :_*)
       val isArrayJoin = leftApplied.schema.fields(0).dataType
@@ -75,14 +78,14 @@ object implicits {
                                                          .map(f => new StructField(name = f.name, dataType = f.dataType, nullable = true, metadata = f.metadata))
       val rightOutFields = rightApplied.schema.fields.slice(popularity match {case Some(c) => 2 case _ => 1}, rightApplied.schema.fields.size)
                                                      .map(f => new StructField(name = f.name, dataType = f.dataType, nullable = true, metadata = f.metadata)) :+ (new StructField("_score_", FloatType))
-      
-      val rightOutSchema = if(!isArrayJoin) new StructType(rightOutFields) 
-                           else new StructType(fields = Array(StructField(name = "array", dataType = ArrayType(elementType=new StructType(rightOutFields) , containsNull = true)))) 
+
+      val rightOutSchema = if(!isArrayJoin) new StructType(rightOutFields)
+                           else new StructType(fields = Array(StructField(name = "array", dataType = ArrayType(elementType=new StructType(rightOutFields) , containsNull = true))))
 
       val resultRdd0 = leftApplied.rdd
         .mapPartitions(iter => {
           var indexLocation = ""
-          var rInfo:SparkLuceneReaderInfo = null
+          var rInfo:IndexReaderStrategy = null
           val noRows:Option[Array[Option[Row]]]=None
           iter.flatMap(r => {
              var rowsChunk = (scala.collection.mutable.ArrayBuffer((r, noRows)) ++ (for(i <- 1 to maxRowsInMemory if iter.hasNext) yield (iter.next(), noRows))).par
@@ -91,7 +94,7 @@ object implicits {
                if(indexLocation != iReader.indexPartition) {
                  if(rInfo!=null) rInfo.close(false)
                  rInfo = iReader.open
-                 
+
                  indexLocation = iReader.indexPartition
                }
                rowsChunk = rowsChunk.map(elem => elem match{ case (leftRow, righResults) =>
@@ -100,8 +103,10 @@ object implicits {
                        val resultsArray = righResults match {case Some(array) => array case None => queries.map(q => None)} //If first index then an array to contain the results
                        Some(
                            queries.zipWithIndex.map(p => p match {case (query, i) => {
-                               val res = rInfo.search(query=query, maxHits=1, filter = Row.empty, outFields=rightRequestFields, maxLevDistance=maxLevDistance, minScore=minScore, boostAcronyms=boostAcronyms, Nngrams=Nngrams)
-                               //println(query)
+                               //val res = rInfo.search(query=query, maxHits=1, filter = Row.empty, outFields=rightRequestFields, maxLevDistance=maxLevDistance, minScore=minScore, boostAcronyms=boostAcronyms, Nngrams=Nngrams)
+                               // call search on SearchStrategy
+                               val res:Array[GenericRowWithSchema] = rInfo.search(query=query, maxHits=1, filter = Row.empty, outFields=rightRequestFields, maxLevDistance=maxLevDistance, minScore=minScore, boostAcronyms=boostAcronyms)
+
                                if(res.size == 0)
                                  resultsArray(i)
                                else

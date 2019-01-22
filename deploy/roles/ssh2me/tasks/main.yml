@@ -13,13 +13,26 @@
   when: hostvars[groups['namenode'][0]].created_users is defined
   loop_control:
     label: "{{ item.name }}"
+- name: collecte keys to register 
+  tags: [create_users]
+  shell: |
+    echo {{item[1]}}
+    cat /home/{{ item[1] }}/.ssh/id_rsa.pub
+  delegate_to: "{{ item[0] }}"
+  with_nested: 
+  - "{{ groups.namenode|union(groups.spark_edge) }}"
+  - "{{ hadoopusers_ssh }}"
+  changed_when: false
+  register: out
+  check_mode: no
+- name: extracting public keys from output
+  tags: [create_users]
+  set_fact:
+    public_keys: "{{ out.results | map(attribute='stdout_lines') | list}}"
 - name: authorized keys present
-  tags: create_users
+  tags: [create_users]
   authorized_key:
-    user: "{{ item.name  }}"
+    user: "{{ item[0] }}"
     state: present
-    key: "{{ item.ssh_public_key  }}"     
-  with_items: "{{ hostvars[groups['namenode'][0]].created_users.results }}"
-  when: hostvars[groups['namenode'][0]].created_users is defined
-  loop_control:
-    label: "{{ item.name }}"
+    key: "{{ item[1] }}"     
+  loop: "{{ public_keys  }}"

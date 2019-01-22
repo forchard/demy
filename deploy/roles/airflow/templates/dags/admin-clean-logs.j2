@@ -1,6 +1,10 @@
+#jinja2:variable_start_string:'<@' , variable_end_string:'@>'
 from airflow import DAG
 from airflow.operators.bash_operator import BashOperator
+from airflow.operators.dummy_operator import DummyOperator
 from datetime import datetime, timedelta
+from airflow.contrib.operators.ssh_operator import SSHOperator
+import os
 
 default_args = {
     'owner': 'airflow',
@@ -20,30 +24,14 @@ default_args = {
 dag = DAG('demy-admin-log-cleaning', default_args=default_args, schedule_interval=timedelta(days=1))
 
 
-t1 = BashOperator(
-    task_id='print_date',
-    bash_command='date',
-    dag=dag)
+    
+# Step 0 - Entry point
+t0 = DummyOperator(task_id='start',retries=3,dag=dag)
 
-t2 = BashOperator(
-    task_id='sleep',
-    bash_command='sleep 5',
-    retries=3,
-    dag=dag)
-
-templated_command = """
-    {% for i in range(5) %}
-        echo "{{ ds }}"
-        echo "{{ macros.ds_add(ds, 7) }}"
-        echo "{{ params.my_param }}"
-    {% endfor %}
-"""
-
-t3 = BashOperator(
-    task_id='templated',
-    bash_command=templated_command,
-    params={'my_param': 'Parameter I passed in'},
-    dag=dag)
-
-t1 >> [t2, t3]
-
+# Step 1 - Acessing all nodes in parallel
+for term in os.environ['DEMY_NODES'][:-1].split(":"):
+    c = """
+      sudo <@ af_run @>/scripts/bash-admin-clean-logs.sh 
+    """.format(**locals())
+    t = SSHOperator(ssh_conn_id="ssh_"+term, task_id="delete_local_logs_"+term, command=c, dag=dag)
+    t0 >> t 

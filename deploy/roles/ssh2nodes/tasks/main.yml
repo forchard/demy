@@ -12,34 +12,57 @@
   register: created_users
   with_items: "{{ hadoopusers }}"
 - name: global known host present
-  tags: create_users
+  tags: [create_users ]
   copy:
     dest: /etc/ssh/ssh_known_hosts
     content: ''
     force: false
-- name: checking hosts already registered
-  tags: create_users
-  shell: "ssh-keygen -F {{ item.split('.')[0] }} -f /etc/ssh/ssh_known_hosts || true"
-  register: host_keys_status
-  with_items: "{{ groups['nodes'] }}" 
-  changed_when: false
 - name: gathering all missing host keys
-  tags: create_users
-  command: "ssh-keyscan -t rsa -H {{ item.item.split('.')[0] }}"
-  register: host_keys_to_insert
-  with_items: "{{ host_keys_status.results }}"
-  when: item.stdout == ''
+  tags: [create_users]
+  shell: | 
+    echo {{ item.split('.')[0] }}-{{ hadoop_cluster_name }}
+    ssh-keyscan -t rsa -H {{ item.split('.')[0] }}-{{ hadoop_cluster_name }}
+  register: out
+  with_items: "{{ groups['nodes'] }}"
   changed_when: false
-  loop_control:
-    label: "{{ item.item }}"
-- name: known hosts registered for ssh
-  tags: create_users
-  lineinfile:
+  check_mode: no
+- name: extracting host keys from output
+  tags: [create_users]
+  set_fact:
+    host_keys: "{{ out.results | map(attribute='stdout_lines') | list}}"
+- name: add hosts to known hosts
+  tags: [create_users ]
+  known_hosts:
     path: /etc/ssh/ssh_known_hosts
-    line: "{{ item.stdout  }} {{ item.item.item.split('.')[0]  }}"
-    regexp: "{{ item.item.item.split('.')[0] }}$"
-    create: true
-  with_items: "{{ host_keys_to_insert.results }}"
-  when: item.skipped is undefined
-  loop_control:
-    label: "{{ item.item.item }}"
+    name: "{{ item[0] }}"
+    key: "{{ item[1] }}"
+    hash_host: true
+  loop: "{{ host_keys }}"
+  #- name: checking hosts already registered
+  #  tags: [create_users, xxx]
+  #  shell: "ssh-keygen -F {{ item.split('.')[0] }}-{{ hadoop_cluster_name }} -f /etc/ssh/ssh_known_hosts || true"
+  #  register: host_keys_status
+  #  with_items: "{{ groups['nodes'] }}" 
+  #  changed_when: false
+  #  check_mode: no
+  #- name: gathering all missing host keys
+  #  tags: [create_users, xxx]
+  #  command: "ssh-keyscan -t rsa -H {{ item.item.split('.')[0] }}"
+  #  register: host_keys_to_insert
+  #  with_items: "{{ host_keys_status.results }}"
+  #  when: item.stdout == ''
+  #  changed_when: false
+  #  loop_control:
+  #    label: "{{ item.item }}"
+  #  check_mode: no
+  #- name: known hosts registered for ssh
+  #  tags: [create_users, xxx]
+  #  lineinfile:
+  #    path: /etc/ssh/ssh_known_hosts
+  #    line: "{{ item.stdout  }} {{ item.item.item.split('.')[0]  }}"
+  #    regexp: "{{ item.item.item.split('.')[0] }}$"
+  #    create: true
+  #  with_items: "{{ host_keys_to_insert.results }}"
+  #  when: item.skipped is undefined
+  #  loop_control:
+  #    label: "{{ item.item.item }}"

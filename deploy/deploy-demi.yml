@@ -7,6 +7,12 @@
     tags: always
     setup:
       filter: "ansible_distribution*"
+- name: initial network setup
+  hosts: [nodes]
+  gather_facts: false
+  become: true
+  roles: 
+  - network_setup 
 - name: Users on head node & register worker hosts
   hosts: [namenode, spark_edge] 
   gather_facts: false

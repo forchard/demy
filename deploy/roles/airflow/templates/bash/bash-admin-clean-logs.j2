@@ -1,0 +1,37 @@
+#tmp
+if [ ! -f {{ tmp_dir  }} ]; then
+  find {{ tmp_dir }} -type f -mtime +5 -delete
+  find {{ tmp_dir }} -mindepth 1 -type d -empty -delete
+fi
+if [ ! -f /tmp ]; then
+  find /tmp -type f -name "zepp*" -mtime +5 -delete
+  find /tmp -type f -name "spark*" -mtime +5 -delete
+  find /tmp -type f -name "*.__wz_cache" -mtime +5 -delete
+  find /tmp -mindepth 1 -type d -empty -delete
+fi
+#hadoop
+if [ ! -f {{ hadoop_run  }}/logs/hadoop ]; then
+  find {{ hadoop_run  }}/logs/hadoop -type f -mtime +5 -delete
+  find {{ hadoop_run  }}/logs/hadoop -mindepth 1 -type d -empty -delete
+fi
+
+if [ ! -f {{ hadoop_run  }}/logs/yarn ]; then
+  find {{ hadoop_run  }}/logs/yarn -type f -mtime +5 -delete
+  find {{ hadoop_run  }}/logs/yarn -type f -mtime +5 -delete
+  find {{ hadoop_run  }}/logs/yarn -mindepth 1 -type d -empty -delete
+fi
+#spark
+if [ ! -f {{ spark_run  }}/logs ]; then
+  find {{ spark_run  }}/logs -type f -mtime +5 -delete
+  find {{ spark_run  }}/logs -mindepth 1 -type d -empty -delete
+fi
+#zeppelin
+if [ ! -f {{ zeppelin_run  }}/logs ]; then
+  find {{ zeppelin_run  }}/logs -type f -mtime +5 -delete
+  find {{ zeppelin_run  }}/logs -mindepth 1 -type d -empty -delete
+fi
+#airflow
+if [ ! -f {{ af_run  }}/logs ]; then
+  find {{ af_run  }}/logs -type f -mtime +5 -delete
+  find {{ af_run  }}/logs -mindepth 1 -type d -empty -delete
+fi

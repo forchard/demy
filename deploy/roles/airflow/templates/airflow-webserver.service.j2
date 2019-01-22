@@ -10,8 +10,6 @@ WorkingDirectory={{ af_run }}
 ExecStart={{ python_home }}/bin/airflow webserver --pid {{ af_run }}/webserver.pid --stdout {{ af_run }}/logs/webserver.log --stderr {{ af_run }}/logs/webserver.err
 Restart=on-failure
 PIDFile={{ af_run }}/webserver.pid
-Environment="TMPDIR={{ tmp_dir }}"
-Environment="AIRFLOW_HOME={{ af_home }}"
-Environment="PATH=$PATH:{{ python_home }}/bin"
+EnvironmentFile={{ af_home }}/environment
 [Install]
 WantedBy=multi-user.target

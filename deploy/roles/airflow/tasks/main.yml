@@ -1,15 +1,15 @@
 ---
-- name: airflow folders exists
-  tags: airflow
+- name: airflow folders exists on nodes
+  tags: [airflow]
   file:
-    path: "{{ item }}" 
+    path: "{{ item[0] }}" 
     owner: airflow
     group: hadoop
     state: directory
-  with_items:
-  - "{{ af_home }}"
-  - "{{ af_run }}"
-  - "{{ af_run }}/logs"
+  delegate_to: "{{ item[1] }}"
+  with_nested: 
+  - ["{{ af_home }}", "{{ af_run }}", "{{ af_run }}/logs", "{{ af_run }}/scripts"]
+  - "{{ groups.nodes }} " 
 - name: necessary dependency packages
   tags: [airflow, packages]
   apt:
@@ -74,6 +74,7 @@
     dest: "{{ custom_libs }}/pip_requirements_airflow"
     content: |
       apache-airflow[mysql,crypto,devel_hadoop,devel,async,hdfs]=={{ af_version  }}
+      sshtunnel
 - name: install python packages
   tags: [airflow]
   pip:
@@ -83,6 +84,7 @@
     TMPDIR: "{{ tmp_dir }}"
     AIRFLOW_HOME: "{{ af_home  }}"
     SLUGIFY_USES_TEXT_UNIDECODE: "yes"
+  notify: [restart airflow webserver, restart airflow scheduler]
 - name: check airflow access to dabatase
   tags: [airflow]
   shell: |
@@ -180,6 +182,14 @@
   - {section: "scheduler", regexp: "^child_process_log_directory", line: "child_process_log_directory = {{ af_run }}/logs/scheduler", state: "present" }
   - {section: "scheduler", regexp: "^max_threads", line: "max_threads = {{ af_max_threads }}", state: "present" }
   notify: [restart airflow webserver, restart airflow scheduler]
+- name: copying the environment variables file
+  tags: [airflow]
+  template:
+    src: templates/environment.j2
+    dest: "{{ af_home }}/environment"
+    owner: airflow
+    group: hadoop
+  notify: [restart airflow webserver, restart airflow scheduler]
 - name: airflow web server installed
   tags: [airflow, all_up, airflow_up]
   template:
@@ -217,10 +227,34 @@
     name: airflow-scheduler
     state: started
 - name: push default dags
-  tags: [airflow, airflow_dags]
-  copy:
-    src: ../airflow/dags/
-    dest: "{{ af_run }}/dags/"
+  tags: [airflow, airflow_dags, xxx]
+  template:
+    src: "templates/dags/{{ item }}.j2"
+    dest: "{{ af_run }}/dags/{{ item }}.py"
     owner: airflow
     group: hadoop
-    force: yes
+  with_items:
+  - ["admin-clean-logs"]
+- name: copy templated scripts
+  tags: [airflow, airflow_dags, xxx]
+  template:
+    src: "templates/bash/{{ item[0] }}.j2"
+    dest: "{{ af_run }}/scripts/{{ item[0] }}.sh"
+    mode: "u=rx,g=r,o=r"
+    owner: airflow
+    group: hadoop
+  delegate_to: "{{ item[1] }}"
+  with_nested: 
+  - ["bash-admin-clean-logs"]
+  - "{{ groups.nodes }}"
+- name: give airflow right to delete log files
+  tags: [airflow, airflow_dags, xxx]
+  template:
+    src: templates/airflow-sudo.j2
+    dest: /etc/sudoers.d/airflow_clean
+    mode: "u=r,g=r,o="
+    validate: visudo -cf %s
+  delegate_to: "{{ item }}"
+  with_items: 
+  - "{{ groups.nodes }}"
+

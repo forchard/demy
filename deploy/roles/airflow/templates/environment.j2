@@ -1,0 +1,9 @@
+TMPDIR={{ tmp_dir }}
+AIRFLOW_HOME={{ af_home }}
+SCHEDULER_RUNS=-1
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:{{ python_home }}/bin
+
+{% for item in groups['nodes'] %}
+AIRFLOW_CONN_SSH_{{ item.split(".")[0] | upper }}=ssh://{{ item.split(".")[0] }}-{{ hadoop_cluster_name }}
+{% endfor %}
+DEMY_NODES={% for item in groups['nodes'] %}{{ item.split(".")[0] }}:{% endfor %}

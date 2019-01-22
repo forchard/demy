@@ -14,6 +14,7 @@ java_package_spark: openjdk-8-jdk
 java_default: java-1.8.0-openjdk-amd64
 protobuf_ver: 2.5.0
 hadoopusers: [hadoop, spark, hive, hdfs, yarn, mapred, airflow]
+hadoopusers_ssh: [airflow, spark]
 crypted_disk: space
 
 #admin public keys:

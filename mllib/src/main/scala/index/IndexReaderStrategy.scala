@@ -18,25 +18,29 @@ trait IndexReaderStrategy {
   val indexDirectory:LocalNode
   val searcher:IndexSearcher
 
-//  def searchDoc(query:String, maxHits:Int, filter:Row = Row.empty, maxLevDistance:Int=2 , minScore:Double=0.0,
-//            boostAcronyms:Boolean=false, searcher:IndexSearcher ):Array[ScoreDoc]
-  def searchDoc(query:String, maxHits:Int, filter:Row, maxLevDistance:Int, minScore:Double,
-                        boostAcronyms:Boolean ):Array[ScoreDoc]
+
+
+  def searchDoc(query:String, maxHits:Int, filter:Row, maxLevDistance:Int,
+                minScore:Double, boostAcronyms:Boolean ):Array[SearchMatch]
 
   def search(query:String, maxHits:Int, filter:Row = Row.empty, outFields:Seq[StructField]=Seq[StructField](),
-             maxLevDistance:Int=2 , minScore:Double=0.0, boostAcronyms:Boolean=false):Array[GenericRowWithSchema] = {
+             maxLevDistance:Int=2 , minScore:Double=0.0, boostAcronyms:Boolean=false, showTags:Boolean=false):Array[GenericRowWithSchema] = {
 
 
     // return (doc, score) Array[ScoreDoc]
     val hits = searchDoc(query, maxHits, filter, maxLevDistance, minScore, boostAcronyms)
 
-    val outSchema = StructType(outFields.toList :+ StructField("_score_", FloatType))
+    val outSchema = StructType(outFields.toList :+ StructField("_score_", FloatType)
+                                                :+ StructField("_tags_", ArrayType(StringType))
+                                                :+ StructField("_startIndex_", IntegerType)
+                                                :+ StructField("_endIndex_", IntegerType))
+                                              //  :+ StructField("_pos_", ArrayType(IntegerType, IntegerType)) ) // add fields
 
     if (query != null) {
       hits.flatMap(hit => {
         if(hit.score < minScore) None
         else {
-          val doc = searcher.doc(hit.doc)
+          val doc = searcher.doc(hit.docId)
           Some(new GenericRowWithSchema(
             values = outFields.toArray.map(field => {
               val lucField = doc.getField(field.name)
@@ -59,7 +63,7 @@ trait IndexReaderStrategy {
                 }
                 obj
               }
-              }}) ++ Array(hit.score)
+            }}) ++ Array(hit.score, hit.ngram.text, hit.ngram.startIndex, hit.ngram.endIndex)// add fields
             ,schema = outSchema))
         }
       })

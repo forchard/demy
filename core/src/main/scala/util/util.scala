@@ -11,26 +11,22 @@ case class EnumerationFromIterator[T](it:Iterator[T]) extends java.util.Enumerat
   def nextElement() = it.next()
 }
 
-object implicits {
-  implicit class IteratorToJava[T](it: Iterator[T]) {
-    def toJavaEnumeration = EnumerationFromIterator(it)
-  }
-}
+
 
 object util {
     def checkpoint[T : org.apache.spark.sql.Encoder : scala.reflect.runtime.universe.TypeTag] (ds:org.apache.spark.sql.Dataset[T], path:String)
-               :org.apache.spark.sql.Dataset[T] = 
+               :org.apache.spark.sql.Dataset[T] =
     {
         ds.write.mode("overwrite").parquet(path)
         return ds.sparkSession.read.parquet(path).as[T]
     }
 
-    def checkpoint(df:org.apache.spark.sql.DataFrame, path:String) = 
+    def checkpoint(df:org.apache.spark.sql.DataFrame, path:String) =
     {
         df.write.mode("overwrite").parquet(path)
         df.sparkSession.read.parquet(path)
     }
-/*    def schemaOf[T: scala.reflect.runtime.universe.TypeTag]: StructType = { 
+/*    def schemaOf[T: scala.reflect.runtime.universe.TypeTag]: StructType = {
         org.apache.spark.sql.catalyst.ScalaReflection
             .schemaFor[T] // this method requires a TypeTag for T
             .dataType

@@ -14,8 +14,8 @@ object implicits {
     def luceneLookup(right:Dataset[_], query:Column, text:Column, maxLevDistance:Int=0, indexPath:String, reuseExistingIndex:Boolean=false
                    , leftSelect:Array[Column]=Array(col("*")), rightSelect:Array[Column]=Array(col("*")), popularity:Option[Column]=None
                    , indexPartitions:Int = 1, maxRowsInMemory:Int=100, indexScanParallelism:Int = 2
-                   , tokenizeText:Boolean=true, minScore:Double=0.0, boostAcronyms:Boolean=false, Nngrams:Int = -1
-                   , strategy:String = "demy.mllib.index.DefaultIndexStrategy", strategyParams: Map[String, String]=Map.empty[String,String]) = {
+                   , tokenizeText:Boolean=true, minScore:Double=0.0, boostAcronyms:Boolean=false
+                   , strategy:String = "demy.mllib.index.StandardStrategy", strategyParams: Map[String, String]=Map.empty[String,String]) = {
 
       val rightApplied = right.select((Array(text.as("_text_")) ++ (popularity match {case Some(c) => Array(c.as("_pop_")) case _ => Array[Column]()}) ++ rightSelect) :_*)
       //Building index if does not exists
@@ -77,7 +77,8 @@ object implicits {
       val rightRequestFields = rightApplied.schema.fields.slice(popularity match {case Some(c) => 2 case _ => 1}, rightApplied.schema.fields.size)
                                                          .map(f => new StructField(name = f.name, dataType = f.dataType, nullable = true, metadata = f.metadata))
       val rightOutFields = rightApplied.schema.fields.slice(popularity match {case Some(c) => 2 case _ => 1}, rightApplied.schema.fields.size)
-                                                     .map(f => new StructField(name = f.name, dataType = f.dataType, nullable = true, metadata = f.metadata)) :+ (new StructField("_score_", FloatType))
+                                                     .map(f => new StructField(name = f.name, dataType = f.dataType, nullable = true, metadata = f.metadata)) ++ Array(new StructField("_score_", FloatType), new StructField("_tags_", ArrayType(StringType)),
+                                                                new StructField("_startIndex_", IntegerType), new StructField("_endIndex_", IntegerType))
 
       val rightOutSchema = if(!isArrayJoin) new StructType(rightOutFields)
                            else new StructType(fields = Array(StructField(name = "array", dataType = ArrayType(elementType=new StructType(rightOutFields) , containsNull = true))))

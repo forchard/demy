@@ -18,7 +18,7 @@ import demy.storage.LocalNode
 import demy.util.log
 
 
-case class SparkLuceneReaderInfo(searcher:IndexSearcher, indexDirectory:LocalNode, reader:DirectoryReader, usePopularity:Boolean = false) extends IndexReaderStrategy {
+case class StandardReadStrategy(searcher:IndexSearcher, indexDirectory:LocalNode, reader:DirectoryReader, usePopularity:Boolean = false) extends IndexReaderStrategy {
 
     def searchDoc(query:String, maxHits:Int, filter:Row = Row.empty, maxLevDistance:Int=2 , minScore:Double=0.0,
               boostAcronyms:Boolean=false ) = {
@@ -73,14 +73,17 @@ case class SparkLuceneReaderInfo(searcher:IndexSearcher, indexDirectory:LocalNod
                    new org.apache.lucene.queries.CustomScoreQuery(qb.build, pop);
                 } else qb.build
 
-//        val outSchema = StructType(outFields.toList :+ StructField("_score_", FloatType))
         val docs = searcher.search(q, maxHits);
         val hits = docs.scoreDocs;
 
-        // return hits with the two methods: hits.doc and hits.score
-        hits
+        //hits
+        hits.map(hit => SearchMatch(docId=hit.doc, score=hit.score,
+                                    ngram=Ngram(text=terms, startIndex=0, endIndex=terms.length)))
+        //if (hits.size > 0) {
+      //      hits.map(hit => SearchMatch(docId=hit.doc, score=hit.score,
+      //                                       ngram=Ngram(text=terms, startIndex=0, endIndex=terms.length)))
+      //  }
+        //else None
     }
-
-
 
 }

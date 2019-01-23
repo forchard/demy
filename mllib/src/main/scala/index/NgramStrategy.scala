@@ -154,6 +154,7 @@ override def searchDoc(terms:Array[String], maxHits:Int, maxLevDistance:Int=2, f
           val maxScoreLocal = terms.zipWithIndex.sliding(nNgrams)
                                                 .map{arrayOfStrings => Ngram(arrayOfStrings.map{case (term, index) => term}, arrayOfStrings(0)._2, arrayOfStrings(0)._2+nNgrams) }
                                                 .map(ngram => evaluateNGram(ngram=ngram, maxHits=maxHits, maxLevDistance=maxLevDistance, filter=filter, usePopularity = usePopularity, minScore=minScore))
+                                                .filter(m => m.size > 0)
                                                 .toSeq
                                                 .topN(maxHits, (searchMatch1, searchMatch2) => (searchMatch1.size > 0 && (searchMatch2.size == 0 || searchMatch1.head.score < searchMatch2.head.score) ) )
                                                 .toArray

@@ -182,7 +182,7 @@ trait ImplicitsSpec extends UnitTest {
                                  , indexScanParallelism= 1
                                  , tokenizeText = true
                                  , strategy="demy.mllib.index.NgramStrategy"
-                                 , strategyParams=Map( ("Nngrams", "3"))
+                                 , strategyParams=Map( ("nNgrams", "3"))
                                  )
 
 

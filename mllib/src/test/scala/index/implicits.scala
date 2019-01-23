@@ -12,19 +12,19 @@ trait ImplicitsSpec extends UnitTest {
     val spark = this.getSpark
     import spark.implicits._
     Seq("foo", "bar").toDS.toDF("query")
-  } 
+  }
   lazy val rightDF =  {
     val spark = this.getSpark
     import spark.implicits._
     Seq(("this is bar", 99)
       , ("I am out of here!", 99))
         .toDS.toDF("text", "val")
-  } 
+  }
 
   lazy val lookedUp = leftDF.luceneLookup(right = rightDF
                                  , query = col("query")
                                  , text=col("text")
-				 , maxLevDistance=0
+				                         , maxLevDistance=0
                                  , indexPath=Storage.getLocalStorage.getTmpPath()
                                  , reuseExistingIndex=false
                                  , leftSelect=Array(col("*"))
@@ -42,12 +42,8 @@ trait ImplicitsSpec extends UnitTest {
   }
 
   "Lucene Lookup" should "find perfect match in text and get a value" in {
-    assert(findPerfectMatch.collect.toSeq == Seq(("bar", "this is bar", 99))) 
+    assert(findPerfectMatch.collect.toSeq == Seq(("bar", "this is bar", 99)))
   }
-
-  it should "find 2 letter accronyms in text" in {
-    assert(1 + 1 == 2)
-  } 
 
 
 
@@ -55,7 +51,7 @@ trait ImplicitsSpec extends UnitTest {
     val spark = this.getSpark
     import spark.implicits._
     Seq("Twitter", "Fort Worth").toDS.toDF("query")
-  } 
+  }
   lazy val rightDFMinScore =  {
     val spark = this.getSpark
     import spark.implicits._
@@ -63,7 +59,7 @@ trait ImplicitsSpec extends UnitTest {
       , ("I am out of here!")
       , ("Fort Worth, TX"))
         .toDS.toDF("text")
-  } 
+  }
 
   lazy val lookedUpMinScore = leftDFMinScore.luceneLookup(right = rightDFMinScore
                                  , query = col("query")
@@ -90,7 +86,7 @@ trait ImplicitsSpec extends UnitTest {
   }
 
   it should "exclude Spam like 'Twitter' with a low score (minScore=1.0)" in {
-    assert(findPerfectMatchMinScore.collect.toSeq == Seq(("Fort Worth", "Fort Worth, TX"))) 
+    assert(findPerfectMatchMinScore.collect.toSeq == Seq(("Fort Worth", "Fort Worth, TX")))
   }
 
 
@@ -101,7 +97,7 @@ trait ImplicitsSpec extends UnitTest {
     val spark = this.getSpark
     import spark.implicits._
     Seq("Fort Worth, TX", "Des Plaines, IL", "IL", "OH", "Columbus, OH").toDS.toDF("query")
-  } 
+  }
   lazy val rightDFAcronyms=  {
     val spark = this.getSpark
     import spark.implicits._
@@ -116,12 +112,12 @@ trait ImplicitsSpec extends UnitTest {
       , ("Columbus, NI")
       )
         .toDS.toDF("text")
-  } 
+  }
 
   lazy val lookedUpAcronyms = leftDFAcronyms.luceneLookup(right = rightDFAcronyms
                                  , query = col("query")
                                  , text=col("text")
-				 , maxLevDistance=0
+				                         , maxLevDistance=0
                                  , indexPath=Storage.getLocalStorage.getTmpPath()
                                  , reuseExistingIndex=false
                                  , leftSelect=Array(col("*"))
@@ -148,11 +144,60 @@ trait ImplicitsSpec extends UnitTest {
                                                          ("IL", "Illinois, IL"),
                                                          ("OH", "Ohio, OH, US"),
                                                          ("Columbus, OH", "Columbus, US, OH")
-                                                         )) 
+                                                         ))
   }
 
-//  it should 
+
+
+  lazy val leftNgrams  =  {
+    val spark = this.getSpark
+    import spark.implicits._
+    Seq("In South east of CA lies the beauty of Glasgow in Scotland England").toDS.toDF("query")
+  }
+  lazy val rightNgrams=  {
+    val spark = this.getSpark
+    import spark.implicits._
+    Seq(("Wœrth, FR")
+      , ("Sainte-Anne-des-Plaines, CA")
+      , ("Cardiff")
+      , ("South Wales Valley")
+      , ("New Glasgow, Californien CA")
+      , ("North west Glasgow GB Scotland")
+      , ("Glasgow South France")
+      )
+        .toDS.toDF("text")
+  }
+
+  lazy val lookedUpNgrams = leftNgrams.luceneLookup(right = rightNgrams
+                                 , query = col("query")
+                                 , text=col("text")
+				                         , maxLevDistance=0
+                                 , indexPath=Storage.getLocalStorage.getTmpPath()
+                                 , reuseExistingIndex=false
+                                 , leftSelect=Array(col("*"))
+                                 , rightSelect=Array(col("*"))
+                                 , popularity=None
+                                 , indexPartitions = 1
+                                 , maxRowsInMemory=10
+                                 , indexScanParallelism= 1
+                                 , tokenizeText = true
+                                 , strategy="demy.mllib.index.NgramStrategy"
+                                 , strategyParams=Map( ("nNgrams", "3"))
+                                 )
+
+
+  lazy val findPerfectMatchNgrams = {
+    val spark = this.getSpark
+    import spark.implicits._
+    lookedUpNgrams.where(col("text").isNotNull).select($"query", $"text").as[(String, String)]
+  }
+
+  it should "find the right place using ngrams" in {
+    assert(findPerfectMatchNgrams.collect.toSeq == Seq(("In South east of CA lies the beauty of Glasgow in Scotland England",
+                                                        "North west Glasgow GB Scotland")
+                                                         ))
+  }
+
 
 
 }
-

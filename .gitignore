@@ -17,6 +17,7 @@ mllib/project/project
 mllib/project/build.properties
 mllib/project/target
 mllib/target
+mllib/spark-warehouse
 core/project/project
 core/project/build.properties
 core/project/target

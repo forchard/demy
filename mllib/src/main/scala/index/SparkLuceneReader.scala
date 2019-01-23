@@ -67,7 +67,6 @@ case class SparkLuceneReader(indexPartition:String, reuseSnapShot:Boolean = fals
     val baseStrategy = classInstance.newInstance(/*Array(searcher, indexNode.asInstanceOf[LocalNode], reader)*/).asInstanceOf[IndexStrategy]
       .set(searcher = searcher, indexDirectory=indexNode.asInstanceOf[LocalNode], reader = reader)
     strategyParams.toSeq.foldLeft(baseStrategy)((current, prop)=> current.setProperty(prop._1, prop._2))
-      .getReadStrategy() //buildStrategy
 
   }
 

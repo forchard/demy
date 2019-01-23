@@ -86,7 +86,7 @@ object implicits {
       val resultRdd0 = leftApplied.rdd
         .mapPartitions(iter => {
           var indexLocation = ""
-          var rInfo:IndexReaderStrategy = null
+          var rInfo:IndexStrategy = null
           val noRows:Option[Array[Option[Row]]]=None
           iter.flatMap(r => {
              var rowsChunk = (scala.collection.mutable.ArrayBuffer((r, noRows)) ++ (for(i <- 1 to maxRowsInMemory if iter.hasNext) yield (iter.next(), noRows))).par
@@ -106,7 +106,7 @@ object implicits {
                            queries.zipWithIndex.map(p => p match {case (query, i) => {
                                //val res = rInfo.search(query=query, maxHits=1, filter = Row.empty, outFields=rightRequestFields, maxLevDistance=maxLevDistance, minScore=minScore, boostAcronyms=boostAcronyms, Nngrams=Nngrams)
                                // call search on SearchStrategy
-                               val res:Array[GenericRowWithSchema] = rInfo.search(query=query, maxHits=1, filter = Row.empty, outFields=rightRequestFields, maxLevDistance=maxLevDistance, minScore=minScore, boostAcronyms=boostAcronyms)
+                               val res:Array[GenericRowWithSchema] = rInfo.search(query=query, maxHits=1, filter = Row.empty, outFields=rightRequestFields, maxLevDistance=maxLevDistance, minScore=minScore, boostAcronyms=boostAcronyms, usePopularity = iReader.usePopularity)
 
                                if(res.size == 0)
                                  resultsArray(i)

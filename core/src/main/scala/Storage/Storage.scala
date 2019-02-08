@@ -7,11 +7,11 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.commons.lang.RandomStringUtils
 import org.apache.commons.io.IOUtils
 
-import java.io.InputStream
+import java.io.{InputStream, ByteArrayInputStream}
 import java.util.ArrayDeque
 import java.nio.file.{Files, Paths, Path => LPath}
 import java.nio.file.StandardCopyOption
-
+import java.nio.charset.StandardCharsets
 import scala.collection.JavaConverters._
 
 case class WriteMode(name:String) {
@@ -41,7 +41,14 @@ trait FSNode {
   def getContentAsString = storage.getContentAsString(this)
   def getContentAsJson = storage.getContentAsJson(this)
   def list = storage.list(this)
-  def setContent(content:InputStream, writeMode:WriteMode = WriteMode.failIfExists) = {this.storage.setContent(this, content, writeMode);this}
+  def setContent(content:InputStream, writeMode:WriteMode) = {this.storage.setContent(this, content, writeMode);this}
+  def setContent(content:InputStream) = {this.storage.setContent(this, content, WriteMode.failIfExists);this}
+  def setContent(content:String, writeMode:WriteMode) = {this.storage.setContent(this, new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8)), writeMode);this}
+  def setContent(content:String) = {this.storage.setContent(this, new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8)), WriteMode.failIfExists);this}
+  def getFileModificationTime(recurse:Boolean = true) = 
+    storage.getFileModificationTime(
+      path = if(this.path!=null) Some(this.path) else throw new Exception("getModificationTime requires a non empty hash")
+      , attrPattern=Map[String, String]())
 }
 
 case class LocalNode(path:String, storage:LocalStorage, sparkCanRead:Boolean, attrs:Map[String, String]= Map[String, String]()) extends FSNode{
@@ -137,6 +144,29 @@ trait Storage {
       to.setContent(content = from.getContent, writeMode = writeMode)
     }
   }
+  def getFileModificationTime(path:Option[String], attrPattern:Map[String, String] = Map[String, String]()):Option[Long]
+  def isUnchanged(path:Option[String], attrPattern:Map[String, String] = Map[String, String](), checkPath:Option[String], checkAttr:Map[String, String] = Map[String, String]()) = {
+    //Getting stored Timestamp
+    val timestampNode =  this.getNode(checkPath.getOrElse(null), checkAttr)
+    val storedTimestamp = if(timestampNode.exists) Some(timestampNode.getContentAsString.toLong) else None
+
+    //Getting current timestamp
+    val currentTimestamp = this.getFileModificationTime(path, attrPattern) 
+
+    //Performing update actions and returning values
+    (storedTimestamp, currentTimestamp) match {
+      case (_, None) => throw new Exception("Cannot find file to get modification time")
+      case (None, Some(current)) => {
+        this.getNode(checkPath.getOrElse(null), checkAttr).setContent(current.toString, WriteMode.overwrite)
+        false
+      }
+      case (Some(stored), Some(current)) => {
+        if(stored != current) this.getNode(checkPath.getOrElse(null), checkAttr).setContent(current.toString, WriteMode.overwrite)
+        stored == current
+      } 
+    }
+  }
+
 }
 
 object Storage {
@@ -215,11 +245,36 @@ case class LocalStorage(override val sparkCanRead:Boolean=false, override val tm
           else 
             Seq(lNode.jPath)
          ).toSeq.map{ cPath => LocalNode(path = cPath.toAbsolutePath().toString(), storage=lNode.storage, sparkCanRead = this.sparkCanRead)}
-       case _ => throw new Exception(s"HDFS Storage cannot manage ${node.getClass.getName} nodes")
+       case _ => throw new Exception(s"Local Storage cannot manage ${node.getClass.getName} nodes")
     }
   def getNode(path:String, attrs:Map[String, String]=Map[String, String]()):FSNode
        = LocalNode(path = path, storage = this, attrs=attrs, sparkCanRead=this.sparkCanRead)
   def ensurePathExists(path:String) = Files.createDirectories(Paths.get(path))
+  def getFileModificationTime(path:Option[String], attrPattern:Map[String, String]) = 
+    this.getNode(path = path.getOrElse("/")) match { 
+       case lNode => 
+         if(!Files.exists(Paths.get(lNode.path)))
+           None
+         else if(Files.isDirectory(Paths.get(lNode.path))) 
+           Files.list(Paths.get(lNode.path)).iterator().asScala
+             .map(cPath => getFileModificationTime(path = Some(cPath.toString), attrPattern = attrPattern))
+             .foldLeft(None.asInstanceOf[Option[Long]]){(current, iter) => (current, iter) match {
+               case (Some(i), Some(j)) => if(i > j) Some(i) else Some(j)
+               case (Some(i), None) => Some(i)
+               case (None, Some(j)) => Some(j)
+               case _ => None
+             }}
+         else { 
+           val filePath = Paths.get(lNode.path)
+           val fileName = filePath.getFileName.toString
+           val isMatch = attrPattern.get("name") match { case Some(pattern) => !pattern.r.findFirstIn(fileName).isEmpty case _ => true}
+           if(isMatch)
+             Some(Files.getLastModifiedTime(filePath).toMillis)
+           else
+             None
+            
+        }
+    }
 }
 
 case class EpiFileStorage(vooUrl:String, user:String, pwd:String) extends Storage {
@@ -276,6 +331,7 @@ case class EpiFileStorage(vooUrl:String, user:String, pwd:String) extends Storag
   def getNode(path:String, attrs:Map[String, String]=Map[String, String]()):FSNode
        = EpiFileNode(path = path, storage = this, attrs=attrs)
   def ensurePathExists(path:String) = throw new Exception("Not implemented")
+  def getFileModificationTime(path:Option[String], attrPattern:Map[String, String]) = last(path = path, attrPattern = attrPattern) match {case Some(n) => Some(n.attrs("date").toLong) case _ => None }
 }
 case class HDFSStorage(hadoopConf:Configuration, override val tmpPrefix:String="demy_") extends Storage {
   override val protocol:String="hdfs"
@@ -347,6 +403,23 @@ case class HDFSStorage(hadoopConf:Configuration, override val tmpPrefix:String="
     } else {
       throw new Exception("Copy opreation not supportes @epi")
     }
+  }
+  def getFileModificationTime(path:Option[String], attrPattern:Map[String, String]) = {
+    val it = fs.listFiles(new HPath(path.getOrElse("/")), true)
+    var lastModified:Option[Long] = None
+    while (it.hasNext()) {
+      val file = it.next()
+      val filePath = file.getPath()
+      val fileName = filePath.getName()
+      val isMatch = attrPattern.get("name") match { case Some(pattern) => !pattern.r.findFirstIn(fileName).isEmpty case _ => true}
+      val modified = file.getModificationTime()
+      lastModified = 
+        if(isMatch && modified > lastModified.getOrElse(Long.MinValue)) {
+          Some(modified)
+      } else 
+          lastModified
+    }
+    lastModified
   }
  
 }

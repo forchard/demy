@@ -24,7 +24,8 @@ object implicits {
             ,normRight + Math.pow(rVal, 2))
         })
         dotProduct / (Math.sqrt(normLeft) * Math.sqrt(normRight))
-      } 
+    }
+    def similarityScore(right:Vector) = (left.cosineSimilarity(right) + 1.0)/2.0
     def sum(right:Vector) = {
       val values = VectorsIterator(left, right)
       (left, right) match {
@@ -53,7 +54,13 @@ object implicits {
          case _ => throw new Exception("Cannot build an iterator on differentr vector types @epi")
        }
       } 
-
+    def scale(factor:Double) = {
+      left match { 
+        case vec:SparseVector => Vectors.sparse(size = vec.size, indices = vec.indices, values = vec.values.map(v => v * factor))
+        case vec:DenseVector => Vectors.dense(values = vec.values.map(v => v * factor))
+        case _ => throw new Exception("Cannot build an iterator on differentr vector types @epi")
+      }
+    }
   }
 }
 case class SparseVectorsIterator(left:SparseVector, right:SparseVector) extends Iterator[(Int, (Double, Double))] {

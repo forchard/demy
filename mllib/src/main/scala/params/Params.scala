@@ -56,4 +56,12 @@ trait HasStratifyByCols extends Params {
   def setStratifyByCols(value: Array[String]): this.type = set(stratifyByCols, value)
 }
 
+trait HasTokensCol extends Params {
+  val tokensCol = new Param[String](this, "tokensCol", "Column containing input arrays of tokens")
+  def setTokensCol(value: String): this.type = set(tokensCol, value)
+}
+trait HasVectorsCol extends Params {
+  val vectorsCol = new Param[String](this, "vectorCol", "Column containing input arrays of vectors (usually associated with tokens array)")
+  def setVectorsCol(value: String): this.type = set(vectorsCol, value)
+}
 

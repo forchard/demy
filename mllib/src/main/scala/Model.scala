@@ -3,6 +3,7 @@ package demy.mllib;
 import demy.mllib.evaluation.{BinaryMetrics, HasBinaryMetrics}
 import demy.mllib.util.log
 import demy.mllib.params._
+import demy.storage.Storage
 import org.apache.spark.ml.{Transformer, Estimator, PipelineStage}
 import org.apache.spark.ml.param.{Params}
 import org.apache.spark.sql.{DataFrame, Row, Dataset}
@@ -45,7 +46,8 @@ case class Model(project:String, model:String, modelGroup:String, steps:Seq[Mode
             , outDataFrames:Seq[String]=Seq[String]()) = {
         var i = 0
         val versions = plan.build(base, stopAfter) match {case vers =>  maxVersions match {case Some(max) => vers.take(max) case _ => vers}}
-
+        val storage = Storage.getSparkStorage
+         
         versions.map(modelVersion => {
           //modelVersion.printSchema()
           log.msg(s"(${i}/${versions.size}:${Math.round(100.0* i/versions.size)}%) Starting Version: ${modelVersion.comment}")
@@ -80,7 +82,7 @@ case class Model(project:String, model:String, modelGroup:String, steps:Seq[Mode
                     })
                   )
               val (outDF, executedStep, outputDFs) = 
-                (theAction, getStepSnapshot(modelVersion, step.name, stepSource.sparkSession))  match {
+                (theAction, getStepSnapshot(modelVersion, step.name, source.sparkSession))  match {
                   case (t, Some((snapshoted, snapshotParams))) => (snapshoted, t, snapshotParams)
                   case (t:Transformer, _) => (t.transform(stepSource), t, step.paramOutputs.map( outputName => outputName -> this.getDFParam(t, outputName)).toMap)
                   case (e:Estimator[_], _) => {
@@ -211,13 +213,12 @@ case class Model(project:String, model:String, modelGroup:String, steps:Seq[Mode
         }
     }
     def getStepSnapshot(version:ModelVersion, stepName:String, spark:SparkSession) = {
+      val storage = Storage.getSparkStorage
       val theStep = version.steps.filter(s => s.name == stepName).head
       if(theStep.reuseSnapshot) {
         val snapPath  = this.stepSnapshotPath(version, stepName)
         val namedOutputPaths = theStep.paramOutputs.map{paramName => (paramName, this.stepSnapshotPath(version, stepName)+"."+paramName)}.toMap
-        val conf = spark.sparkContext.hadoopConfiguration
-        val fs = org.apache.hadoop.fs.FileSystem.get(conf)
-        if(fs.exists(new org.apache.hadoop.fs.Path(snapPath)) && namedOutputPaths.toSeq.forall{case(name, path) => fs.exists(new org.apache.hadoop.fs.Path(path))})
+        if(storage.exists(storage.getNode(snapPath)) && namedOutputPaths.toSeq.forall{case(name, path) => storage.exists(storage.getNode(path))})
           Some((spark.read.parquet(snapPath), namedOutputPaths.mapValues{path => spark.read.parquet(path)}))
         else None
       } else {
@@ -225,18 +226,16 @@ case class Model(project:String, model:String, modelGroup:String, steps:Seq[Mode
       } 
     }
     def setStepSnapshot(df:DataFrame, version:ModelVersion, stepName:String, outDataFrames:Map[String, DataFrame]) = {
-      val spark = df.sparkSession
+      val storage = Storage.getSparkStorage
       val theStep = version.steps.filter(s => s.name == stepName).head
       val snapPath  = this.stepSnapshotPath(version, stepName)
-      val conf = spark.sparkContext.hadoopConfiguration
-      val fs = org.apache.hadoop.fs.FileSystem.get(conf)
-      if(!theStep.reuseSnapshot || !fs.exists(new org.apache.hadoop.fs.Path(snapPath)))
+      if(!theStep.reuseSnapshot || !storage.exists(storage.getNode(snapPath)))
         df.write.mode("overwrite").parquet(snapPath)
       outDataFrames.toSeq.foreach{case (outName, outDF) => 
-        if(!theStep.reuseSnapshot || !fs.exists(new org.apache.hadoop.fs.Path(snapPath+"."+outName)))
+        if(!theStep.reuseSnapshot || !storage.exists(storage.getNode(snapPath+"."+outName)))
           outDF.write.mode("overwrite").parquet(snapPath+"."+outName)
       } 
-      spark.read.parquet(snapPath)
+      df.sparkSession.read.parquet(snapPath)
     }
     def step(step:ModelStep):Model = Model(project = this.project, model = this.model, modelGroup=this.modelGroup, steps = this.steps :+ step, snapshotPath = this.snapshotPath)
     def step(name:String, action:Params, options:(String, String)*):Model = this.step(ModelStep(name = name, action = action).option(options:_*))

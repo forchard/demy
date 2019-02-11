@@ -46,6 +46,14 @@ trait HasInputCols extends shared.HasInputCols {
   def setInputCols(value: Array[String]): this.type = set(inputCols, value)
 }
 
+trait HasOutputCol extends shared.HasOutputCol {
+  def setOutputCol(value: String): this.type = set(outputCol, value)
+}
+
+trait HasRawPredictionCol extends shared.HasRawPredictionCol {
+  def setRawPredictionColCol(value: String): this.type = set(rawPredictionCol, value)
+}
+
 trait HasGroupByCols extends Params {
   val groupByCols = new Param[Array[String]](this, "groupByCols", "The columns to group by")
   def setGroupByCols(value: Array[String]): this.type = set(groupByCols, value)

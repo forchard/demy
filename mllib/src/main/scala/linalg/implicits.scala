@@ -9,8 +9,8 @@ object implicits {
       val (dotProduct, normLeft, normRight) = 
         MergedIterator(left.iterator, right.iterator, 0.0, 0.0).toIterable.foldLeft((0.0, 0.0, 0.0))((sums, current) => (sums, current) match {case ((dotProduct, normLeft, normRight), (lVal, rVal)) =>
           (dotProduct + lVal * rVal
-            ,normLeft +  Math.pow(lVal, 2)
-            ,normRight + Math.pow(rVal, 2))
+            ,normLeft +  lVal * lVal
+            ,normRight + rVal * rVal)
         })
         dotProduct / (Math.sqrt(normLeft) * Math.sqrt(normRight))
       } 
@@ -20,8 +20,8 @@ object implicits {
       val (dotProduct, normLeft, normRight) = 
         VectorsIterator(left, right).toIterable.foldLeft((0.0, 0.0, 0.0))((sums, current) => (sums, current) match {case ((dotProduct, normLeft, normRight), (i, (lVal, rVal))) =>
           (dotProduct + lVal * rVal
-            ,normLeft +  Math.pow(lVal, 2)
-            ,normRight + Math.pow(rVal, 2))
+            ,normLeft +  lVal * lVal
+            ,normRight + rVal * rVal)
         })
         dotProduct / (Math.sqrt(normLeft) * Math.sqrt(normRight))
     }

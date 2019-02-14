@@ -54,6 +54,10 @@ trait HasRawPredictionCol extends shared.HasRawPredictionCol {
   def setRawPredictionColCol(value: String): this.type = set(rawPredictionCol, value)
 }
 
+trait HasPredictionCol extends shared.HasPredictionCol {
+  def setPredictionColCol(value: String): this.type = set(predictionCol, value)
+}
+
 trait HasGroupByCols extends Params {
   val groupByCols = new Param[Array[String]](this, "groupByCols", "The columns to group by")
   def setGroupByCols(value: Array[String]): this.type = set(groupByCols, value)

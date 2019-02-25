@@ -1,5 +1,7 @@
 package demy.mllib.feature
 
+import demy.mllib.params._
+import demy.util.{log => l}
 import org.apache.spark.ml.{Transformer, Estimator}
 import org.apache.spark.ml.param.{Param, ParamMap, Params}
 import org.apache.spark.ml.util.Identifiable
@@ -9,39 +11,78 @@ import org.apache.spark.sql.{Dataset, DataFrame}
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.functions.{udf, col}
 
-trait Tag2VectorBase extends Params {
+trait Tag2VectorBase extends Params with HasInputCol with HasOutputCol{
     val uid: String
-    val dictionary:Map[String, Int] 
-    final val inputCol = new Param[String](this, "inputCol", "The input column it sould be an array of strings")
-    final val outputCol = new Param[String](this, "outputCol", "The new column")
-    def setInputCol(value: String): this.type = set(inputCol, value)
-    def setOutputCol(value: String): this.type = set(outputCol, value)
+    final val minFreq = new Param[Int](this, "minFreq", "threshold indicating the minimim frequency of a identified as a tag")
+    final val trim = new Param[Boolean](this, "trim", "If tags should be trimmed")
+    final val caseSensitive = new Param[Boolean](this, "caseSensitive", "If case is to be taken on consideration when identifying distincts tags")
+    def setTrim(value: Boolean): this.type = set(trim, value)
+    def setCaseSensitive(value: Boolean): this.type = set(caseSensitive, value)
+    def setMinFreq(value: Int): this.type = set(minFreq, value)
+    setDefault(trim -> true, caseSensitive -> false, minFreq -> 0)
     def validateAndTransformSchema(schema: StructType): StructType = {schema.add(new AttributeGroup(name=get(outputCol).get).toStructField)}
 }
 object Tag2VectorBase {
 }
-class Tag2VectorModel(override val uid: String, val dictionary:Map[String, Int]) extends org.apache.spark.ml.Model[Tag2VectorModel] with Tag2VectorBase{
-    override def transform(dataset: Dataset[_]): DataFrame = {
-            dataset.withColumn(get(outputCol).get, udf((values:Seq[String])=>{
-            val indices = values.map(v => if(dictionary.contains(v)) dictionary(v) else throw new Exception("Value not found on Tag2Vector dictionary")).distinct.sortWith(_ < _).toArray
-            new SparseVector(size=dictionary.size, indices= indices, values= indices.map(i => 1.0))   
-        }).apply(col(get(inputCol).get)))
-    }
-    override def transformSchema(schema: StructType): StructType = validateAndTransformSchema(schema)
-    def copy(extra: ParamMap): Tag2VectorModel = {defaultCopy(extra)}    
-    def this() = this(Identifiable.randomUID("tag2VectorModel"), Map[String, Int]())
+class Tag2VectorModel(override val uid: String, val dictionary:Map[String, Int]) 
+  extends org.apache.spark.ml.Model[Tag2VectorModel] with Tag2VectorBase
+{
+  override def transform(dataset: Dataset[_]): DataFrame = {
+    val doTrim = getOrDefault(trim)
+    val doToLower = !getOrDefault(caseSensitive)
+
+    dataset.withColumn(get(outputCol).get, udf((values:Seq[String])=>{
+      val cValues = if(values==null) Seq[String]() else values 
+      val indices = cValues.flatMap{v =>
+        var tag = if(doTrim) v.trim else v  
+        tag = if(doToLower) tag.toLowerCase else tag  
+        if(dictionary.contains(tag)) Some(dictionary(tag)) 
+        else None
+      }
+      .distinct
+      .sortWith(_ < _)
+      .toArray
+      
+      new SparseVector(size=dictionary.size, indices= indices, values= indices.map(i => 1.0))   
+    }).apply(col(get(inputCol).get)))
+  }
+  override def transformSchema(schema: StructType): StructType = validateAndTransformSchema(schema)
+  def copy(extra: ParamMap): Tag2VectorModel = {defaultCopy(extra)}    
+  def this() = this(Identifiable.randomUID("tag2VectorModel"), Map[String, Int]())
 }
-object Tag2Vector {
-}
-class Tag2Vector(override val uid: String, val dictionary:Map[String, Int]) extends Estimator[Tag2VectorModel] with Tag2VectorBase{
-    override def fit(dataset: Dataset[_]): Tag2VectorModel = {
-      import dataset.sparkSession.implicits._
-      val dico = dataset.select(col(get(inputCol).get)).as[Seq[String]].flatMap(a => a).distinct.collect.sortWith(_ < _).zipWithIndex.toMap
-      new Tag2VectorModel(uid, dico).setInputCol(get(inputCol).get).setOutputCol(get(outputCol).get).setParent(this)
-    }
-    override def transformSchema(schema: StructType): StructType = validateAndTransformSchema(schema)
-    def copy(extra: ParamMap): Tag2Vector = {defaultCopy(extra)}    
-    def this() = this(Identifiable.randomUID("tag2Vector"), Map[String, Int]())
-}
-object Tag2VectorModel {
+
+class Tag2Vector(override val uid: String) extends Estimator[Tag2VectorModel] with Tag2VectorBase{
+  override def fit(dataset: Dataset[_]): Tag2VectorModel = {
+    import dataset.sparkSession.implicits._
+    val doTrim = getOrDefault(trim)
+    val doToLower = !getOrDefault(caseSensitive)
+    val minF = getOrDefault(minFreq)
+    val dico = dataset
+      .select(col(get(inputCol).get)).as[Seq[String]]
+      .flatMap{a => 
+        if(a==null)
+          Seq[(String, Long)]()
+        else a.map{ v =>
+          var tag = if(v == null) "" else v
+          tag = if(doTrim) tag.trim else tag  
+          tag = if(doToLower) tag.toLowerCase else tag
+          (tag, 1L)
+        }
+      }
+      .groupByKey{case (tag, count)=> tag}
+      .reduceGroups((p1, p2)=> (p1, p2) match {
+        case ((tag, count1), (_, count2)) => (tag, count1 + count2)
+      })
+      .flatMap{case (_, (tag, count)) => if(count >= minF) Some(tag) else None}
+      .collect
+      .sortWith(_ < _)
+      .zipWithIndex
+      .toMap
+       
+    l.msg(s"Dictionnary with ${dico.size} entries: $dico")
+    copyValues(new Tag2VectorModel(uid, dico).setParent(this))
+  }
+  override def transformSchema(schema: StructType): StructType = validateAndTransformSchema(schema)
+  def copy(extra: ParamMap): Tag2Vector = {defaultCopy(extra)}    
+  def this() = this(Identifiable.randomUID("tag2Vector"))
 }

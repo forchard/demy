@@ -31,7 +31,7 @@ class RawPrediction2Score(override val uid: String) extends Transformer with Has
                 else no/(no + yes)
             })
             new DenseVector(scores.toArray) 
-        }).apply(if(isArray) col(get(rawPredictionCol).get) else array(col(get(rawPredictionCol).get))))
+        }).apply(if(isArray) col(getOrDefault(rawPredictionCol)) else array(col(getOrDefault(rawPredictionCol)))))
     }
     override def transformSchema(schema: StructType): StructType = {schema.add(new AttributeGroup(name=get(scoreCol).get).toStructField)}
     def copy(extra: ParamMap): RawPrediction2Score = {defaultCopy(extra)}    

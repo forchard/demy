@@ -7,3 +7,7 @@ class UnitTest()  extends FlatSpec {
   def getSpark = SharedSpark.getSpark
 }
 
+class UnitTestVars  {
+  def getSpark = SharedSpark.getSpark
+}
+

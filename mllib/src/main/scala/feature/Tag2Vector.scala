@@ -14,12 +14,14 @@ import org.apache.spark.sql.functions.{udf, col}
 trait Tag2VectorBase extends Params with HasInputCol with HasOutputCol{
     val uid: String
     final val minFreq = new Param[Int](this, "minFreq", "threshold indicating the minimim frequency of a identified as a tag")
+    final val topClasses = new Param[Int](this, "topClasses", "maximum number of classes to return ranked by frequency")
     final val trim = new Param[Boolean](this, "trim", "If tags should be trimmed")
     final val caseSensitive = new Param[Boolean](this, "caseSensitive", "If case is to be taken on consideration when identifying distincts tags")
     def setTrim(value: Boolean): this.type = set(trim, value)
     def setCaseSensitive(value: Boolean): this.type = set(caseSensitive, value)
     def setMinFreq(value: Int): this.type = set(minFreq, value)
-    setDefault(trim -> true, caseSensitive -> false, minFreq -> 0)
+    def setTopClasses(value: Int): this.type = set(topClasses, value)
+    setDefault(trim -> true, caseSensitive -> false, minFreq -> 0, topClasses -> 0)
     def validateAndTransformSchema(schema: StructType): StructType = {schema.add(new AttributeGroup(name=get(outputCol).get).toStructField)}
 }
 object Tag2VectorBase {
@@ -57,25 +59,28 @@ class Tag2Vector(override val uid: String) extends Estimator[Tag2VectorModel] wi
     val doTrim = getOrDefault(trim)
     val doToLower = !getOrDefault(caseSensitive)
     val minF = getOrDefault(minFreq)
-    val dico = dataset
+    val topC = getOrDefault(topClasses)
+    val sorted = dataset
       .select(col(get(inputCol).get)).as[Seq[String]]
       .flatMap{a => 
         if(a==null)
           Seq[(String, Long)]()
-        else a.map{ v =>
+        else a.flatMap{ v =>
           var tag = if(v == null) "" else v
           tag = if(doTrim) tag.trim else tag  
           tag = if(doToLower) tag.toLowerCase else tag
-          (tag, 1L)
+          if(tag == "") None else Some(tag, 1L)
         }
       }
       .groupByKey{case (tag, count)=> tag}
       .reduceGroups((p1, p2)=> (p1, p2) match {
         case ((tag, count1), (_, count2)) => (tag, count1 + count2)
       })
-      .flatMap{case (_, (tag, count)) => if(count >= minF) Some(tag) else None}
-      .collect
-      .sortWith(_ < _)
+      .flatMap{case (_, (tag, count)) => if(count >= minF) Some(tag, count) else None}
+      .sort(col("_2").desc)
+      
+    val dico = (if(topC>0) sorted.take(topC) else sorted.collect)
+      .map{case (tag, count) => tag}
       .zipWithIndex
       .toMap
        

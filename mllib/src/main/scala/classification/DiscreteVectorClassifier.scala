@@ -88,6 +88,7 @@ trait DiscreteVectorBase extends HasParallelismDemy with HasPredictionCol with H
         paramMap.put(theClassifier.labelCol -> labelColName)
         paramMap.put(theClassifier.featuresCol -> get(featuresCol).get)
         paramMap.put(theClassifier.predictionCol -> get(predictionCol).get)
+        paramMap.put(theClassifier.rawPredictionCol -> get(rawPredictionCol).get)
 
         Future {
             blocking {

@@ -12,6 +12,7 @@ import org.apache.spark.sql.types._
 import org.apache.spark.sql.functions.{col}
 import org.apache.spark.sql.SparkSession
 import scala.collection.JavaConverters._
+import java.net.{URLDecoder, URLEncoder}
 
 case class Model(project:String, model:String, modelGroup:String, steps:Seq[ModelStep], snapshotPath:Option[String]) {
     def getVersion(steps:String*) = {
@@ -219,7 +220,7 @@ case class Model(project:String, model:String, modelGroup:String, steps:Seq[Mode
         val snapPath  = this.stepSnapshotPath(version, stepName)
         val namedOutputPaths = theStep.paramOutputs.map{paramName => (paramName, this.stepSnapshotPath(version, stepName)+"."+paramName)}.toMap
         if(storage.exists(storage.getNode(snapPath)) && namedOutputPaths.toSeq.forall{case(name, path) => storage.exists(storage.getNode(path))})
-          Some((spark.read.parquet(snapPath), namedOutputPaths.mapValues{path => spark.read.parquet(path)}))
+          Some((decodeCols(spark.read.parquet(snapPath)), namedOutputPaths.mapValues{path => decodeCols(spark.read.parquet(path))}))
         else None
       } else {
         None
@@ -230,13 +231,16 @@ case class Model(project:String, model:String, modelGroup:String, steps:Seq[Mode
       val theStep = version.steps.filter(s => s.name == stepName).head
       val snapPath  = this.stepSnapshotPath(version, stepName)
       if(!theStep.reuseSnapshot || !storage.exists(storage.getNode(snapPath)))
-        df.write.mode("overwrite").parquet(snapPath)
+        encodeCols(df).write.mode("overwrite").parquet(snapPath)
       outDataFrames.toSeq.foreach{case (outName, outDF) => 
         if(!theStep.reuseSnapshot || !storage.exists(storage.getNode(snapPath+"."+outName)))
-          outDF.write.mode("overwrite").parquet(snapPath+"."+outName)
+          encodeCols(outDF).write.mode("overwrite").parquet(snapPath+"."+outName)
       } 
-      df.sparkSession.read.parquet(snapPath)
+      decodeCols(df.sparkSession.read.parquet(snapPath))
     }
+    def encodeCols(df:DataFrame) = df.select(df.columns.map(c => col(c).as(URLEncoder.encode(c, "UTF-8"))):_*)
+    def decodeCols(df:DataFrame) = df.select(df.columns.map(c => col(c).as(URLDecoder.decode(c, "UTF-8"))):_*)
+
     def step(step:ModelStep):Model = Model(project = this.project, model = this.model, modelGroup=this.modelGroup, steps = this.steps :+ step, snapshotPath = this.snapshotPath)
     def step(name:String, action:Params, options:(String, String)*):Model = this.step(ModelStep(name = name, action = action).option(options:_*))
     def step(name:String, version:String, action:Params, options:(String, String)*):Model = this.step(ModelStep(name = name, version= version, family = name , action = action).option(options:_*))

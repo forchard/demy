@@ -13,6 +13,7 @@ import org.apache.spark.sql.{Dataset, DataFrame}
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.functions.{udf, col, lit}
 import org.apache.spark.storage.StorageLevel
+import demy.util.{log => l}
 
 trait BinaryOptimalEvaluatorBase extends HasLabelCol with HasScoreCol with HasPredictionCol {
   val uid: String
@@ -72,6 +73,7 @@ class BinaryOptimalEvaluator(override val uid: String) extends Estimator[BinaryO
     val optimizeAs = getOrDefault(optimize)
     val optimalThreshold = 
       if(optimizeAs.startsWith("precision:")) {
+        l.msg("optimizing precission")
         val precLimit = optimizeAs.replace("precision:", "").toDouble
         precs
           .zip(recs)
@@ -88,6 +90,7 @@ class BinaryOptimalEvaluator(override val uid: String) extends Estimator[BinaryO
         ._1._1
       }
       else if(optimizeAs.startsWith("recall:")) {
+        l.msg("optimizing recall")
         val recLimit = optimizeAs.replace("recall:", "").toDouble
         precs
           .zip(recs)
@@ -101,6 +104,7 @@ class BinaryOptimalEvaluator(override val uid: String) extends Estimator[BinaryO
           ._1._1
       }
       else if(optimizeAs.startsWith("prec/recall:")) {
+        l.msg("optimizing precRecall ratio")
         val ratioLimit = optimizeAs.replace("prec/recall:", "").toDouble
         precs
           .zip(recs)
@@ -111,7 +115,10 @@ class BinaryOptimalEvaluator(override val uid: String) extends Estimator[BinaryO
            })
           ._1._1
       }
-      else f1s.reduce((p1, p2) => if(p1._2 > p2._2) p1 else p2)._1
+      else {
+        l.msg("optimizing f1")
+        f1s.reduce((p1, p2) => if(p1._2 > p2._2) p1 else p2)._1
+      }
     
     val basePrecision = Some(
       precs
@@ -121,7 +128,7 @@ class BinaryOptimalEvaluator(override val uid: String) extends Estimator[BinaryO
       )
     val precision = 
       precs
-        .filter(p => p._1==optimalThreshold)
+        .filter(p => p._1 == optimalThreshold)
         .map(p => p._2)
         .take(1) match {
           case Array(v) => Some(v) 
@@ -129,13 +136,13 @@ class BinaryOptimalEvaluator(override val uid: String) extends Estimator[BinaryO
         }
     val baseRecall = Some(
       recs
-        .filter(p => p._1==midThreshold)
+        .filter(p => p._1 == midThreshold)
         .map(p => p._2)
         .first
       )
     val recall = 
       recs
-        .filter(p => p._1==optimalThreshold)
+        .filter(p => p._1 == optimalThreshold)
         .map(p => p._2)
         .take(1) match {
           case Array(v) => Some(v) 
@@ -143,12 +150,19 @@ class BinaryOptimalEvaluator(override val uid: String) extends Estimator[BinaryO
         }
     val baseF1Score = Some(
       f1s
-        .filter(p => p._1==midThreshold)
+        .filter(p => p._1 == midThreshold)
         .map(p => p._2)
         .first
       )
 
-    val f1Score = f1s.filter(p => p._1==optimalThreshold).map(p => p._2).take(1) match {case Array(v) => Some(v) case _ => None}
+    val f1Score = 
+      f1s
+        .filter(p => p._1 == optimalThreshold)
+        .map(p => p._2)
+        .take(1) match {
+          case Array(v) => Some(v) 
+          case _ => None
+        }
     val areaUnderROC = Some(binMetrics.areaUnderROC())
     val rocCourve = binMetrics.roc().collect
 
@@ -179,7 +193,7 @@ class BinaryOptimalEvaluator(override val uid: String) extends Estimator[BinaryO
 };class BinaryOptimalEvaluatorModel(override val uid: String, val metrics:BinaryMetrics) extends org.apache.spark.ml.Model[BinaryOptimalEvaluatorModel] with BinaryOptimalEvaluatorBase with HasBinaryMetrics{
     override def transform(dataset: Dataset[_]): DataFrame = {
         dataset.withColumn(getOrDefault(predictionCol), udf((score:MLVector, threshold:Double)=>{
-            Vectors.dense(score.toArray.map(s => if(s<=threshold) 0.0 else 1.0))
+          Vectors.dense(score.toArray.map(s => if(s<threshold) 0.0 else 1.0))
         }).apply(col(getOrDefault(scoreCol)), lit(metrics.threshold.get)))
     }
     override def transformSchema(schema: StructType): StructType = schema

@@ -9,16 +9,23 @@ import org.apache.spark.ml.param.shared
 trait HasParallelismDemy extends Params {
   val parallelism = new Param[Int](this, "parallelism", "the number of threads to use when running parallel algorithms", ParamValidators.gtEq(1))
   setDefault(parallelism -> 1)
-  def getParallelism: Int = get(parallelism).get
+  def getParallelism: Int = getOrDefault(parallelism)
   def getExecutionContext: ExecutionContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(getParallelism))
   def setParallelism(value: Int): this.type = set(parallelism, value)
 }
 
+trait HasLabelCol extends shared.HasLabelCol {
+  def setLabelCol(value: String): this.type = set(labelCol, value)
+}
+trait HasFeaturesCol extends shared.HasFeaturesCol {
+  def setFeaturesCol(value: String): this.type = set(featuresCol, value)
+}
+
 trait HasScoreCol extends Params {
-  val scoreCol = new Param[String](this, "scoreCol", "the column where score is stored")
-  setDefault(scoreCol -> "score")
-  def getScoreCol: String = get(scoreCol).get
+  val scoreCol = new Param[String](this, "scoreCol", "The name of the score column to produce")
+  def getScoreCol:String = getOrDefault(scoreCol)
   def setScoreCol(value: String): this.type = set(scoreCol, value)
+  setDefault(scoreCol-> "score")
 }
 
 trait HasExecutionMetrics extends Params {
@@ -42,8 +49,24 @@ trait HasTrainRatio extends Params {
   def setTrainRatio(value: Double): this.type = set(trainRatio, value)
 }
 
+trait HasInputCol extends shared.HasInputCol {
+  def setInputCol(value: String): this.type = set(inputCol, value)
+}
+
 trait HasInputCols extends shared.HasInputCols {
   def setInputCols(value: Array[String]): this.type = set(inputCols, value)
+}
+
+trait HasOutputCol extends shared.HasOutputCol {
+  def setOutputCol(value: String): this.type = set(outputCol, value)
+}
+
+trait HasRawPredictionCol extends shared.HasRawPredictionCol {
+  def setRawPredictionCol(value: String): this.type = set(rawPredictionCol, value)
+}
+
+trait HasPredictionCol extends shared.HasPredictionCol {
+  def setPredictionCol(value: String): this.type = set(predictionCol, value)
 }
 
 trait HasGroupByCols extends Params {
@@ -62,4 +85,17 @@ trait HasProbabilityCol extends shared.HasProbabilityCol {
 
 trait HasFeaturesCol extends shared.HasFeaturesCol {
   def setFeaturesCol(value: String): this.type = set(featuresCol, value)
+}
+
+trait HasTokensCol extends Params {
+  val tokensCol = new Param[String](this, "tokensCol", "Column containing input arrays of tokens")
+  def setTokensCol(value: String): this.type = set(tokensCol, value)
+}
+trait HasVectorsCol extends Params {
+  val vectorsCol = new Param[String](this, "vectorCol", "Column containing input arrays of vectors (usually associated with tokens array)")
+  def setVectorsCol(value: String): this.type = set(vectorsCol, value)
+}
+
+trait HasSeed extends shared.HasSeed {
+  def setSeed(value:Long): this.type = set(seed, value)
 }

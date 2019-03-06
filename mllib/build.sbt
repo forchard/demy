@@ -15,6 +15,7 @@ lazy val root = (project in file("."))
     libraryDependencies += "org.scalactic" %% "scalactic" % "3.0.5",
     libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.5" % "test",
     libraryDependencies += "org.apache.commons" % "commons-text" % "1.4" ,
+    libraryDependencies += "com.github.fommil.netlib" % "all" % "1.1.2" pomOnly(),
 //    scalacOptions ++= Seq("-deprecation", "-feature"),
 
     assemblyMergeStrategy in assembly := {

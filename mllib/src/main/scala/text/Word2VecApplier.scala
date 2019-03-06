@@ -27,7 +27,8 @@ class Word2VecApplier(override val uid: String) extends Transformer with HasExec
     final val indexScanParallelism = new Param[Int](this, "indexScanParallelism", "The number of threads tha will be used for performing indexes lookups")
     final val accentSensitive = new Param[Boolean](this, "accentSensitive", "If accents are to be considered when matching vectors")
     final val caseSensitive = new Param[Boolean](this, "caseSensitive", "If case is to be considered when matching vectors")
-    setDefault(reuseIndexFile -> true, sumWords -> true, truncateWordsAt-> 0, accentSensitive -> true, caseSensitive->false, maxRowsInMemory->100, indexScanParallelism->1)
+    final val stopWords = new Param[Array[String]](this, "stopWords", "words for witch no vector is goind to be returned")
+    setDefault(reuseIndexFile -> true, sumWords -> true, truncateWordsAt-> 0, accentSensitive -> true, caseSensitive->false, maxRowsInMemory->100, indexScanParallelism->1, stopWords -> Array[String]())
     def setInputCol(value: String): this.type = set(inputCol, value)
     def setOutputCol(value: String): this.type = set(outputCol, value)
     def setFormat(value: String): this.type = set(format, value)
@@ -41,6 +42,7 @@ class Word2VecApplier(override val uid: String) extends Transformer with HasExec
     def setIndexScanParallelism(value: Int): this.type = set(indexScanParallelism, value)
     def setAccentSensitive(value: Boolean): this.type = set(accentSensitive, value)
     def setCaseSensitive(value: Boolean): this.type = set(caseSensitive, value)
+    def setStopWords(value: Array[String]): this.type = set(stopWords, value)
     override def transform(dataset: Dataset[_]): DataFrame = {
         val spark = dataset.sparkSession
         import spark.implicits._
@@ -50,10 +52,15 @@ class Word2VecApplier(override val uid: String) extends Transformer with HasExec
         val simplify = !getOrDefault(accentSensitive)
         val toLower = !getOrDefault(caseSensitive)
         val vectorColName = get(outputCol).get
-        val vectorsDF = getOrDefault(format) match {
-            case "spark" => spark.read.parquet(vPath).as[(String, Array[Double])].map(p => (p._1, Vectors.dense(p._2))).toDF("__token__", vectorColName)
-            case "text" => spark.read.text(vPath).as[String].map(s => s.split(" ")).filter(a => a.size>300).map(a => (a(0), Vectors.dense(a.drop(1).map(s => s.toDouble)))).toDF("__token__", vectorColName)
-        }
+        val stop = spark.sparkContext.broadcast((if(toLower) getOrDefault(stopWords).map(_.toLowerCase) else getOrDefault(stopWords)).toSet)
+
+        val vectorsDS:Dataset[(String, MLVector)] = getOrDefault(format) match {
+             case "spark" => spark.read.parquet(vPath).as[(String, Array[Double])].map(p => (p._1, Vectors.dense(p._2)))
+             case "text" => spark.read.text(vPath).as[String].map(s => s.split(" ")).filter(a => a.size>300).map(a => (a(0), Vectors.dense(a.drop(1).map(s => s.toDouble))))
+          }
+        val vectorsDF = vectorsDS
+          .filter(p => p match {case (token, vector) => !stop.value.contains(token)})
+          .toDF("__token__", vectorColName)
         
         val ret = (get(repartitionCount) match { case Some(numRep) => dataset.repartition(numRep) case _ => dataset})
                     .luceneLookup(right = vectorsDF

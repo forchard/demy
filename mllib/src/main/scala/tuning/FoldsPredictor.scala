@@ -81,10 +81,10 @@ class FoldsPredictorModel(override val uid: String, val model:FoldsPredictorBase
             .buildFolds(toFoldDs)
       var baseEstimator = get(estimator).get
       baseEstimator = baseEstimator
-            .set(baseEstimator.predictionCol, get(predictionCol).get)
-            .set(baseEstimator.labelCol, get(labelCol).get)
-            .set(baseEstimator.featuresCol, get(featuresCol).get)
-            .set(baseEstimator.rawPredictionCol, get(rawPredictionCol).get)
+            .set(baseEstimator.predictionCol, getOrDefault(predictionCol))
+            .set(baseEstimator.labelCol, getOrDefault(labelCol))
+            .set(baseEstimator.featuresCol, getOrDefault(featuresCol))
+            .set(baseEstimator.rawPredictionCol, getOrDefault(rawPredictionCol))
 
       debug("training folds")
       val executionContext = getExecutionContext

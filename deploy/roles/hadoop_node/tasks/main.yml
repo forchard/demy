@@ -120,13 +120,13 @@
   with_items: [build-essential, g++, autoconf, automake, libtool, zlib1g-dev, pkg-config, libssl-dev, xmlstarlet, git, libfontconfig ,pandoc, proj-data, locales, curl, jq ]
   notify: [ set_cran_mirror ]
 - name: installing backportes packages
-  tags: [packages, upgrade, python]
+  tags: [packages, upgrade, python, blas]
   apt:
     name: "{{ item }}"
     default_release: "{{ ansible_distribution_release }}-backports"
     update_cache: true
     state: latest
-  with_items: [python-setuptools, libgdal-dev, libgeos-dev, libproj-dev, cmake, llvm-6.0, libbz2-dev, libreadline-gplv2-dev, libsqlite3-dev, libncurses5-dev, libncursesw5-dev, xz-utils,tk-dev, libgdbm-dev, libc6-dev, libssl-dev ] #, python3, python3-pip, python3-numpy, python3-scipy]
+  with_items: [python-setuptools, libgdal-dev, libgeos-dev, libproj-dev, cmake, llvm-6.0, libbz2-dev, libreadline-gplv2-dev, libsqlite3-dev, libncurses5-dev, libncursesw5-dev, xz-utils,tk-dev, libgdbm-dev, libc6-dev, libssl-dev, libatlas3-base, libopenblas-base ] #libgfortran-6-dev, python3, python3-pip, python3-numpy, python3-scipy]
   notify: [ set_npm_proxy, set_cran_mirror ]
 - name: download python
   tags: [python, upgrade]

@@ -21,6 +21,7 @@ class SparkTest  extends UnitTest with BeforeAndAfterAll
   with tuning.RandomSplitSpec
   with feature.ArrayHasherSpec
   with index.ImplicitsSpec
+  with tuning.BinaryOptimalEvaluatorSpec
 {
   override def beforeAll() {
     SharedSpark.init

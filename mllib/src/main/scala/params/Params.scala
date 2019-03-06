@@ -56,4 +56,10 @@ trait HasStratifyByCols extends Params {
   def setStratifyByCols(value: Array[String]): this.type = set(stratifyByCols, value)
 }
 
+trait HasProbabilityCol extends shared.HasProbabilityCol {
+  def setProbabilityCol(value: String): this.type = set(probabilityCol, value)
+}
 
+trait HasFeaturesCol extends shared.HasFeaturesCol {
+  def setFeaturesCol(value: String): this.type = set(featuresCol, value)
+}

@@ -17,6 +17,10 @@ trait implicitsSpec extends UnitTest{
                 )  
   val t = new implicitsSpecTool
 
+  "Sum" should "be correct ibn dense vectors" in {
+    assert(toTestValues.map{case (s1, s2) => Vectors.dense(s1.toArray).sum(} => p<0.000001) 
+  }
+
   "Cosine Similarity" should "be 1 for equal vectors" in {
     assert(toTestValues.map(p => t.cosineSimAllError(p._1, p._1)).sum<0.000001) 
   }
@@ -50,6 +54,12 @@ class implicitsSpecTool {
 
   def cosineSimilarity(x: Iterable[Double], y: Iterable[Double]): Double = {
     dotProduct(x, y)/(magnitude(x) * magnitude(y))
+  }
+  def sum(x: Iterable[Double], y: Iterable[Double]): Seq[Double] = {
+    x.zip(y).map(_ + _).toSeq
+  }
+  def error(x: Iterable[Double], y: Iterable[Double]): Seq[Double] = {
+    x.zip(y).map(_ - _).map(Math.abs(_)).sum
   }
   def dotProduct(x: Iterable[Double], y: Iterable[Double]): Double = {
     (for((a, b) <- x zip y) yield a * b) sum

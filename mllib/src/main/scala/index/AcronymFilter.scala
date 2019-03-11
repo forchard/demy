@@ -1,4 +1,4 @@
-package demy.mllib.index; 
+package demy.mllib.index;
 
 import org.apache.lucene.analysis.CharacterUtils
 import org.apache.lucene.analysis.TokenFilter
@@ -19,11 +19,11 @@ class AcronymFilterFactory(args:java.util.Map[String,String]) extends TokenFilte
 
 
 // TokenFilter = TokenStream whose input is another TokenStream
-// TokenStream = enumerates the sequence of tokens 
+// TokenStream = enumerates the sequence of tokens
 class AcronymFilter(in:TokenStream) extends TokenFilter(in) {
   // CharTermAttribute = term text of a token
 //    val termAtt:CharTermAttribute = addAttribute(new CharTermAttribute());
-    val termAtt = addAttribute(classOf[CharTermAttribute])  
+    val termAtt = addAttribute(classOf[CharTermAttribute])
 
 
     @throws(classOf[IOException])
@@ -31,16 +31,17 @@ class AcronymFilter(in:TokenStream) extends TokenFilter(in) {
         if (input.incrementToken()) {
             var termBuffer = termAtt.buffer()
             val length = termAtt.length
-   
+
             if (length == 1)
               termAtt.setLength(0)
             else {
               // check if all letters of query are uppercase
-              var allLetterUppercase = Range(0, length).forall(ind => termBuffer(ind).isUpper)
-
+              var allLetterUppercase = 
+                if (length == 2) Range(0, length).forall(ind => termBuffer(ind).isUpper)
+                else false
               // if all uppercase, double the content, for ex. the string "TX" becomes "TXTX"
               if (allLetterUppercase) {
-                  termAtt.resizeBuffer(2*length) // grow termAtt double 
+                  termAtt.resizeBuffer(2*length) // grow termAtt double
                   termBuffer = termAtt.buffer()
                   Range(0, length).foreach{i=>
                     termBuffer(length+i)=termBuffer(i)
@@ -57,5 +58,3 @@ class AcronymFilter(in:TokenStream) extends TokenFilter(in) {
             return false;
     }
 }
-
-

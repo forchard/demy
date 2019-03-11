@@ -83,9 +83,6 @@ trait HasProbabilityCol extends shared.HasProbabilityCol {
   def setProbabilityCol(value: String): this.type = set(probabilityCol, value)
 }
 
-trait HasFeaturesCol extends shared.HasFeaturesCol {
-  def setFeaturesCol(value: String): this.type = set(featuresCol, value)
-}
 
 trait HasTokensCol extends Params {
   val tokensCol = new Param[String](this, "tokensCol", "Column containing input arrays of tokens")

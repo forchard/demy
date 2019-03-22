@@ -28,7 +28,16 @@ class Word2VecApplier(override val uid: String) extends Transformer with HasExec
     final val accentSensitive = new Param[Boolean](this, "accentSensitive", "If accents are to be considered when matching vectors")
     final val caseSensitive = new Param[Boolean](this, "caseSensitive", "If case is to be considered when matching vectors")
     final val stopWords = new Param[Array[String]](this, "stopWords", "words for witch no vector is goind to be returned")
-    setDefault(reuseIndexFile -> true, sumWords -> true, truncateWordsAt-> 0, accentSensitive -> true, caseSensitive->false, maxRowsInMemory->100, indexScanParallelism->1, stopWords -> Array[String]())
+    setDefault(
+      reuseIndexFile -> true
+      , sumWords -> true
+      , truncateWordsAt-> 0
+      , accentSensitive -> true
+      , caseSensitive->false
+      , maxRowsInMemory->100
+      , indexScanParallelism->1
+      , stopWords -> Array[String]()
+    )
     def setInputCol(value: String): this.type = set(inputCol, value)
     def setOutputCol(value: String): this.type = set(outputCol, value)
     def setFormat(value: String): this.type = set(format, value)
@@ -44,68 +53,80 @@ class Word2VecApplier(override val uid: String) extends Transformer with HasExec
     def setCaseSensitive(value: Boolean): this.type = set(caseSensitive, value)
     def setStopWords(value: Array[String]): this.type = set(stopWords, value)
     override def transform(dataset: Dataset[_]): DataFrame = {
-        val spark = dataset.sparkSession
-        import spark.implicits._
-        val (wordCount, matchCount) = (spark.sparkContext.longAccumulator(name = "Word2VecApplier_Count"+uid), spark.sparkContext.longAccumulator(name = "Word2VecApplier_Matchs"+uid))
-        val vPath = get(vectorsPath).get
-        val wordLimit = getOrDefault(truncateWordsAt)
-        val simplify = !getOrDefault(accentSensitive)
-        val toLower = !getOrDefault(caseSensitive)
-        val vectorColName = get(outputCol).get
-        val stop = spark.sparkContext.broadcast((if(toLower) getOrDefault(stopWords).map(_.toLowerCase) else getOrDefault(stopWords)).toSet)
+      val spark = dataset.sparkSession
+      import spark.implicits._
+      val (wordCount, matchCount) = (
+        spark.sparkContext.longAccumulator(name = "Word2VecApplier_Count"+uid)
+        , spark.sparkContext.longAccumulator(name = "Word2VecApplier_Matchs"+uid)
+      )
+      val vPath = get(vectorsPath).get
+      val wordLimit = getOrDefault(truncateWordsAt)
+      val simplify = !getOrDefault(accentSensitive)
+      val toLower = !getOrDefault(caseSensitive)
+      val vectorColName = get(outputCol).get
+      val stop = spark.sparkContext.broadcast((if(toLower) getOrDefault(stopWords).map(_.toLowerCase) else getOrDefault(stopWords)).toSet)
 
-        val vectorsDS:Dataset[(String, MLVector)] = getOrDefault(format) match {
-             case "spark" => spark.read.parquet(vPath).as[(String, Array[Double])].map(p => (p._1, Vectors.dense(p._2)))
-             case "text" => spark.read.text(vPath).as[String].map(s => s.split(" ")).filter(a => a.size>300).map(a => (a(0), Vectors.dense(a.drop(1).map(s => s.toDouble))))
-          }
-        val vectorsDF = vectorsDS
-          .filter(p => p match {case (token, vector) => !stop.value.contains(token)})
-          .toDF("__token__", vectorColName)
-        
-        val ret = (get(repartitionCount) match { case Some(numRep) => dataset.repartition(numRep) case _ => dataset})
-                    .luceneLookup(right = vectorsDF
-                                 , query = udf((tokens:Seq[String])=> applyCaseAccentsAndLimit(tokens, wordLimit, simplify, toLower)).apply(col(get(inputCol).get))
-                                 , text=col("__token__"), maxLevDistance=0
-                                 , indexPath=get(indexPath).get
-                                 , reuseExistingIndex=get(reuseIndexFile).get
-                                 , leftSelect=Array(col("*"))
-                                 , rightSelect=Array(col("*"))
-                                 , popularity=None
-                                 , indexPartitions = 1
-                                 , maxRowsInMemory=getOrDefault(maxRowsInMemory)
-                                 , indexScanParallelism= getOrDefault(indexScanParallelism)
-                                 , tokenizeText = false)
-                    .withColumn(vectorColName, 
-                      (if(getOrDefault(sumWords))
-                        udf((results:Seq[Row], words:Seq[String])=>{
-                          if(words.size != results.size) throw new Exception("invalid match @epi @deleteme")
-                          wordCount.add(words.size)
-                          matchCount.add(results.map(r => r.getAs[DenseVector](vectorColName)).filter(v => v != null).size)
-                          results.map(r => r.getAs[DenseVector](vectorColName))
-                               .fold(null)((v1, v2)=>if(v1==null) v2 else if(v2==null) v1 else new DenseVector(v1.values.zip(v2.values).map(p => p._1 + p._2)))
-                        })
+      val vectorsDS:Dataset[(String, MLVector)] = getOrDefault(format) match {
+        case "spark" => 
+          spark.read.parquet(vPath).as[(String, Array[Double])]
+            .map(p => (p._1, Vectors.dense(p._2)))
+        case "text" => 
+          spark.read.text(vPath).as[String]
+            .map(s => s.split(" "))
+            .filter(a => a.size>2)
+            .map(a => (a(0), Vectors.dense(a.drop(1).map(s => s.toDouble))))
+      }
+      val vectorsDF = vectorsDS
+        .filter(p => p match {case (token, vector) => !stop.value.contains(token)})
+        .toDF("__token__", vectorColName)
+      val ret = 
+        (get(repartitionCount) match { 
+          case Some(numRep) => dataset.repartition(numRep) 
+          case _ => dataset
+        })
+          .luceneLookup(right = vectorsDF
+            , query = udf((tokens:Seq[String])=> applyCaseAccentsAndLimit(tokens, wordLimit, simplify, toLower)).apply(col(get(inputCol).get))
+            , text=col("__token__"), maxLevDistance=0
+            , indexPath=get(indexPath).get
+            , reuseExistingIndex=get(reuseIndexFile).get
+            , leftSelect=Array(col("*"))
+            , rightSelect=Array(col("*"))
+            , popularity=None
+            , indexPartitions = 1
+            , maxRowsInMemory=getOrDefault(maxRowsInMemory)
+            , indexScanParallelism= getOrDefault(indexScanParallelism)
+            , tokenizeText = false)
+          .withColumn(vectorColName, 
+            (if(getOrDefault(sumWords))
+              udf((results:Seq[Row], words:Seq[String])=>{
+                if(words.size != results.size) throw new Exception("invalid match @epi @deleteme")
+                wordCount.add(words.size)
+                matchCount.add(results.map(r => r.getAs[DenseVector](vectorColName)).filter(v => v != null).size)
+                results.map(r => r.getAs[DenseVector](vectorColName))
+                     .fold(null)((v1, v2)=>if(v1==null) v2 else if(v2==null) v1 else new DenseVector(v1.values.zip(v2.values).map(p => p._1 + p._2)))
+              })
 
-                      else 
-                        udf((results:Seq[Row], words:Seq[String])=>{
-                          if(words.size != results.size) throw new Exception("invalid match @epi @deleteme")
-                          wordCount.add(words.size)
-                          matchCount.add(results.map(r => r.getAs[DenseVector](vectorColName)).filter(v => v != null).size)
-                          results.map(r => r.getAs[DenseVector](vectorColName))
-                        })
-                      ).apply(col("array"), col(get(inputCol).get)))
-                    .drop("array")
-        if(getLogMetrics) {
-          val c = (
-            if(getOrDefault(sumWords))
-              ret.select(vectorColName).map(r => r.getAs[DenseVector](0) match {case _ => 1}).reduce(_ + _)
-            else
-              ret.select(vectorColName).map(r => r.getAs[Seq[DenseVector]](0).size match {case _ => 1}).reduce(_ + _)
-            )
-          val msg = s"calculating Word2Vec hitPercent on $c lines ${matchCount.sum.toDouble} ${wordCount.sum.toDouble}"
-          debug(msg)
-          metrics += ("hitPercent" -> matchCount.sum.toDouble / wordCount.sum.toDouble)
-        }
-        ret
+            else 
+              udf((results:Seq[Row], words:Seq[String])=>{
+                if(words.size != results.size) throw new Exception("invalid match @epi @deleteme")
+                wordCount.add(words.size)
+                matchCount.add(results.map(r => r.getAs[DenseVector](vectorColName)).filter(v => v != null).size)
+                results.map(r => r.getAs[DenseVector](vectorColName))
+              })
+            ).apply(col("array"), col(get(inputCol).get)))
+          .drop("array")
+      if(getLogMetrics) {
+        val c = (
+          if(getOrDefault(sumWords))
+            ret.select(vectorColName).map(r => r.getAs[DenseVector](0) match {case _ => 1}).reduce(_ + _)
+          else
+            ret.select(vectorColName).map(r => r.getAs[Seq[DenseVector]](0).size match {case _ => 1}).reduce(_ + _)
+          )
+        val msg = s"calculating Word2Vec hitPercent on $c lines ${matchCount.sum.toDouble} ${wordCount.sum.toDouble}"
+        debug(msg)
+        metrics += ("hitPercent" -> matchCount.sum.toDouble / wordCount.sum.toDouble)
+      }
+      ret
     }
     
     def applyCaseAccentsAndLimit(tokens:Seq[String], wordLimit:Int, simplify:Boolean, toLower:Boolean) = {

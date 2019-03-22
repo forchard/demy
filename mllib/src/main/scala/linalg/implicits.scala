@@ -50,9 +50,9 @@ object implicits {
              , indices = nonEmpty.map(p => p match {case (index, (lVal, rVal)) => index})
              , values = nonEmpty.map(p => p match {case (index, (lVal, rVal)) => lVal + rVal})
            )}
-         case (v1:DenseVector, v2:DenseVector) => (v1.values, v2.values.clone, v1.size) match {
-           case (x, y, l) => {
-             blas.daxpy(l, -1.0, x, 1, y, 1)
+         case (v1:DenseVector, v2:DenseVector) => (v1.values.clone, v2.values, v1.size) match {
+           case (y, x, l) => {
+             blas.daxpy(l, 1.0, x, 1, y, 1)
              Vectors.dense(y)
            }
          }
@@ -69,8 +69,8 @@ object implicits {
              , indices = nonEmpty.map(p => p match {case (index, (lVal, rVal)) => index})
              , values = nonEmpty.map(p => p match {case (index, (lVal, rVal)) => lVal - rVal})
            )}
-         case (v1:DenseVector, v2:DenseVector) => (v1.values, v2.values.clone, v1.size) match {
-           case (x, y, l) => {
+         case (v1:DenseVector, v2:DenseVector) => (v1.values.clone, v2.values, v1.size) match {
+           case (y, x, l) => {
              blas.daxpy(l, -1.0, x, 1, y, 1)
              Vectors.dense(y)
            }

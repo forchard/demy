@@ -84,7 +84,7 @@ div.in-filter {
   background-repeat:no-repeat;
 }
 
-td {
+/*td {
   border: 1px solid lightgray;
   padding-left:4px;
 }
@@ -96,7 +96,7 @@ table {
 }
 th {
   background-color:lightblue;
-}
+}*/
 
 .path-part-bullet {
   background-image:url("../img/next.png");

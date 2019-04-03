@@ -3,28 +3,43 @@ package demy.mllib.linalg;
 import demy.mllib.util.MergedIterator
 import org.apache.spark.ml.linalg.{DenseVector, SparseVector, Vector, Vectors}
 
+
 object implicits {
+  lazy val blas = BLAS.i
+
   implicit class IterableUtil(val left: Iterable[Double]) {
     def cosineSimilarity(right:Iterable[Double]) = {
-      val (dotProduct, normLeft, normRight) = 
+      val (dotProduct, normLeft, normRight) =
         MergedIterator(left.iterator, right.iterator, 0.0, 0.0).toIterable.foldLeft((0.0, 0.0, 0.0))((sums, current) => (sums, current) match {case ((dotProduct, normLeft, normRight), (lVal, rVal)) =>
           (dotProduct + lVal * rVal
-            ,normLeft +  Math.pow(lVal, 2)
-            ,normRight + Math.pow(rVal, 2))
+            ,normLeft +  lVal * lVal
+            ,normRight + rVal * rVal)
         })
         dotProduct / (Math.sqrt(normLeft) * Math.sqrt(normRight))
-      } 
+      }
   }
   implicit class VectorUtil(val left: Vector) {
     def cosineSimilarity(right:Vector) = {
-      val (dotProduct, normLeft, normRight) = 
-        VectorsIterator(left, right).toIterable.foldLeft((0.0, 0.0, 0.0))((sums, current) => (sums, current) match {case ((dotProduct, normLeft, normRight), (i, (lVal, rVal))) =>
-          (dotProduct + lVal * rVal
-            ,normLeft +  Math.pow(lVal, 2)
-            ,normRight + Math.pow(rVal, 2))
-        })
-        dotProduct / (Math.sqrt(normLeft) * Math.sqrt(normRight))
-      } 
+      (left, right) match {
+        case (v1:DenseVector, v2:DenseVector) =>
+          (v1.values, v2.values, v1.size) match {
+            case (a1, a2, l) => blas.ddot(l, a1, 1, a2, 1)/(blas.dnrm2(l, a1, 1)*blas.dnrm2(l, a2, 1))
+          }
+        case _ =>
+          val (dotProduct, normLeft, normRight) =
+            VectorsIterator(left, right)
+              .toIterable
+              .foldLeft((0.0, 0.0, 0.0))((sums, current) =>
+                  (sums, current) match {case
+                    ((dotProduct, normLeft, normRight), (i, (lVal, rVal))) =>
+                      (dotProduct + lVal * rVal
+                        ,normLeft +  lVal * lVal
+                        ,normRight + rVal * rVal)
+                  })
+              dotProduct / (Math.sqrt(normLeft) * Math.sqrt(normRight))
+      }
+    }
+    def similarityScore(right:Vector) = (left.cosineSimilarity(right) + 1.0)/2.0
     def sum(right:Vector) = {
       val values = VectorsIterator(left, right)
       (left, right) match {
@@ -35,10 +50,15 @@ object implicits {
              , indices = nonEmpty.map(p => p match {case (index, (lVal, rVal)) => index})
              , values = nonEmpty.map(p => p match {case (index, (lVal, rVal)) => lVal + rVal})
            )}
-         case (denseLeft:DenseVector, denseRight:DenseVector) => Vectors.dense(values.map(p => p match {case (index, (lVal, rVal)) => lVal + rVal}).toArray)
+         case (v1:DenseVector, v2:DenseVector) => (v1.values.clone, v2.values, v1.size) match {
+           case (y, x, l) => {
+             blas.daxpy(l, 1.0, x, 1, y, 1)
+             Vectors.dense(y)
+           }
+         }
          case _ => throw new Exception("Cannot build an iterator on differentr vector types @epi")
        }
-      } 
+      }
     def minus(right:Vector) = {
       val values = VectorsIterator(left, right)
       (left, right) match {
@@ -49,17 +69,32 @@ object implicits {
              , indices = nonEmpty.map(p => p match {case (index, (lVal, rVal)) => index})
              , values = nonEmpty.map(p => p match {case (index, (lVal, rVal)) => lVal - rVal})
            )}
-         case (denseLeft:DenseVector, denseRight:DenseVector) => Vectors.dense(values.map(p => p match {case (index, (lVal, rVal)) => lVal + rVal}).toArray)
+         case (v1:DenseVector, v2:DenseVector) => (v1.values.clone, v2.values, v1.size) match {
+           case (y, x, l) => {
+             blas.daxpy(l, -1.0, x, 1, y, 1)
+             Vectors.dense(y)
+           }
+         }
          case _ => throw new Exception("Cannot build an iterator on differentr vector types @epi")
        }
-      } 
-
+      }
+    def scale(factor:Double) = {
+      left match {
+        case vec:SparseVector => Vectors.sparse(size = vec.size, indices = vec.indices, values = vec.values.map(v => v * factor))
+        case vec:DenseVector => {
+          val res = vec.values.clone
+          blas.dscal(res.size, factor, res, 1)
+          Vectors.dense(res)
+        }
+        case _ => throw new Exception("Cannot build an iterator on differentr vector types @epi")
+      }
+    }
   }
 }
 case class SparseVectorsIterator(left:SparseVector, right:SparseVector) extends Iterator[(Int, (Double, Double))] {
-      val leftIterator = MergedIterator(left.indices.iterator, left.values.iterator, Int.MaxValue, 0.0) 
+      val leftIterator = MergedIterator(left.indices.iterator, left.values.iterator, Int.MaxValue, 0.0)
       val rightIterator = MergedIterator(right.indices.iterator, right.values.iterator, Int.MaxValue, 0.0)
-      
+
       var leftPair = (-1, 0.0)
       var rightPair = (-1, 0.0)
 

@@ -235,14 +235,14 @@
     group: hadoop
   with_items:
   - ["admin-clean-logs"]
-- name: copy templated scripts
+- name: copy templated scripts for root
   tags: [airflow, airflow_dags, xxx]
   template:
     src: "templates/bash/{{ item[0] }}.j2"
     dest: "{{ af_run }}/scripts/{{ item[0] }}.sh"
     mode: "u=rx,g=r,o=r"
-    owner: airflow
-    group: hadoop
+    owner: root
+    group: root
   delegate_to: "{{ item[1] }}"
   with_nested: 
   - ["bash-admin-clean-logs"]

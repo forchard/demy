@@ -1,13 +1,12 @@
 package demy.mllib.classification
 
-import demy.mllib.params.HasParallelismDemy
+import demy.mllib.params._
 import demy.mllib.util.log
 import org.apache.spark.ml.{Transformer, Estimator}
 import org.apache.spark.ml.linalg.{Vector => MLVector, Vectors}
 import org.apache.spark.ml.classification.{Classifier, ClassificationModel}
 import org.apache.spark.ml.attribute.AttributeGroup 
 import org.apache.spark.ml.param.{Param, ParamMap}
-import org.apache.spark.ml.param.shared._
 import org.apache.spark.ml.util.Identifiable
 import org.apache.spark.sql.{Dataset, DataFrame, Row}
 import org.apache.spark.sql.types._
@@ -21,10 +20,7 @@ trait DiscreteVectorBase extends HasParallelismDemy with HasPredictionCol with H
     val uid: String
 //    val models:Array[DiscreteVectorBase.ModelType] 
     final val classifier = new Param[DiscreteVectorBase.ClassifierType](this, "classifier", "base binary classifier")
-    def setFeaturesCol(value: String): this.type = set(featuresCol, value)
-    def setLabelCol(value: String): this.type = set(labelCol, value)
-    def setPredictionCol(value: String): this.type = set(predictionCol, value)
-    def setRawPredictionCol(value: String): this.type = set(rawPredictionCol, value)
+    
     def setClassifier(value: DiscreteVectorBase.ClassifierType): this.type = set(classifier, value)
     def validateAndTransformSchema(schema: StructType): StructType = {
         schema.add(new AttributeGroup(name=get(predictionCol).get).toStructField)
@@ -92,6 +88,7 @@ trait DiscreteVectorBase extends HasParallelismDemy with HasPredictionCol with H
         paramMap.put(theClassifier.labelCol -> labelColName)
         paramMap.put(theClassifier.featuresCol -> get(featuresCol).get)
         paramMap.put(theClassifier.predictionCol -> get(predictionCol).get)
+        paramMap.put(theClassifier.rawPredictionCol -> get(rawPredictionCol).get)
 
         Future {
             blocking {
@@ -105,14 +102,8 @@ trait DiscreteVectorBase extends HasParallelismDemy with HasPredictionCol with H
       if (handlePersistence) {
         baseDF.unpersist()
       }
-      new DiscreteVectorModel(uid, models)
-           .setFeaturesCol(get(featuresCol).get)
-           .setLabelCol(get(labelCol).get)
-           .setPredictionCol(get(predictionCol).get)
-           .setClassifier(get(classifier).get)
-           .setRawPredictionCol(get(rawPredictionCol).get)
-           .setParallelism(get(parallelism).get)
-           .setParent(this)
+      copyValues(new DiscreteVectorModel(uid, models).setParent(this))
+           
     }
     override def transformSchema(schema: StructType): StructType = validateAndTransformSchema(schema)
     def copy(extra: ParamMap): DiscreteVectorClassifier = {defaultCopy(extra)}    

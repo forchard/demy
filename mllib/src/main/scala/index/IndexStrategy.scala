@@ -16,7 +16,15 @@ import scala.collection.JavaConverters._
 import demy.storage.{Storage, LocalNode}
 import demy.util.log
 
-case class Ngram(terms:Array[String], startIndex:Int, endIndex:Int)
+case class Ngram(terms:Array[String], startIndex:Int, endIndex:Int, termWeights:Seq[Double])
+object Ngram {
+  def apply(terms:Array[String], startIndex:Int, endIndex:Int):Ngram = Ngram(terms=terms, startIndex=startIndex,
+                                                                       endIndex=endIndex, termWeights= terms.map(_ => 1.0))
+  def apply(terms:Array[String]):Ngram = Ngram(terms=terms, startIndex=0,endIndex=terms.size, termWeights= terms.map(_ => 1.0))
+  def apply(terms:Array[String], termWeights:Seq[Double]):Ngram = Ngram(terms=terms, startIndex=0,endIndex=terms.size, termWeights= terms.map(_ => 1.0))
+  //def print() {println("Terms: "+terms.mkString(",")+" startIndex: "+startIndex+" endIndex: "+endIndex+"\nWeights:"+termWeights.mkString(","))}
+}
+
 case class SearchMatch(docId:Int, score:Float, ngram:Ngram)
 
 trait IndexStrategy {
@@ -31,9 +39,10 @@ trait IndexStrategy {
    * Method that will call evaluateNgram to find documents match within a text. This is the entry point for heuristics that will find occurrences on terms subsets
    */
   def searchDoc(terms:Array[String], maxHits:Int, maxLevDistance:Int=2, filter:Row = Row.empty , usePopularity:Boolean, minScore:Double=0.0,
-            boostAcronyms:Boolean=false) =
+            boostAcronyms:Boolean=false, termWeights:Option[Seq[Double]]=None) =
       evaluateNGram(
-        ngram = Ngram(terms = terms, startIndex = 0, endIndex = terms.size)
+        ngram = if (termWeights.isEmpty) Ngram(terms = terms, startIndex = 0, endIndex = terms.size)
+                else Ngram(terms = terms, startIndex = 0, endIndex = terms.size, termWeights=termWeights.get)
         , maxHits=maxHits
         , maxLevDistance=maxLevDistance
         , filter=filter
@@ -51,32 +60,44 @@ trait IndexStrategy {
     val qb = new BooleanQuery.Builder() //  combines multiple TermQuery instances into a BooleanQuery with multiple BooleanClauses, where each clause contains a sub-query and operator
     val fuzzyb = new BooleanQuery.Builder()
 
+
     if(maxLevDistance>0) {
-        terms.foreach(s => {
-            var allLetterUppercase = Range(0, s.length).forall(ind => s(ind).isUpper)
+        //terms.foreach(s => {
+        terms.zip(ngram.termWeights).foreach( values => values match { case (s, weight) => {
+            var allLetterUppercase =
+              if (s.length == 2) Range(0, s.length).forall(ind => s(ind).isUpper)
+              else false
 
             // if term is only in Uppercase -> double term: "TX" -> "TXTX" (ensures that term is not neglected due to too less letters)
             if (allLetterUppercase) {
                 fuzzyb.add(new BoostQuery(new TermQuery(new Term("_text_", s+s)), 15.00F), Occur.SHOULD) // High boosting factor to find doubles
-                fuzzyb.add(new BoostQuery(new TermQuery(new Term("_text_", s.toLowerCase)), 4.00F), Occur.SHOULD)
+                fuzzyb.add(new BoostQuery(new TermQuery(new Term("_text_", s.toLowerCase)), 4.00F*weight.toFloat), Occur.SHOULD)
             } else {
                 fuzzyb.add(new FuzzyQuery(new Term("_text_", s.toLowerCase), 1, maxLevDistance), Occur.SHOULD)
-                fuzzyb.add(new BoostQuery(new TermQuery(new Term("_text_", s.toLowerCase)), 4.00F), Occur.SHOULD)
+                fuzzyb.add(new BoostQuery(new TermQuery(new Term("_text_", s.toLowerCase)), 4.00F*weight.toFloat), Occur.SHOULD)
             }
-        })
+        }
+        case _ => throw new Exception("Should not occur to fall into here; Number of term weights should match number of terms")
+      })
     }
     else {
-        terms.foreach(s => {
-            var allLetterUppercase = Range(0, s.length).forall(ind => s(ind).isUpper)
+        //terms.foreach(s => {
+        terms.zip(ngram.termWeights).foreach( values => values match { case (s, weight) => {
+
+            var allLetterUppercase =
+              if (s.length == 2) Range(0, s.length).forall(ind => s(ind).isUpper)
+              else false 
 
             // if term is only in Uppercase -> double term: "TX" -> "TXTX" (ensures that term is not neglected due to too less letters)
             if (allLetterUppercase) {
                 val bst = new BoostQuery(new TermQuery(new Term("_text_", s+s)), 4.00F)  // Boosting factor of 4.0 for exact match
                 fuzzyb.add(bst, Occur.SHOULD)
             } else {
-                val bst = new BoostQuery(new TermQuery(new Term("_text_", s.toLowerCase)), 4.00F) // boosting factor of 4.0 for exact match
+                val bst = new BoostQuery(new TermQuery(new Term("_text_", s.toLowerCase)), 4.00F*weight.toFloat) // boosting factor of 4.0 for exact match
                 fuzzyb.add(bst, Occur.SHOULD)
             }
+          }
+          case _ => throw new Exception("Should not occur to fall into here; Number of term weights should match number of terms")
         })
     }
 
@@ -103,7 +124,9 @@ trait IndexStrategy {
     val hits = docs.scoreDocs;
     //hits
     hits.map(hit => SearchMatch(docId=hit.doc, score=hit.score,
-                                ngram=Ngram(terms=terms, startIndex=0, endIndex=terms.length)))
+//                                ngram=Ngram(terms=terms, startIndex=0, endIndex=terms.length)))
+                                ngram=ngram/*Ngram(terms=terms, startIndex=ngram.startIndex, endIndex=ngram.endIndex)*/))
+
 
 /*    if (hits.size > 0) {
         val best = hits.reduce( (hit1, hit2) => { if (hit1.score > hit2.score) hit1 else hit2} )
@@ -119,12 +142,13 @@ trait IndexStrategy {
    */
 
   def search(query:String, maxHits:Int, filter:Row = Row.empty, outFields:Seq[StructField]=Seq[StructField](),
-             maxLevDistance:Int=2 , minScore:Double=0.0, boostAcronyms:Boolean=false, showTags:Boolean=false, usePopularity:Boolean):Array[GenericRowWithSchema] = {
+             maxLevDistance:Int=2 , minScore:Double=0.0, boostAcronyms:Boolean=false, showTags:Boolean=false, usePopularity:Boolean, termWeights:Option[Seq[Double]]=None):Array[GenericRowWithSchema] = {
 
     val terms = (if(query == null) "" else  query).replaceAll("[^\\p{L}]+", ",").split(",").filter(s => s.length>0)
 
     // return (doc, score) Array[ScoreDoc]
-    val hits = searchDoc(terms = terms, maxHits=maxHits, filter=filter, maxLevDistance=maxLevDistance, minScore=minScore, boostAcronyms = boostAcronyms, usePopularity = usePopularity)
+    val hits = searchDoc(terms = terms, maxHits=maxHits, filter=filter, maxLevDistance=maxLevDistance,
+                         minScore=minScore, boostAcronyms = boostAcronyms, usePopularity = usePopularity, termWeights=termWeights)
 
     val outSchema = StructType(outFields.toList :+ StructField("_score_", FloatType)
                                                 :+ StructField("_tags_", ArrayType(StringType))

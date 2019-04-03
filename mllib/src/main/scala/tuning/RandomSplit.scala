@@ -11,9 +11,7 @@ import org.apache.spark.sql.ColumnName
 import scala.util.Random
 import scala.util.hashing.MurmurHash3
 
-class RandomSplit(override val uid: String) extends Folder with HasFolds with HasTrainRatio with HasGroupByCols with HasStratifyByCols {
-    final val seed = new Param[Long](this, "seed", "The random seed")
-    def setSeed(value: Long): this.type = set(seed, value)
+class RandomSplit(override val uid: String) extends Folder with HasFolds with HasTrainRatio with HasGroupByCols with HasStratifyByCols with HasSeed{
     
     setDefault(trainRatio->0.75, groupByCols->Array[String](), numFolds -> 1, stratifyByCols -> Array[String]())
     override def buildFolds[T](ds:Dataset[T]):Array[(Dataset[T], Dataset[T])] = {
@@ -31,10 +29,10 @@ class RandomSplit(override val uid: String) extends Folder with HasFolds with Ha
                                       .buildFolds(ds.where(stratColumns.map(colName => col(colName) === lit(row.getAs[Any](colName))).reduce(_ && _))))
         strats.reduce((p1, p2) => p1.zip(p2).map(p => p match {case ((test1, train1),(test2, train2))=> (test1.unionAll(test2), train1.unionAll(train2))})) 
       } else if(groupColumns.size == 0) {
-        val splited = get(seed) match { case Some(s) => ds.randomSplit(probs, s) case _ => ds.randomSplit(probs) }
+        val splited = ds.randomSplit(probs, getOrDefault(seed))
         Range(0, nFolds).toArray.map(iFold => (splited.zipWithIndex.filter(p => p._2 != iFold).map(p => p._1).reduce((ds1, ds2) => ds1.unionAll(ds2)), splited(iFold)))
       } else {
-        val random = get(seed) match {case Some(s) => new Random(s) case _ => new Random()}
+        val random =new Random(getOrDefault(seed))
         val randInt = random.nextInt
         //println(s"seed is ${get(seed)} and rand is $randInt")
         var p0 = 0.0

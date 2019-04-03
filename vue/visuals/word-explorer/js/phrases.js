@@ -37,7 +37,8 @@ function PhraseGrid(selector, indexPath, phrasesPath, tagsByClusters, tags, phra
 
      //Table
      var tUpdate = d3.select(this.selector).selectAll("table.phrase-table").data([1]);
-     var tEnter = tUpdate.enter().append("table").classed("phrase-table", true);
+    //modif manu ajout classe bootstrap
+     var tEnter = tUpdate.enter().append("table").classed("phrase-table", true).classed('table',true);
      var table = tUpdate.merge(tEnter);
      var hRowUpdate = table.selectAll("tr.phrase-header").data([1]);
      var hRowEnter = hRowUpdate.enter().append("tr").classed("phrase-header", true);
@@ -123,7 +124,9 @@ function PhraseGrid(selector, indexPath, phrasesPath, tagsByClusters, tags, phra
      pEnter.append("span").classed("phrase-page", true)
                         .classed("phrase-page-selected", d => d)
                         .on("click", this.changePagination)
-                        .html((d, i) => (i<10)?"&nbsp;"+i:i);
+         //MOdif manu .html((d, i) => (i<10)?"&nbsp;"+i:i);
+                        .html((d, i) => (i<10)?""+i:i);
+                      
 
      var pExit = pUpdate.exit().remove();
 
@@ -241,10 +244,11 @@ function PhraseGrid(selector, indexPath, phrasesPath, tagsByClusters, tags, phra
        d3.select(this.parentNode).classed("phrase-selected", true);
        currentPhrase = d;
        tagEd
-         .style("top", (rect.top+ window.scrollY)+"px")
-         .style("left", (rect.left + rect.width + window.scrollX)+"px")
+       // Modif manu 
+        .style("top", (rect.top + document.getElementById("right-column").scrollTop - 136) + "px")
+         //.style("left", (rect.left + rect.width + window.scrollX)+"px")
          .style("display", "block")
-
+         //alert("scroll " +  document.getElementById("right-column").scrollTop);
        var tagsUpd = tagEd.select("div.tag-editor-list").selectAll("div.tag-editor-elem").data(Object.keys(thisGrid.tags));
        var tagsEnt = tagsUpd.enter().append("div").classed("tag-editor-elem", true);
        tagsUpd.exit().remove;

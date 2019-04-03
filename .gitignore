@@ -4,6 +4,7 @@ deploy/ansible.cfg
 deploy/test.yml
 *.retry
 *.swp
+*.DS_Store
 twitter/project/project
 twitter/project/build.properties
 twitter/project/target

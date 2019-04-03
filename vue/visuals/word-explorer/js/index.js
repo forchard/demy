@@ -351,7 +351,8 @@ function initLayout() {
   
   if(width>600) {
     svgWidth = (width*0.6)|0
-    columnWidth = (width*0.4-20)|0
+   // columnWidth = (width*0.4-20)|0 Modif manu
+      columnWidth = (width*0.4)|0
   } else {
     svgWidth = width|0;
     columnWidth = (width)|0
@@ -567,8 +568,8 @@ function renderCategories(toggle) {
   else {
     var rect = d3.select("div.toolbox span.brush-button").node().getBoundingClientRect();
     catEd
-     .style("top", (rect.bottom+ window.scrollY)+"px")
-     .style("left", (rect.left+ window.scrollX)+"px")
+    // Modif manu .style("top", (rect.bottom+ window.scrollY)+"px")
+    // .style("left", (rect.left+ window.scrollX)+"px")
      .style("display", "block")
 
     var cats = Object.keys(S.tags).map(s => S.tags[s])
@@ -714,7 +715,7 @@ function refreshColors() {
    });  
    defaultColor =  d3.scaleLinear()
        .domain([1, 10])
-       .range(["hsl(40,100%,67%)", "hsl(201, 58%, 34%)"])
+       .range(["hsl(201, 58%, 34%)", "hsl(218, 46%, 18%)"])
        .interpolate(d3.interpolateHcl);
 }
 
@@ -805,5 +806,7 @@ loadContext((context, error) => {
   refreshColors(); 
   render(loadFromStore, loadDefaults);
 });
+// Modif Manu
+initInterface();
 d3.select(window).on("resize", initLayout);
 

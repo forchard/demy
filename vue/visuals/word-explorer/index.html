@@ -1,29 +1,87 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <head>
+  <!--<link rel="stylesheet" type="text/css" href="css/reset.css">-->
   <link rel="stylesheet" type="text/css" href="css/d3.slider.css">
   <link rel="stylesheet" type="text/css" href="css/d3.filter.css">
   <link rel="stylesheet" type="text/css" href="css/index.css">
   <link rel="stylesheet" type="text/css" href="css/phrases.css">
   <link rel="stylesheet" tyoe="text/css" href="css/fontawesome-all.css">
+
+  
+     <!-- <link rel="stylesheet" tyoe="text/css" href="lib_local/bootstrap.min.css">
+    <script rel="stylesheet" href="lib_local/bootstrap.min.js"></script> 
+    <script rel="stylesheet" href="lib_local/jquery-1.11.1.min.js"></script> -->
+ 
+  <link rel="stylesheet" tyoe="text/css" href="css/design.css">
+   <!--   -->
   <script src="js/d3.v4.js"></script>
   <script src="js/d3.slider.js"></script>
   <script src="js/d3.filter.js"></script>
   <script src="js/wordTree.js"></script>
   <script src="js/phrases.js"></script>
+  <script src="https://code.jquery.com/jquery-1.10.2.js"></script>
+  <script src="js/interface.js"></script>
+    
 </head>
 
 <body>
+<header>
+    <nav class="navbar">
+ <!-- <h1 class="navbar-brand"></h1> -->
+        <img src="img/logo.svg" class="logo"/>
+  <!-- <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  <div class="collapse navbar-collapse" id="navbarSupportedContent">-->
+      
+    <ul class="navbar-nav">
+      <li class="nav-item">
+        <a class="nav-link filters-link" onclick="document.getElementById('filters').classList.toggle('closed');">Filters <span class="sr-only"></span></a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" onclick="document.getElementById('selectedFrame').classList.toggle('closed');">Cluster classification</a>
+      </li>
+        <li class="nav-item">
+        <a class="nav-link" href="#">Help</a>
+      </li>
+        <div class="rowdiv toolbox"></div>
+       <!-- <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          Dropdown
+        </a>
+        <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+          <a class="dropdown-item" href="#">Action</a>
+          <a class="dropdown-item" href="#">Another action</a>
+          <div class="dropdown-divider"></div>
+          <a class="dropdown-item" href="#">Something else here</a>
+        </div>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link disabled" href="#">Disabled</a>
+      </li>-->
+    </ul>
+   <!-- <form class="form-inline my-2 my-lg-0">
+      <input class="form-control mr-sm-2" type="search" placeholder="Search" aria-label="Search">
+      <button class="btn btn-outline-success my-2 my-sm-0" type="submit">Search</button>
+    </form>
+  </div> -->
+</nav>
+</header>
 <div class="coldiv">
+<div class="filters closed" id="filters">
   <form onsubmit="search();return false;" class="rowdiv-wrap">
   	<div class="celldiv filter"><span class="filter-tittle">Cluster Size:</span><div id="slider-size-div" class="in-filter"></div></div>
   	<div class="celldiv filter"><span class="filter-tittle">Cluster Dispersion:</span><div id="slider-ratio-div" class="in-filter"></div></div>
   	<div class="celldiv filter"><span class="filter-tittle">Cluster Levels:</span><div id="slider-level-div" class="in-filter"></div></div>
  	<div class="celldiv filter"><span class="filter-tittle">Limit Words</span><span style="width:300px;display:inline-block"><input type="text" value="" id="filtre"/></span></div>
  	<div class="celldiv filter"><span class="filter-tittle">Show Tags</span><div id="filter-tag-div"></div></div>
-        <div class="celldiv filter"><input style="margin-left:30px" type="submit" value="Go!" ></div>
+        <div class="celldiv filter"><input style="margin-left:30px" type="submit" value="Filter" ></div>
+
   </form>
-  
+</div>  
   
   <div class="rowdiv-wrap" id="path-container" >
   </div>
@@ -51,19 +109,21 @@
      </svg>
     </div>
     <div id="right-column" class="coldiv">
-      <div class="rowdiv toolbox"></div>
-      <div class="coldiv" id="selectedFrame" style="display:none">
+      
+      <div class="coldiv">
+        <div class="celldiv"><h3>Top Phrases on Focus Cluster</h3></div>
+        <div id="phrasesContainer" class="coldiv"></div>
+      </div>
+      <div class="coldiv closed" id="selectedFrame">
+         <a onclick="document.getElementById('selectedFrame').classList.toggle('closed');" class="close-btn"><i class="fa fa-times" aria-hidden="true"></i></a> 
+
           <div class="celldiv"><h3>Cluster Classification</h3>
             <div class="celldiv">
-              <table id="selectedClusterContainer">
+              <table id="selectedClusterContainer" class="table">
                 <tr><th>Tags</th><th>Title</th><th>#</th><th>Main words</th></tr>
               </table>
             </div>
           </div>
-      </div>
-      <div class="coldiv">
-        <div class="celldiv"><h3>Top Phrases on Focus Cluster</h3></div>
-        <div id="phrasesContainer" class="coldiv"></div>
       </div>
     </div>
   </div>

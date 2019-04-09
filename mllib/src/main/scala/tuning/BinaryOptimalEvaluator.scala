@@ -19,7 +19,7 @@ trait BinaryOptimalEvaluatorBase extends HasLabelCol with HasScoreCol with HasPr
   val uid: String
   final val bins = new Param[Int](this, "bins", "The number of bins for thresholds")
   final val optimize = new Param[String](this, "optimize", "The optimization mode (f1Score, precision:0.85, recall:0.7, accuracy)")
-  final val evaluationFilter = new Param[String](this, "evaluationFilter", "A sql forlula on input dataframe to limit the rows that are going to ber evaluated")
+  final val evaluationFilter = new Param[String](this, "evaluationFilter", "A sql forlula on input dataframe to limit the rows that are going to be evaluated")
   setDefault(bins->100, optimize->"f1score")
   def setLabelCol(value: String): this.type = set(labelCol, value)
   def setPredictionCol(value: String): this.type = set(predictionCol, value)

@@ -92,16 +92,27 @@ class FoldsPredictorModel(override val uid: String, val model:FoldsPredictorBase
         Future {
             blocking {
               val trainSet = forcedTrainSet match {case Some(forced) =>trainFold.union(forced) case _ => trainFold }
-              val testSet = forcedTestSet match {case Some(forced) =>testFold.union(forced) case _ => testFold }
-              debug(s"training on ${trainSet.count} and resting on ${testSet.count}")
+              debug(s"training on ${trainSet.count} and resting on ${testFold.count}")
               val model = baseEstimator.fit(trainSet)
-              val preds = model.transform(testSet)
+              val preds = model.transform(testFold)
               preds
             }
         }(executionContext)
       }})
-      val predictions = predictionsFutures.map(future => Await.result(future, Duration.Inf)).reduce((ds1, ds2) => ds1.union(ds2))
+      val foldPredictions = predictionsFutures.map(future => Await.result(future, Duration.Inf)).reduce((ds1, ds2) => ds1.union(ds2))
       debug("folds trained")
+
+      val predictions  = get(forceTestOn) match {
+        case Some(forceTestExp) => 
+          debug("training with all folds for forced test set")
+          val trainSet = ds.where(not(expr(forceTestExp)))
+          val testSet = ds.where(expr(forceTestExp))
+          val model = baseEstimator.fit(trainSet)
+          val forcedPredictions = model.transform(testSet)
+          foldPredictions.union(forcedPredictions)
+        case None =>
+          foldPredictions
+      }
       predictions
     }
     override def transformSchema(schema: StructType): StructType = schema

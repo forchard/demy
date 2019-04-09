@@ -24,7 +24,7 @@ class RawPrediction2Score(override val uid: String) extends Transformer with Has
             val scores = rawPreds.map(rawPred => {
                 var preds = rawPred.toArray
                 if(preds.size!=2) throw new Exception("Score can only be calculated for binary class modles @epi")
-                val Array(no, yes) = preds
+                val Array(yes, no) = preds
                 if(no>=0 && yes>=0) yes/(no + yes)
                 else if(no>=0 && yes<=0) 0.5 - Math.atan(no-yes)/Math.PI
                 else if(no<=0 && yes>=0) 0.5 + Math.atan(yes-no)/Math.PI

@@ -148,11 +148,16 @@ object implicits {
           var rInfo:IndexStrategy = null
           val noRows:Option[Array[Option[Row]]]=None
           iter.flatMap(r => {
-             var rowsChunk = (
-               scala.collection.mutable.ArrayBuffer((r, noRows)) 
-               ++ (for(i <- 1 to maxRowsInMemory if iter.hasNext) yield (iter.next(), noRows))
-             ).par
-             rowsChunk.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(indexScanParallelism))
+            var collection = (scala.collection.mutable.ArrayBuffer((r, noRows)) 
+               ++ (for(i <- 1 to maxRowsInMemory if iter.hasNext) yield (iter.next(), noRows)))
+            var rowsChunk:scala.collection.GenSeq[(org.apache.spark.sql.Row, Option[Array[Option[org.apache.spark.sql.Row]]])] = (
+              if(indexScanParallelism > 1 ) {
+                val parCol = collection.par
+                parCol.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(indexScanParallelism))
+                parCol
+              }
+              else collection
+              )
              indexFiles.foreach(iReader => {
                if(indexLocation != iReader.indexPartition) {
                  if(rInfo!=null) rInfo.close(false)

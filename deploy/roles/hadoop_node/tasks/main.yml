@@ -191,6 +191,7 @@
       datetime
       python-dateutil
       pyarrow
+      imbalanced-learn
 - name: install python packages
   tags: [packages, upgrade, python]
   pip:

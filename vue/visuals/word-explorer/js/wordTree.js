@@ -14,7 +14,7 @@ function WordTree() {
         alert(error)
         console.log(error)
       } else { 
-        thisWt.root = root
+	thisWt.root = root;
         if(callback) callback(thisWt);
       }
     });
@@ -53,6 +53,7 @@ function WordTree() {
     ret.children = ret.children.concat(node.children.map(c => this.toLeafOnlyHierarchy(c, level - 1)))
     return ret;
   };
+  
   this.toFullHierarchy = function(node) {
     var ret = {}; 
     ret.name=node.name;
@@ -109,6 +110,6 @@ function WordTree() {
               , "childrenHidden":(node.children.length>0 && !canSplit), "leaf":node.children.length==0, "selected":isSelected}
     }
     return [];
-  }
+  };
 
 }

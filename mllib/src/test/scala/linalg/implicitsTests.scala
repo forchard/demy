@@ -1,71 +1,59 @@
 package demy.mllib.test.linalg
 
 import org.scalatest._
-import org.apache.spark.ml.linalg.{DenseVector, SparseVector, Vector, Vectors}
-import demy.mllib.test.UnitTest
+import org.apache.spark.ml.linalg.{DenseVector, SparseVector, Vector => MLVector, Vectors}
+import demy.mllib.test.{UnitTest, UnitTestVars}
 import demy.mllib.linalg.implicits._
 
 trait implicitsSpec extends UnitTest{
-
-  val toTestValues = Seq((Seq(1.0, -2.0, 4.0, 10.0), Seq(1.0, 2.0, 7.0, -10.0))
-                        ,(Seq(1.0, 2.0, 7.0, 10.0), Seq(1.0, -2.0, 34.0, 9.9))
-                        ,(Seq(1.0, 2.0, 7.0, 10.0), Seq(-1.0, -2.0, -34.0, -9.9))
-                     )
-  val toTestSparseness = Seq((new SparseVector(100, Array(0, 6, 99), Array(2.0, 1.0, 0.5)), new SparseVector(100, Array(0, 6, 99), Array(2.0, 1.0, 0.5)))
-                            ,(new SparseVector(100, Array(3, 6, 45), Array(2.0, 1.0, 0.5)), new SparseVector(100, Array(3, 6, 45), Array(2.0, 1.0, 0.5)))
-                            ,(new SparseVector(100, Array(3, 8), Array(2.0, 1.0)), new SparseVector(100, Array(3, 6, 45), Array(2.0, 1.0, 0.5)))
-                )  
-  val t = new implicitsSpecTool
-
-  "Sum" should "be correct ibn dense vectors" in {
-    assert(toTestValues.map{case (s1, s2) => Vectors.dense(s1.toArray).sum(} => p<0.000001) 
+  import demy.mllib.test.linalg.{implicitsSpecVars => v}  
+ 
+  "Sum" should "be correct for dense vectors and sparse vectors" in {
+    assert(v.vectors.map{case(a, b) => a.sum(b)}.zip(v.vectors.map{case(a, b)=>v.sum(a, b)}).map{case(a, b) => v.error(a, b)}.sum < 0.00001) 
+  }
+  "Minus" should "be correct for dense vectors" in {
+    assert(v.vectors.map{case(a, b) => a.minus(b)}.zip(v.vectors.map{case(a, b)=>v.minus(a, b)}).map{case(a, b) => v.error(a, b)}.sum < 0.00001) 
   }
 
   "Cosine Similarity" should "be 1 for equal vectors" in {
-    assert(toTestValues.map(p => t.cosineSimAllError(p._1, p._1)).sum<0.000001) 
+    assert(v.vectors.map{case(a, b) =>a.cosineSimilarity(a)}.map(s => Math.abs(1.0 - s)).sum < 0.00001 )
   }
 
   it should  "be equal to calculated test cosine similarity" in {
-    assert(toTestValues.map(p => t.cosineSimAllError(p._1, p._2)).sum<0.000001) 
-  }
-
-  it should  "be equal to calculated test cosine similarity for sparse vectors" in {
-    assert(toTestSparseness.map(p => t.cosineSimAllError(p._1, p._2)).sum<0.000001) 
+    
+    assert(v.vectors.map{case(a, b) =>(a.cosineSimilarity(b), v.cosineSimilarity(a, b))}.map{case(a, b)=> Math.abs(a - b)}.sum < 0.00001) 
   }
 }
 
-class implicitsSpecTool {
-  def cosineSimAllError(v1:Any, v2:Any) : Double = {
+object implicitsSpecVars extends UnitTestVars {
+  val densePairs = Seq((Vectors.dense(1.0, -2.0, 4.0, 10.0), Vectors.dense(1.0, 2.0, 7.0, -10.0))
+                        ,(Vectors.dense(1.0, 2.0, 7.0, 10.0), Vectors.dense(1.0, -2.0, 34.0, 9.9))
+                        ,(Vectors.dense(1.0, 2.0, 7.0, 10.0), Vectors.dense(-1.0, -2.0, -34.0, -9.9))
+                     )
+  val sparsePairs = Seq((new SparseVector(100, Array(0, 6, 99), Array(2.0, 1.0, 0.5)), new SparseVector(100, Array(0, 6, 99), Array(2.0, 1.0, 0.5)))
+                            ,(new SparseVector(100, Array(3, 6, 45), Array(2.0, 1.0, 0.5)), new SparseVector(100, Array(3, 6, 45), Array(2.0, 1.0, 0.5)))
+                            ,(new SparseVector(100, Array(3, 8), Array(2.0, 1.0)), new SparseVector(100, Array(3, 6, 45), Array(2.0, 1.0, 0.5)))
+                )  
 
-    val results =  (v1, v2) match {
-     case (d1:DenseVector, d2:DenseVector) => 
-        Seq(cosineSimilarity(d1.values, d2.values), IterableUtil(d1.values).cosineSimilarity(d2.values), d1.cosineSimilarity(d2), d1.toSparse.cosineSimilarity(d2.toSparse))
-     case (d1:SparseVector, d2:SparseVector)=>  
-        Seq(cosineSimilarity(d1.toDense.values, d2.toDense.values), IterableUtil(d1.toDense.values).cosineSimilarity(d2.toDense.values), d1.toDense.cosineSimilarity(d2.toDense), d1.cosineSimilarity(d2))
-     case (vv1:Iterable[_], vv2:Iterable[_]) => { 
-        val (v1, v2) = (vv1.map(_.asInstanceOf[Double]), vv2.map(_.asInstanceOf[Double]))
-        Seq(cosineSimilarity(v1, v2), v1.cosineSimilarity(v2), Vectors.dense(v1.toArray).cosineSimilarity(Vectors.dense(v2.toArray)), Vectors.dense(v1.toArray).toSparse.cosineSimilarity(Vectors.dense(v2.toArray).toSparse))
-        }
-     case (o1, o2)  => throw new Exception(s"Cannot execute vector test on (${o1.getClass.getName}, ${o2.getClass.getName}) @epi") 
-   }
+  val vectors = densePairs ++ sparsePairs
 
-   results.fold(0.0)((currentError, next) => currentError + Math.abs(next - results(0)))
-  }
-
-  def cosineSimilarity(x: Iterable[Double], y: Iterable[Double]): Double = {
+  def cosineSimilarity(x: MLVector, y: MLVector): Double = {
     dotProduct(x, y)/(magnitude(x) * magnitude(y))
   }
-  def sum(x: Iterable[Double], y: Iterable[Double]): Seq[Double] = {
-    x.zip(y).map(_ + _).toSeq
+  def sum(x: MLVector, y: MLVector): MLVector = {
+    Vectors.dense(x.toArray.zip(y.toArray).map{case(a, b) => a + b})
   }
-  def error(x: Iterable[Double], y: Iterable[Double]): Seq[Double] = {
-    x.zip(y).map(_ - _).map(Math.abs(_)).sum
+  def minus(x: MLVector, y: MLVector): MLVector = {
+    Vectors.dense(x.toArray.zip(y.toArray).map{case(a, b) => a - b})
   }
-  def dotProduct(x: Iterable[Double], y: Iterable[Double]): Double = {
-    (for((a, b) <- x zip y) yield a * b) sum
+  def error(x: MLVector, y: MLVector): Double = {
+    x.toArray.zip(y.toArray).map{case(a, b) => Math.abs(a - b)}.sum
   }
-  def magnitude(x: Iterable[Double]): Double = {
-    math.sqrt(x map(i => i*i) sum)
+
+  def dotProduct(x: MLVector, y: MLVector): Double = {
+    (for((a, b) <- x.toArray zip y.toArray) yield a * b) sum
+  }
+  def magnitude(x: MLVector): Double = {
+    math.sqrt(x.toArray map(i => i*i) sum)
   }
 }
-

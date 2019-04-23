@@ -74,7 +74,6 @@ object BinaryOptimalEvaluatorVars extends UnitTestVars {
   lazy val getMetrics = {
     val spark = this.getSpark
     import spark.implicits._
-    scoreLabelsDF.as[(Double, Double)].collect.foreach{println _ }
      new BinaryOptimalEvaluator()
           .setOptimize("f1Score")
           .fit(scoreLabelsDF)

@@ -13,15 +13,17 @@ object SharedSpark {
         //.config(conf)
         .appName("test")
         .getOrCreate())
+     baseSpark.get.sparkContext.setLogLevel("WARN")
   }
   def stop { getSpark.stop }
 }
 class SparkTest  extends UnitTest with BeforeAndAfterAll
-  with linalg.implicitsSpec
+/*  with linalg.implicitsSpec
   with tuning.RandomSplitSpec
   with feature.ArrayHasherSpec
   with index.ImplicitsSpec
   with tuning.BinaryOptimalEvaluatorSpec
+*/  with topic.TopicTreeSpec
 {
   override def beforeAll() {
     SharedSpark.init

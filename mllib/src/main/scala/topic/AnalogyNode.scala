@@ -30,6 +30,9 @@ case class AnalogyNode (
     encoder.serialized += (("pDag", serialize(pDag))) 
     encoder.serialized += (("analogies", serialize(analogies))) 
   }
+  def prettyPrintExtras(level:Int = 0, buffer:ArrayBuffer[String]=ArrayBuffer[String](), stopLevel:Int = -1):ArrayBuffer[String] = {
+    buffer
+  }
   def transform(vClasses:Array[Int], scores:Option[Array[Double]], dag:Option[Array[Int]]
     , vectors:Seq[MLVector], tokens:Seq[String], spark:SparkSession) { 
 
@@ -125,6 +128,7 @@ object AnalogyNode {
       , referenceClass = encoded.referenceClass
     )
     ret.hits = encoded.hits
+    ret.stepHits = encoded.stepHits
     ret.models ++= encoded.deserialize[HashMap[Int, LinearSVCModel]]("models").map{case(c, model) => (c, WrappedClassifier(model))}
     ret.analogies ++= encoded.deserialize[HashMap[Int, MLVector]]("analogies")
     ret 

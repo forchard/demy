@@ -40,12 +40,13 @@ trait Node{
   val algo:ClassAlgorithm
   val params:NodeParams
   var hits = 0L
+  var stepHits = 0L
 
   def walk(vClasses:Array[Int], scores:Option[Array[Double]], dag:Option[Array[Int]] 
       , vectors:Seq[MLVector], tokens:Seq[String], spark:SparkSession
       , wClasses:ArrayBuffer[(Int, Int, Double)] = ArrayBuffer[(Int, Int, Double)]()
       , maxDeep:Option[Int] = None ) {
-    this.hits = this.hits + 1
+    this.stepHits = this.stepHits + 1
     transform(vClasses, scores, dag, vectors, tokens, spark)
     wClasses ++= 
       (for(i <- It.range(0, vClasses.size) if this.params.outClasses(vClasses(i))) 
@@ -68,7 +69,6 @@ trait Node{
       this.children(i).walk(vClasses, scores, dag, vectors, tokens, spark, wClasses, maxDeep.map(d => d - 1))
     }
   }
-
   def transform(vClasses:Array[Int], scores:Option[Array[Double]], dag:Option[Array[Int]] 
     , vectors:Seq[MLVector], tokens:Seq[String], spark:SparkSession)
 
@@ -117,7 +117,7 @@ trait Node{
   }
 
   def encode(childArray:ArrayBuffer[EncodedNode]):Int= {
-    val encoder = EncodedNode(name = this.name, algo = this.algo, tokens = tokens, points = points, pClasses = pClasses, params = params, hits = hits)
+    val encoder = EncodedNode(name = this.name, algo = this.algo, tokens = tokens, points = points, pClasses = pClasses, params = params, hits = hits, stepHits = stepHits)
     encodeExtras(encoder)
     val index = childArray.size
     childArray += encoder
@@ -132,7 +132,15 @@ trait Node{
     serData.close();
     serData.toByteArray()
   }
-
+  def prettyPrint(level:Int = 0, buffer:ArrayBuffer[String]=ArrayBuffer[String](), stopLevel:Int = -1):ArrayBuffer[String] = {
+    buffer += (s"${Range(0, level).map(_ => "-").mkString}> name: ${name}\n")
+    buffer += (s"${Range(0, level).map(_ => "-").mkString}> algo: ${algo}\n")
+    prettyPrintExtras(level = level, buffer = buffer, stopLevel = stopLevel)
+    if(stopLevel == -1 || level <= stopLevel)
+      this.children.foreach(c => c.prettyPrint(level = level + 1, buffer = buffer, stopLevel = stopLevel))
+    buffer
+  }
+  def prettyPrintExtras(level:Int = 0, buffer:ArrayBuffer[String]=ArrayBuffer[String](), stopLevel:Int = -1):ArrayBuffer[String]
   def encodeExtras(encoder:EncodedNode)
 }
 
@@ -144,7 +152,8 @@ case class EncodedNode  (
   , pClasses:ArrayBuffer[Int] = ArrayBuffer[Int]()
   , params:NodeParams
   , children: ArrayBuffer[Int] = ArrayBuffer[Int]()
-  , hits:Long = 0
+  , var hits:Long = 0
+  , var stepHits:Long = 0
   , var referenceClass:Int = 0
   , var inAnalogy:ArrayBuffer[Boolean] = ArrayBuffer[Boolean]()
   , var classCenters:Map[Int, Int] = Map[Int, Int]()
@@ -187,10 +196,40 @@ case class EncodedNode  (
       , params = params
       , children = children
       , hits = hits
+      , stepHits = stepHits
       , referenceClass = referenceClass
       , inAnalogy = inAnalogy
+      , classCenters = classCenters
       , serialized = ArrayBuffer[(String, Array[Byte])]()
     )
+  }
+
+  def merge(that:EncodedNode) = {
+    EncodedNode(
+      name = name
+      , algo = this.algo
+      , tokens = this.tokens
+      , points = this.points
+      , pClasses = this.pClasses
+      , params = this.params
+      , children = this.children
+      , hits = this.hits
+      , stepHits = this.stepHits + that.stepHits
+      , referenceClass = this.referenceClass
+      , inAnalogy = this.inAnalogy
+      , classCenters = this.classCenters
+      , serialized = this.serialized
+    )
+  
+  }
+  def addStepHits{
+    this.hits = this.hits + this.stepHits
+    this.stepHits = 0
+  }
+
+  def prettyPrint(others:ArrayBuffer[EncodedNode], stopLevel:Int = -1) = {
+    val n = this.decode(others)
+    n.prettyPrint(stopLevel=stopLevel)
   }
 }
 object EncodedNode {

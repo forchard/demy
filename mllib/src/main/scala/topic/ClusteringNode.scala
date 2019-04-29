@@ -23,7 +23,7 @@ case class ClusteringNode (
   val vZero = Vectors.dense(Array.fill(vectorSize)(0.0))
   val pCenters = Array.fill(this.classCenters.values.toSet.size)(vZero)
   val vCenters = Array.fill(this.classCenters.values.toSet.size)(vZero)
-  val cGAP = Array.fill(this.classCenters.values.toSet.size)(Double.MaxValue)
+  val cGAP = Array.fill(this.classCenters.values.toSet.size)(1.0)
   val exceptPCenters = Array.fill(maxTopWords)(vZero)
   val pScores = Array.fill(maxTopWords)(0.0)
   val cHits = Array.fill(this.classCenters.values.toSet.size)(0)
@@ -39,6 +39,11 @@ case class ClusteringNode (
     encoder.serialized += (("exceptPCenters", serialize(exceptPCenters)))
     encoder.serialized += (("pScores",serialize(pScores) ))
     encoder.serialized += (("cHits",serialize(cHits) ))
+  }
+  def prettyPrintExtras(level:Int = 0, buffer:ArrayBuffer[String]=ArrayBuffer[String](), stopLevel:Int = -1):ArrayBuffer[String] = {
+    buffer += (s"${Range(0, level).map(_ => "-").mkString}> classCenters: ${classCenters}\n")
+    buffer += (s"${Range(0, level).map(_ => "-").mkString}> pCenters: ${pCenters.size}\n")
+    buffer
   }
   
   def transform(vClasses:Array[Int], scores:Option[Array[Double]], dag:Option[Array[Int]]
@@ -63,7 +68,7 @@ case class ClusteringNode (
           case Some(classToFill) if 
             It.range(0, this.points.size)
               .filter(i => this.params.links(inClass)(this.pClasses(i)))
-              .filter(i => this.points(i).cosineSimilarity(vector) > 0.999)
+              .filter(i => this.points(i).similarityScore(vector) > 0.999)
               .size == 0 
            =>
             this.tokens += token
@@ -178,7 +183,7 @@ case class ClusteringNode (
 
   def GAP = {
     updatePointsStats
-    this.cGAP.sum
+    (this.cGAP.sum)/(this.cGAP.size)
   }
 
   def leafsGAP = {
@@ -186,7 +191,7 @@ case class ClusteringNode (
       this.children.map(c => c.clusteringGAP).sum
     else
       this.GAP match {
-        case v if v.isInfinite => 0.0
+        case v if v.isInfinite || v.isNaN => 0.0
         case v => v
       }
   }
@@ -207,6 +212,7 @@ object ClusteringNode {
       , vectorSize = encoded.deserialize[Int]("vectorSize")
     )
     ret.hits = encoded.hits
+    ret.stepHits = encoded.stepHits
     ret.initializing = encoded.deserialize[Boolean]("initializing")
     encoded.deserialize[Array[MLVector]]("pCenters").zipWithIndex.foreach{case (v, i) => ret.pCenters(i) = v}
     encoded.deserialize[Array[MLVector]]("vCenters").zipWithIndex.foreach{case (v, i) => ret.vCenters(i) = v}

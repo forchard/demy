@@ -39,7 +39,11 @@ object implicits {
               dotProduct / (Math.sqrt(normLeft) * Math.sqrt(normRight))
       }
     }
-    def similarityScore(right:Vector) = (left.cosineSimilarity(right) + 1.0)/2.0
+    def similarityScore(right:Vector) = (left.cosineSimilarity(right) + 1.0)/2.0 match {
+      case s if s.isNaN => 0.0
+      case s if s.isInfinite => 0.0
+      case s => s
+    }
     def sum(right:Vector) = {
       val values = VectorsIterator(left, right)
       (left, right) match {

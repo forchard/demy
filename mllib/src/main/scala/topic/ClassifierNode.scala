@@ -74,6 +74,9 @@ case class ClassifierNode (
   def encodeExtras(encoder:EncodedNode) {
     encoder.serialized += (("models", serialize(models.map{case(c, wrapped) => (c, wrapped.model)}))) 
   }
+  def prettyPrintExtras(level:Int = 0, buffer:ArrayBuffer[String]=ArrayBuffer[String](), stopLevel:Int = -1):ArrayBuffer[String] = {
+    buffer
+  }
   
   def transform(vClasses:Array[Int], scores:Option[Array[Double]], dag:Option[Array[Int]]
     , vectors:Seq[MLVector], tokens:Seq[String], spark:SparkSession) { 
@@ -115,6 +118,7 @@ object ClassifierNode {
     val ret = ClassifierNode(name = encoded.name, tokens = encoded.tokens.clone, points = encoded.points.clone, pClasses = encoded.pClasses.clone
       , params = encoded.params
     )
+    ret.stepHits = encoded.stepHits
     ret.hits = encoded.hits
     ret.models ++= encoded.deserialize[HashMap[Int, LinearSVCModel]]("models").map{case(c, model) => (c, WrappedClassifier(model))}
     ret 

@@ -112,11 +112,7 @@ case class AnalogyNode (
       }
     }
   }
-
-  /*def addFeedback(forClass:Int, inputWord:String, outWord:String, inClass:Boolean, vectorIx:VectorIndex) = {
-    this.points += vectorIx.getVector(inputWord).minus(vectorIx.getVector(outWord))
-    this.pClasses += (if(inClass) forClass else 0)
-  }*/
+  def learnFromExtras(that:Node) {}
 }
 
 object AnalogyNode {

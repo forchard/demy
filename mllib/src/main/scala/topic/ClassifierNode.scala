@@ -112,6 +112,7 @@ case class ClassifierNode (
     l.msg("clasifier fit")
     this
   }
+  def learnFromExtras(that:Node) {}
 }
 object ClassifierNode {
   def apply(encoded:EncodedNode):ClassifierNode = {

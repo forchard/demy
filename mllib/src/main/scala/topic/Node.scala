@@ -2,6 +2,7 @@ package demy.mllib.topic
 
 import demy.util.{log => l}
 import demy.mllib.linalg.implicits._
+import demy.storage.{FSNode, WriteMode}
 import org.apache.spark.ml.linalg.{Vector => MLVector, Vectors}
 import org.apache.spark.sql.{SparkSession}
 import org.apache.commons.io.IOUtils
@@ -41,6 +42,7 @@ trait Node{
   val params:NodeParams
   var hits = 0L
   var stepHits = 0L
+  var learnedHits = 0L
 
   def walk(vClasses:Array[Int], scores:Option[Array[Double]], dag:Option[Array[Int]] 
       , vectors:Seq[MLVector], tokens:Seq[String], spark:SparkSession
@@ -117,7 +119,7 @@ trait Node{
   }
 
   def encode(childArray:ArrayBuffer[EncodedNode]):Int= {
-    val encoder = EncodedNode(name = this.name, algo = this.algo, tokens = tokens, points = points, pClasses = pClasses, params = params, hits = hits, stepHits = stepHits)
+    val encoder = EncodedNode(name = this.name, algo = this.algo, tokens = tokens, points = points, pClasses = pClasses, params = params, hits = hits, stepHits = stepHits, learnedHits = learnedHits)
     encodeExtras(encoder)
     val index = childArray.size
     childArray += encoder
@@ -142,6 +144,64 @@ trait Node{
   }
   def prettyPrintExtras(level:Int = 0, buffer:ArrayBuffer[String]=ArrayBuffer[String](), stopLevel:Int = -1):ArrayBuffer[String]
   def encodeExtras(encoder:EncodedNode)
+  def learnFromExtras(that:Node)
+  def learnFrom(that:Node) {
+    learnFromExtras(that)
+    this.learnedHits = this.learnedHits + that.learnedHits
+    It.range(0, this.children.size).foreach(i => this.children(i).learnFrom(that.children(i)))
+  }
+  def betterThan(that:Node) = {                    
+    val thisGap = this.clusteringGAP
+    val thatGap = that.clusteringGAP
+    val thisEmpty =  this.nodesIterator.filter(n => n.points.size < 2).size
+    val thatEmpty =  that.nodesIterator.filter(n => n.points.size < 2).size
+
+    //if(this.algo == ClassAlgorithm.supervised)  println(s"thisGap $thisGap, thatGap: $thatGap, thisEmpty $thisEmpty, thatEmpty $thatEmpty")
+    (thisEmpty + thatEmpty > 0 && thisEmpty != thatEmpty) && thisEmpty < thatEmpty || 
+    (thisEmpty + thatEmpty == 0 || thisEmpty == thatEmpty) && thisGap < thatGap
+  }
+  def newStep {
+    this.hits = this.hits + this.stepHits 
+    this.stepHits = 0
+    this.learnedHits = 0
+    It.range(0, this.children.size).foreach(i => this.children(i).newStep)
+  
+  }
+  def addStepHits(that:Node):this.type = {
+    this.stepHits = this.stepHits + that.stepHits 
+    It.range(0, this.children.size).foreach(i => this.children(i).addStepHits(that.children(i)))
+    this
+  }
+  def save(dest:FSNode, tmp:Option[FSNode]=None) = {
+    val encoded = ArrayBuffer[EncodedNode]()
+    this.encode(encoded)
+    val bytes = this.serialize(encoded)
+    tmp match {
+      case Some(t) =>
+        t.setContent(new ByteArrayInputStream(bytes), WriteMode.overwrite)
+        t.move(dest, WriteMode.overwrite)
+      case None =>
+        dest.setContent(new ByteArrayInputStream(bytes), WriteMode.overwrite)
+    }
+  }
+  def saveAsJson(dest:FSNode, tmp:FSNode, spark:SparkSession) = {
+    import spark.implicits._
+    val encoded = ArrayBuffer[EncodedNode]()
+    this.encode(encoded)
+    Seq(encoded.map(_.stripBinary)).toDS.write.mode("overwrite").json(tmp.path) 
+    tmp
+      .list
+      .filter(n => n.path.contains("best.json/part"))
+      .head
+      .move(dest, WriteMode.overwrite)
+  }
+}
+
+object Node {
+ def load(from:FSNode) = {
+   val nodes = EncodedNode.deserialize[ArrayBuffer[EncodedNode]](IOUtils.toByteArray(from.getContent))
+   nodes(0).decode(nodes)
+ }  
 }
 
 case class EncodedNode  (
@@ -154,6 +214,7 @@ case class EncodedNode  (
   , children: ArrayBuffer[Int] = ArrayBuffer[Int]()
   , var hits:Long = 0
   , var stepHits:Long = 0
+  , var learnedHits:Long = 0
   , var referenceClass:Int = 0
   , var inAnalogy:ArrayBuffer[Boolean] = ArrayBuffer[Boolean]()
   , var classCenters:Map[Int, Int] = Map[Int, Int]()
@@ -197,34 +258,12 @@ case class EncodedNode  (
       , children = children
       , hits = hits
       , stepHits = stepHits
+      , learnedHits = learnedHits
       , referenceClass = referenceClass
       , inAnalogy = inAnalogy
       , classCenters = classCenters
       , serialized = ArrayBuffer[(String, Array[Byte])]()
     )
-  }
-
-  def merge(that:EncodedNode) = {
-    EncodedNode(
-      name = name
-      , algo = this.algo
-      , tokens = this.tokens
-      , points = this.points
-      , pClasses = this.pClasses
-      , params = this.params
-      , children = this.children
-      , hits = this.hits
-      , stepHits = this.stepHits + that.stepHits
-      , referenceClass = this.referenceClass
-      , inAnalogy = this.inAnalogy
-      , classCenters = this.classCenters
-      , serialized = this.serialized
-    )
-  
-  }
-  def addStepHits{
-    this.hits = this.hits + this.stepHits
-    this.stepHits = 0
   }
 
   def prettyPrint(others:ArrayBuffer[EncodedNode], stopLevel:Int = -1) = {

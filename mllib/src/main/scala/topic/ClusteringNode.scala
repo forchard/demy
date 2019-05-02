@@ -195,13 +195,30 @@ case class ClusteringNode (
         case v => v
       }
   }
-/*  def getBinaryClasses() = {
-    val base = It.range(0, deep).map(d => Math.pow(2, deep).toInt).sum + left * 2
-    (base, base + 1)
+  def learnFromExtras(thatNode:Node) {
+    thatNode match {
+      case that:ClusteringNode =>
+        if(that.betterThan(this)) {
+          this.tokens.clear
+          this.tokens ++= that.tokens
+          this.points.clear
+          this.points ++= that.points
+          this.pClasses.clear
+          this.pClasses ++= that.pClasses
+          this.initializing = that.initializing
+
+          //associate this points to that points
+          It.range(0, this.pCenters.size).foreach(i => this.pCenters(i) = that.pCenters(i))
+          It.range(0, this.vCenters.size).foreach(i => this.vCenters(i) = that.vCenters(i)) 
+          It.range(0, this.cGAP.size).foreach(i => this.cGAP(i) = that.cGAP(i))  //recalculate
+          It.range(0, this.exceptPCenters.size).foreach(i => this.exceptPCenters(i) = that.exceptPCenters(i))  //recalculate
+          It.range(0, this.pScores.size).foreach(i => this.pScores(i) = that.pScores(i)) //recalculate
+          It.range(0, this.cHits.size).foreach(i => this.cHits(i) = that.cHits(i)) //associate
+        } 
+      case _ => throw new Exception("CLustering node cannot learn from ${o.getClass.gertName}")
+    }
   }
-  def getBinaryChildPositons (deep:Int, left:Int) = {
-    ((deep + 1, 2 * left), (deep + 1, 2 * left + 1)) 
-  }*/
+
 } 
 object ClusteringNode {
   def apply(encoded:EncodedNode):ClusteringNode = {

@@ -41,6 +41,7 @@ trait FSNode {
   def getContentAsString = storage.getContentAsString(this)
   def getContentAsJson = storage.getContentAsJson(this)
   def list = storage.list(this)
+  def move(to:FSNode, writeMode:WriteMode) = {this.storage.move(this, to, writeMode)}
   def setContent(content:InputStream, writeMode:WriteMode) = {this.storage.setContent(this, content, writeMode);this}
   def setContent(content:InputStream) = {this.storage.setContent(this, content, WriteMode.failIfExists);this}
   def setContent(content:String, writeMode:WriteMode) = {this.storage.setContent(this, new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8)), writeMode);this}
@@ -144,6 +145,15 @@ trait Storage {
       to.setContent(content = from.getContent, writeMode = writeMode)
     }
   }
+  def moveWithin(from:FSNode, to:FSNode, writeMode:WriteMode)
+  def move(from:FSNode, to:FSNode, writeMode:WriteMode) {
+    if(from.storage != to.storage) {
+      copy(from, to, writeMode)
+      delete(from, false)
+    } else if(from.storage == to.storage && from.path !=to.path) {
+      moveWithin(from, to, writeMode)
+    }
+  }
   def getFileModificationTime(path:Option[String], attrPattern:Map[String, String] = Map[String, String]()):Option[Long]
   def isUnchanged(path:Option[String], attrPattern:Map[String, String] = Map[String, String](), checkPath:Option[String], checkAttr:Map[String, String] = Map[String, String]()) = {
     //Getting stored Timestamp
@@ -190,10 +200,16 @@ case class LocalStorage(override val sparkCanRead:Boolean=false, override val tm
   override val localStorage:LocalStorage = this
   val systemTmpDir = System.getenv("TMPDIR") match {case null => System.getProperty("java.io.tmpdir") case s => s}
 
-  def exists(node:FSNode) 
-       = node match { case lNode:LocalNode => Files.exists(lNode.jPath)          case _ => throw new Exception(s"HDFS Storage cannot manage ${node.getClass.getName} nodes")}
-  def isDirectory(node:FSNode) 
-       = node match { case lNode:LocalNode => Files.isDirectory(lNode.jPath)     case _ => throw new Exception(s"HDFS Storage cannot manage ${node.getClass.getName} nodes")}
+  def exists(node:FSNode) = 
+    node match { 
+      case lNode:LocalNode => Files.exists(lNode.jPath)          
+      case _ => throw new Exception(s"Local Storage cannot manage ${node.getClass.getName} nodes")
+    }
+  def isDirectory(node:FSNode) = 
+    node match { 
+      case lNode:LocalNode => Files.isDirectory(lNode.jPath)     
+      case _ => throw new Exception(s"Local Storage cannot manage ${node.getClass.getName} nodes")
+    }
   def delete(node:FSNode, recurse:Boolean = false) 
        = node match { case lNode:LocalNode => {
          if(Files.isDirectory(lNode.jPath) && recurse ) {
@@ -203,7 +219,18 @@ case class LocalStorage(override val sparkCanRead:Boolean=false, override val tm
            }
          }
          if(lNode.exists) Files.delete(lNode.jPath)
-       } case _ => throw new Exception(s"HDFS Storage cannot manage ${node.getClass.getName} nodes")}
+       } case _ => throw new Exception(s"Local Storage cannot manage ${node.getClass.getName} nodes")}
+  def moveWithin(from:FSNode, to:FSNode, writeMode:WriteMode) = 
+    (from, to) match { 
+      case (lfrom:LocalNode, lto:LocalNode) => {
+        if(lfrom.exists && lto.exists && writeMode == WriteMode.overwrite) 
+          Files.move(lfrom.jPath, lto.jPath, StandardCopyOption.REPLACE_EXISTING)
+        else 
+          Files.move(lfrom.jPath, lto.jPath)
+      } 
+      case _ => throw new Exception(s"Local Storage cannot move within using (${from.getClass.getName} and  ${from.getClass.getName}) nodes")
+    }
+  
   def getContent(node:FSNode)
        = node match { case lNode:LocalNode => Files.newInputStream(lNode.jPath)               case _ => throw new Exception(s"HDFS Storage cannot manage ${node.getClass.getName} nodes")}
   def setContent(node:FSNode, data:InputStream, writeMode:WriteMode)
@@ -289,6 +316,7 @@ case class EpiFileStorage(vooUrl:String, user:String, pwd:String) extends Storag
        }
   def isDirectory(node:FSNode) = false
   def delete(node:FSNode, recurse:Boolean = false) { throw new Exception("Not implemented") }
+  def moveWithin(from:FSNode, to:FSNode, writeMode:WriteMode) { throw new Exception("Not implemented") }
   def getContent(node:FSNode)
        = node match { case eNode:EpiFileNode => { EpiFiles.download(id = eNode.path, vooUrl = this.vooUrl, user = this.user, pwd = this.pwd) }
                       case _ => throw new Exception(s"HDFS Storage cannot manage ${node.getClass.getName} nodes")
@@ -341,12 +369,33 @@ case class HDFSStorage(hadoopConf:Configuration, override val tmpPrefix:String="
   val localStorage:LocalStorage = LocalStorage()
   val fs = FileSystem.get(hadoopConf)
   val systemTmpDir = hadoopConf.get("hadoop.tmp.dir")
-  def exists(node:FSNode) 
-       = node match { case hNode:HDFSNode => fs.exists(hNode.hPath)          case _ => throw new Exception(s"HDFS Storage cannot manage ${node.getClass.getName} nodes")}
-  def isDirectory(node:FSNode) 
-       = node match { case hNode:HDFSNode => fs.isDirectory(hNode.hPath)     case _ => throw new Exception(s"HDFS Storage cannot manage ${node.getClass.getName} nodes")}
-  def delete(node:FSNode, recurse:Boolean = false) 
-       = node match { case hNode:HDFSNode => fs.delete(hNode.hPath, recurse) case _ => throw new Exception(s"HDFS Storage cannot manage ${node.getClass.getName} nodes")}
+  def exists(node:FSNode) = 
+    node match { 
+      case hNode:HDFSNode => fs.exists(hNode.hPath)          
+      case _ => throw new Exception(s"HDFS Storage cannot manage ${node.getClass.getName} nodes")
+    }
+  def isDirectory(node:FSNode) = 
+    node match { 
+      case hNode:HDFSNode => fs.isDirectory(hNode.hPath)     
+      case _ => throw new Exception(s"HDFS Storage cannot manage ${node.getClass.getName} nodes")
+    }
+  def delete(node:FSNode, recurse:Boolean = false) = 
+    node match { 
+      case hNode:HDFSNode => fs.delete(hNode.hPath, recurse) 
+      case _ => throw new Exception(s"HDFS Storage cannot manage ${node.getClass.getName} nodes")
+    }
+  def moveWithin(from:FSNode, to:FSNode, writeMode:WriteMode) = 
+    (from, to) match { 
+      case (hfrom:HDFSNode, hto:HDFSNode) => {
+        if(hfrom.exists && hto.exists && writeMode == WriteMode.overwrite) 
+          fs.rename(hfrom.hPath, hto.hPath)
+        else if(hfrom.exists && !hto.exists )
+          fs.rename(hfrom.hPath, hto.hPath)
+        else
+          throw new Exception("Cannot overwrite destination no overwrite flag provided")
+      } 
+      case _ => throw new Exception(s"HDFS Storage cannot move within using (${from.getClass.getName} and  ${from.getClass.getName}) nodes")
+    }
   def getContent(node:FSNode)
        = node match { case hNode:HDFSNode => fs.open(hNode.hPath)            case _ => throw new Exception(s"HDFS Storage cannot manage ${node.getClass.getName} nodes")}
   def setContent(node:FSNode, data:InputStream, writeMode:WriteMode)

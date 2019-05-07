@@ -14,17 +14,16 @@ case class AnalogyNode (
   , points:ArrayBuffer[MLVector] = ArrayBuffer[MLVector]()
   , pClasses:ArrayBuffer[Int] = ArrayBuffer[Int]()
   , pDag:ArrayBuffer[Int] = ArrayBuffer[Int]()
-  , pInAnalogy:ArrayBuffer[Boolean] = ArrayBuffer[Boolean]()
-  , referenceClass:Int
+  , pInDag:ArrayBuffer[Boolean] = ArrayBuffer[Boolean]()
   , params:NodeParams
   , children: ArrayBuffer[Node] = ArrayBuffer[Node]()
 ) extends Node {
-  val algo = ClassAlgorithm.analogy
   val models = HashMap[Int, WrappedClassifier]()
   val analogies = HashMap[Int, MLVector]()
+  val referenceClass = params.outMap.values.first
 
   def encodeExtras(encoder:EncodedNode) {
-    encoder.inAnalogy = pInAnalogy
+    encoder.inDag = pInDag
     encoder.referenceClass = referenceClass 
     encoder.serialized += (("models", serialize(models.map{case(c, wrapped) => (c, wrapped.model)}))) 
     encoder.serialized += (("pDag", serialize(pDag))) 
@@ -34,7 +33,7 @@ case class AnalogyNode (
     buffer
   }
   def transform(vClasses:Array[Int], scores:Option[Array[Double]], dag:Option[Array[Int]]
-    , vectors:Seq[MLVector], tokens:Seq[String], spark:SparkSession) { 
+    , vectors:Seq[MLVector], tokens:Seq[String]) { 
 
     (for{iRef<-It.range(0, vectors.size) 
          if vectors(iRef) != null
@@ -68,7 +67,7 @@ case class AnalogyNode (
       }
     }
   }
-  def canFitClassifier(c:Int) = pClasses.zip(pInAnalogy).filter(_._1 == c).map(_._2).distinct.size == 2 
+  def canFitClassifier(c:Int) = pClasses.zip(pInDag).filter(_._1 == c).map(_._2).distinct.size == 2 
   def fit(spark:SparkSession) ={
     l.msg("start fitting analogy models")
     this.models.clear
@@ -83,7 +82,7 @@ case class AnalogyNode (
                  .filter{case((p, pc), r) => pc == c } 
                  .map{case((p, pc), r) => this.points(r).minus(p) } 
              , pClasses = 
-               this.points.zip(this.pClasses).zip(this.pInAnalogy)
+               this.points.zip(this.pClasses).zip(this.pInDag)
                  .filter{case((p, pc), ia) => pc == c } 
                  .map{case((p, pc), ia) => if(ia) c else 0 } 
                  .toSeq
@@ -112,7 +111,12 @@ case class AnalogyNode (
       }
     }
   }
-  def learnFromExtras(that:Node) {}
+  def mergeWith(that:Node):this.type = {
+    this.hits = this.hits + that.hits
+    It.range(0, this.children.size).foreach(i => this.children(i).mergeWith(that.children(i)))
+    this
+  }
+  def resetHitsExtras {}
 }
 
 object AnalogyNode {
@@ -120,11 +124,10 @@ object AnalogyNode {
     val ret = AnalogyNode(name = encoded.name, tokens = encoded.tokens.clone, points = encoded.points.clone, pClasses = encoded.pClasses.clone
       , params = encoded.params
       , pDag = encoded.deserialize[ArrayBuffer[Int]]("pDag")
-      , pInAnalogy = encoded.inAnalogy
+      , pInDag = encoded.inDag
       , referenceClass = encoded.referenceClass
     )
     ret.hits = encoded.hits
-    ret.stepHits = encoded.stepHits
     ret.models ++= encoded.deserialize[HashMap[Int, LinearSVCModel]]("models").map{case(c, model) => (c, WrappedClassifier(model))}
     ret.analogies ++= encoded.deserialize[HashMap[Int, MLVector]]("analogies")
     ret 

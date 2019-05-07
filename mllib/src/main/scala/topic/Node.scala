@@ -10,15 +10,20 @@ import scala.collection.mutable.{ArrayBuffer, HashSet, HashMap}
 import scala.{Iterator => It}
 import java.io.{ByteArrayOutputStream, ObjectOutputStream}
 import java.io.{ObjectInputStream,ByteArrayInputStream}
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.scala.DefaultScalaModule
 
 case class NodeParams(
-  inClasses:Set[Int] = Set[Int]()
-  , outClasses:Set[Int] = Set[Int]()
+  algo:NodeAlgorithm
   , links:Map[Int, Set[Int]] = Map[Int, Set[Int]]()
   , var filterMode:FilterMode = FilterMode.noFilter
-  , filterValue:ArrayBuffer[Int] = ArrayBuffer[Int]()) {
+  , filterValue:ArrayBuffer[Int] = ArrayBuffer[Int]()
+) {
+  val inClasses = links.keySet
+  val outClasses = links.values.toSeq.flatMap(v => v).toSet
   def getOutMap(init:Double) =  HashMap(outClasses.toSeq.map(v => (v, init)):_*) 
-}
+  
+  }
 case class ClassAlgorithm(value:String)
 object ClassAlgorithm {
   val analogy = ClassAlgorithm("analogy")
@@ -38,18 +43,15 @@ trait Node{
   val points:ArrayBuffer[MLVector]
   val pClasses:ArrayBuffer[Int]
   val children:ArrayBuffer[Node]
-  val algo:ClassAlgorithm
   val params:NodeParams
-  var hits = 0L
-  var stepHits = 0L
-  var learnedHits = 0L
+  var hits = 0.0
 
   def walk(vClasses:Array[Int], scores:Option[Array[Double]], dag:Option[Array[Int]] 
       , vectors:Seq[MLVector], tokens:Seq[String], spark:SparkSession
       , wClasses:ArrayBuffer[(Int, Int, Double)] = ArrayBuffer[(Int, Int, Double)]()
-      , maxDeep:Option[Int] = None ) {
-    this.stepHits = this.stepHits + 1
-    transform(vClasses, scores, dag, vectors, tokens, spark)
+      , maxDeep:Option[Int] = None, weight:Int = 1 ) {
+    this.hits = this.hits + weight
+    transform(vClasses, scores, dag, vectors, tokens)
     wClasses ++= 
       (for(i <- It.range(0, vClasses.size) if this.params.outClasses(vClasses(i))) 
         yield (i, vClasses(i),scores match {case Some(s) =>s(i) case _ => 1.0} )) 
@@ -68,11 +70,11 @@ trait Node{
                 .toSeq.distinct.size 
               > 0
       )
-      this.children(i).walk(vClasses, scores, dag, vectors, tokens, spark, wClasses, maxDeep.map(d => d - 1))
+      this.children(i).walk(vClasses, scores, dag, vectors, tokens, spark, wClasses, maxDeep.map(d => d - 1), weight)
     }
   }
   def transform(vClasses:Array[Int], scores:Option[Array[Double]], dag:Option[Array[Int]] 
-    , vectors:Seq[MLVector], tokens:Seq[String], spark:SparkSession)
+    , vectors:Seq[MLVector], tokens:Seq[String])
 
   def setToken(token:String, pClass:Int):this.type = 
     tokens.indexOf(token) match {
@@ -102,6 +104,7 @@ trait Node{
   def nodesIterator:Iterator[Node] = {
     It(this) ++ (for(i <- It.range(0, this.children.size)) yield this.children(i).nodesIterator).reduceOption(_ ++ _).getOrElse(It[Node]())
   }
+  def leafsIteartor = nodesIterator.filter(n => n.children.size == 0)
   def similarityScore(vectors:Seq[MLVector], vClasses:Seq[Int]):Double = {
     val bestScores = this.params.getOutMap(0.0)
     for{
@@ -119,7 +122,7 @@ trait Node{
   }
 
   def encode(childArray:ArrayBuffer[EncodedNode]):Int= {
-    val encoder = EncodedNode(name = this.name, algo = this.algo, tokens = tokens, points = points, pClasses = pClasses, params = params, hits = hits, stepHits = stepHits, learnedHits = learnedHits)
+    val encoder = EncodedNode(name = this.name, algo = this.algo, tokens = tokens, points = points, pClasses = pClasses, params = params, hits = hits)
     encodeExtras(encoder)
     val index = childArray.size
     childArray += encoder
@@ -144,12 +147,7 @@ trait Node{
   }
   def prettyPrintExtras(level:Int = 0, buffer:ArrayBuffer[String]=ArrayBuffer[String](), stopLevel:Int = -1):ArrayBuffer[String]
   def encodeExtras(encoder:EncodedNode)
-  def learnFromExtras(that:Node)
-  def learnFrom(that:Node) {
-    learnFromExtras(that)
-    this.learnedHits = this.learnedHits + that.learnedHits
-    It.range(0, this.children.size).foreach(i => this.children(i).learnFrom(that.children(i)))
-  }
+  def mergeWith(that:Node):this.type
   def betterThan(that:Node) = {                    
     val thisGap = this.clusteringGAP
     val thatGap = that.clusteringGAP
@@ -160,18 +158,15 @@ trait Node{
     (thisEmpty + thatEmpty > 0 && thisEmpty != thatEmpty) && thisEmpty < thatEmpty || 
     (thisEmpty + thatEmpty == 0 || thisEmpty == thatEmpty) && thisGap < thatGap
   }
-  def newStep {
-    this.hits = this.hits + this.stepHits 
-    this.stepHits = 0
-    this.learnedHits = 0
-    It.range(0, this.children.size).foreach(i => this.children(i).newStep)
-  
-  }
-  def addStepHits(that:Node):this.type = {
-    this.stepHits = this.stepHits + that.stepHits 
-    It.range(0, this.children.size).foreach(i => this.children(i).addStepHits(that.children(i)))
+  def resetHits:this.type = {
+    this.hits = 0.0
+    this.resetHitsExtras
+    It.range(0, this.children.size).foreach(i => this.children(i).resetHits)
     this
   }
+
+  def resetHitsExtras
+
   def save(dest:FSNode, tmp:Option[FSNode]=None) = {
     val encoded = ArrayBuffer[EncodedNode]()
     this.encode(encoded)
@@ -184,16 +179,20 @@ trait Node{
         dest.setContent(new ByteArrayInputStream(bytes), WriteMode.overwrite)
     }
   }
-  def saveAsJson(dest:FSNode, tmp:FSNode, spark:SparkSession) = {
-    import spark.implicits._
+  def saveAsJson(dest:FSNode, tmp:Option[FSNode]=None, stripBinary:Boolean = true) = {
+    val mapper = new ObjectMapper()
+    mapper.registerModule(DefaultScalaModule)
     val encoded = ArrayBuffer[EncodedNode]()
     this.encode(encoded)
-    Seq(encoded.map(_.stripBinary)).toDS.write.mode("overwrite").json(tmp.path) 
-    tmp
-      .list
-      .filter(n => n.path.contains("best.json/part"))
-      .head
-      .move(dest, WriteMode.overwrite)
+    if(stripBinary) encoded.foreach{e => e.stripBinary}
+    tmp match {
+      case Some(t) =>
+        //println(s"writing json to ${dest.path} which is ${mapper.writeValueAsString(encoded)}")
+        t.setContent(new ByteArrayInputStream(mapper.writeValueAsBytes(encoded)), WriteMode.overwrite)
+        t.move(dest, WriteMode.overwrite)
+      case None =>
+        dest.setContent(new ByteArrayInputStream(mapper.writeValueAsBytes(encoded)), WriteMode.overwrite)
+    }
   }
 }
 
@@ -212,11 +211,9 @@ case class EncodedNode  (
   , pClasses:ArrayBuffer[Int] = ArrayBuffer[Int]()
   , params:NodeParams
   , children: ArrayBuffer[Int] = ArrayBuffer[Int]()
-  , var hits:Long = 0
-  , var stepHits:Long = 0
-  , var learnedHits:Long = 0
+  , var hits:Double = 0
   , var referenceClass:Int = 0
-  , var inAnalogy:ArrayBuffer[Boolean] = ArrayBuffer[Boolean]()
+  , var inDag:ArrayBuffer[Boolean] = ArrayBuffer[Boolean]()
   , var classCenters:Map[Int, Int] = Map[Int, Int]()
   , serialized:ArrayBuffer[(String, Array[Byte])] = ArrayBuffer[(String, Array[Byte])]()
 ) {
@@ -257,10 +254,8 @@ case class EncodedNode  (
       , params = params
       , children = children
       , hits = hits
-      , stepHits = stepHits
-      , learnedHits = learnedHits
       , referenceClass = referenceClass
-      , inAnalogy = inAnalogy
+      , inDag = inDag
       , classCenters = classCenters
       , serialized = ArrayBuffer[(String, Array[Byte])]()
     )

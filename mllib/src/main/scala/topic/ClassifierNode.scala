@@ -68,7 +68,6 @@ case class ClassifierNode (
   , params:NodeParams
   , children: ArrayBuffer[Node] = ArrayBuffer[Node]()
 ) extends Node {
-  val algo = ClassAlgorithm.supervised
   val models = HashMap[Int, WrappedClassifier]()
 
   def encodeExtras(encoder:EncodedNode) {
@@ -79,7 +78,7 @@ case class ClassifierNode (
   }
   
   def transform(vClasses:Array[Int], scores:Option[Array[Double]], dag:Option[Array[Int]]
-    , vectors:Seq[MLVector], tokens:Seq[String], spark:SparkSession) { 
+    , vectors:Seq[MLVector], tokens:Seq[String]) { 
       for{i <- It.range(0, vectors.size)
         if vectors(i) != null
         if this.params.inClasses.contains(vClasses(i)) } {
@@ -112,14 +111,19 @@ case class ClassifierNode (
     l.msg("clasifier fit")
     this
   }
-  def learnFromExtras(that:Node) {}
+  def mergeWith(that:Node):this.type = {
+    this.hits = this.hits + that.hits
+    It.range(0, this.children.size).foreach(i => this.children(i).mergeWith(that.children(i)))
+    this
+  }
+
+  def resetHitsExtras {}
 }
 object ClassifierNode {
   def apply(encoded:EncodedNode):ClassifierNode = {
     val ret = ClassifierNode(name = encoded.name, tokens = encoded.tokens.clone, points = encoded.points.clone, pClasses = encoded.pClasses.clone
       , params = encoded.params
     )
-    ret.stepHits = encoded.stepHits
     ret.hits = encoded.hits
     ret.models ++= encoded.deserialize[HashMap[Int, LinearSVCModel]]("models").map{case(c, model) => (c, WrappedClassifier(model))}
     ret 

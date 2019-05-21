@@ -2,6 +2,7 @@ package demy.mllib.text
 
 import demy.mllib.params.HasExecutionMetrics
 import demy.mllib.index.implicits._
+import demy.mllib.index.VectorIndex
 import demy.mllib.util.log.{msg, debug}
 import org.apache.spark.ml.Transformer
 import org.apache.spark.ml.util.Identifiable
@@ -9,10 +10,26 @@ import org.apache.spark.ml.param.{Param, ParamMap}
 import org.apache.spark.sql.{Dataset, DataFrame, Row}
 import org.apache.spark.ml.attribute.AttributeGroup
 import org.apache.spark.ml.linalg.SQLDataTypes._
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.functions.{udf, col}
 import org.apache.spark.ml.linalg.{Vectors, DenseVector, Vector=>MLVector}
 
+case class Word2VecIndex(spark:SparkSession, applier:Word2VecApplier) extends VectorIndex {
+  def apply(tokens:Seq[String]) = {
+    import spark.implicits._
+    
+    if(!applier.getOrDefault(applier.sumWords))
+      throw new Exception("Word2VecApplier cannot be transformed on index since sumWords is false")
+    (tokens.map(t => t.split(" ")).toSeq.toDS.toDF("tokens") match {
+      case df =>  applier.transform(df) 
+    })
+      .as[(Seq[String], MLVector)]
+      .map{case (tokens, vector) => (tokens.mkString(" "), vector)}
+      .collect
+      .toMap
+  }
+}
 class Word2VecApplier(override val uid: String) extends Transformer with HasExecutionMetrics {
     final val inputCol = new Param[String](this, "inputCol", "The input column")
     final val outputCol = new Param[String](this, "outputCol", "The new column column")
@@ -52,6 +69,7 @@ class Word2VecApplier(override val uid: String) extends Transformer with HasExec
     def setAccentSensitive(value: Boolean): this.type = set(accentSensitive, value)
     def setCaseSensitive(value: Boolean): this.type = set(caseSensitive, value)
     def setStopWords(value: Array[String]): this.type = set(stopWords, value)
+    def toIndex(spark:SparkSession) = Word2VecIndex(spark = spark, applier = this)
     override def transform(dataset: Dataset[_]): DataFrame = {
       val spark = dataset.sparkSession
       import spark.implicits._

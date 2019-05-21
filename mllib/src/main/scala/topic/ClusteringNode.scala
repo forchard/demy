@@ -1,5 +1,6 @@
 package demy.mllib.topic
 
+import demy.mllib.index.VectorIndex
 import demy.util.{log => l}
 import demy.mllib.linalg.implicits._
 import org.apache.spark.sql.{SparkSession}
@@ -8,29 +9,30 @@ import scala.collection.mutable.{ArrayBuffer, HashSet, HashMap}
 import scala.{Iterator => It}
 
 case class ClusteringNode (
-  name:String
-  , tokens:ArrayBuffer[String] = ArrayBuffer[String]()
-  , points:ArrayBuffer[MLVector] = ArrayBuffer[MLVector]()
-  , pClasses:ArrayBuffer[Int] = ArrayBuffer[Int]()
-  , params:NodeParams
+  params:NodeParams
+  , points: ArrayBuffer[MLVector]
   , children: ArrayBuffer[Node] = ArrayBuffer[Node]()
-  , maxTopWords:Int
-  , classCenters:Map[Int, Int]
-  , vectorSize:Int
 ) extends Node {
+  assert(!this.params.maxTopWords.isEmpty)
+  assert(!this.params.classCenters.isEmpty)
+  assert(!this.params.vectorSize.isEmpty)
+  assert(!this.params.childSplitSize.isEmpty)
+  val maxTopWords = this.params.maxTopWords.get
+  val classCenters = this.params.classCenters.get.map{case (classStr, center) => (classStr.toInt, center)}
+  val vectorSize = this.params.vectorSize.get
+  val pScores = this.params.pScores.getOrElse(Array.fill(maxTopWords)(0.0))
+  val childSplitSize = this.params.childSplitSize.get
+  val classCentersSet = classCenters.groupBy{case (cla, center) => center}.mapValues(p => p.map{case (cla, center) => cla}.toSet)
+
   var initializing = true
   val vZero = Vectors.dense(Array.fill(vectorSize)(0.0))
   val pCenters = Array.fill(this.classCenters.values.toSet.size)(vZero)
   val vCenters = Array.fill(this.classCenters.values.toSet.size)(vZero)
   val cGAP = Array.fill(this.classCenters.values.toSet.size)(1.0)
   val exceptPCenters = Array.fill(maxTopWords)(vZero)
-  val pScores = Array.fill(maxTopWords)(0.0)
   val cHits = Array.fill(this.classCenters.values.toSet.size)(0.0)
   
   def encodeExtras(encoder:EncodedNode) {
-    encoder.classCenters = classCenters
-    encoder.serialized += (("maxTopWords", serialize(maxTopWords)))
-    encoder.serialized += (("vectorSize",serialize(vectorSize)))
     encoder.serialized += (("initializing", serialize(initializing)))
     encoder.serialized += (("pCenters",serialize(pCenters )))
     encoder.serialized += (("vCenters",serialize(vCenters )))
@@ -45,16 +47,28 @@ case class ClusteringNode (
     buffer
   }
   
-  def transform(vClasses:Array[Int], scores:Option[Array[Double]], dag:Option[Array[Int]]
-    , vectors:Seq[MLVector], tokens:Seq[String]) { 
-      for{i <- It.range(0, vectors.size)
-        if vectors(i) != null
-        if this.params.inClasses.contains(vClasses(i)) } {
-      val (bestClass, bestScore) = this.score(vectors(i), tokens(i), vClasses(i))
-      if(bestScore > 0.5) vClasses(i) = bestClass
-      scores match {
-        case Some(arr) => arr(i) = bestScore
-        case None =>
+  def transform(facts:HashMap[Int, HashMap[Int, Int]], scores:Option[HashMap[Int, HashMap[Int, Double]]]=None, vectors:Seq[MLVector], tokens:Seq[String], cGeneratror:Iterator[Int]) { 
+    if(this.hits > this.childSPlitSize && this.children.size < this.pCenters.size)
+      this.fillChildren(cGenerator)
+    }
+    for{inClass <- this.links.keySet.iterator
+      (iBase, _) <- facts.get(inClass).map(o => o.iterator).getOrElse(It[(Int, Int)]()) } {
+      
+      val (outClass, score) = this.score(vectors(iBase), tokens(iBase), inClass)
+      if(score > 0.5) {
+        facts.get(outClass) match {
+          case Some(f) => f(iBase) = iBase
+          case None => facts(outClass) = HashMap(iBase -> iBase)
+        }
+        scores match {
+          case Some(theScores) => {
+            theScores.get(outClass) match {
+              case Some(s) => s(iBase) = score
+              case None => theScores(outClass) = HashMap(iBase -> score)
+            }
+          }
+          case None =>
+        }
       }
     }
   }
@@ -63,29 +77,31 @@ case class ClusteringNode (
     if(initializing) {
       //println(s">>>>> ${this.hits} --> checking... $inClass ($token), ${this.params.links(inClass)} diff  ${this.pClasses.toSet}")
       val asClass = 
-        this.params.links(inClass).diff(this.pClasses.toSet).headOption match {
+        this.outClasses.diff(this.rel.keySet).headOption match {
           case Some(classToFill) if 
-            It.range(0, this.points.size)
-              .filter(i => this.params.links(inClass)(this.pClasses(i)))
-              .filter(i => this.points(i).similarityScore(vector) > 0.999)
+            this.links(inClass).iterator
+              .flatMap(outClass => this.rel.get(outClass).map(o => o.iterator).getOrElse(It[(Int, Int)]()))
+              .filter{case(iOut, _) => this.points(iOut).similarityScore(vector) > 0.999}
               .size == 0 
            =>
             this.tokens += token
             this.points += vector
-            this.pClasses += classToFill
+            this.rel.get(classToFill) match {
+              case Some(r) => r(this.tokens.size-1) = inClass
+              case None => this.rel(classToFill) = HashMap(this.tokens.size -1 -> inClass)
+            }
             //println(s"init pClasses: ${this.pClasses.toSeq}")
             classToFill
           case Some(classToFill) =>
-            It.range(0, this.points.size)
-              .filter(i => this.params.links(inClass)(this.pClasses(i)))
-              .map(i => this.pClasses(i))
-              .next
+              this.links(inClass).iterator
+                .flatMap(outClass => this.rel.get(outClass).map(o => o.iterator).getOrElse(It[(Int, Int)]()).map(p => (p, outClass)))
+                .filter{case((iOut, _), outCLass) => this.points(iOut).similarityScore(vector) > 0.999}
+                .next match { case ((iOut, _), outClass) => outClass}
           case _ => -1
       }
-      initializing = this.pClasses.toSet != this.params.links.flatMap{case(from, to) => to}.toSet
+      initializing = this.rel.values.toSet != this.links.values.toSet
       updatePointsStats
       //println(s"<<<<< ${this.hits} --> checking... $inClass, ${this.params.links(inClass)} diff  ${this.pClasses.toSet}")
-
       asClass
     }
     else
@@ -96,7 +112,7 @@ case class ClusteringNode (
     val (vClass, iCenter, cSimilarity) =  
     (onInit(vector, token, inClass) match {
       case forced if(forced >= 0) => Set(forced) 
-      case _ => this.params.links(inClass) 
+      case _ => this.links(inClass) 
     })
       .map(outClass => (outClass, this.classCenters(outClass), vector.similarityScore(this.pCenters(this.classCenters(outClass)))))
       .reduce((t1, t2) => (t1, t2) match {
@@ -105,8 +121,7 @@ case class ClusteringNode (
           else t2
       })
     val (iPoint, pSimilarity) = 
-      (for{i <- It.range(0, this.points.size)
-          if this.pClasses(i) == vClass } 
+      (for(i <- this.rel(vClass).keysIterator ) 
          yield (i, vector.similarityScore(this.points(i)))
       ).reduce((p1, p2) => (p1, p2) match {
           case ((i1, score1), (i2, score2)) => 
@@ -139,8 +154,7 @@ case class ClusteringNode (
      )
   }
   def estimatePointHits(i:Int) = {
-    val ret = pointWeight(i)*this.hits//cHits(classCenters(pClasses(i)))
-    if(ret.isNaN) println(s"NAAAAAAAAAAAAAAAAAAANUN")
+    val ret = pointWeight(i)*this.params.hits//cHits(classCenters(pClasses(i)))
     ret
   }
   def tryAsPoint(vector:MLVector, token:String, vClass:Int, iPoint:Int, iCenter:Int) {
@@ -160,7 +174,7 @@ case class ClusteringNode (
           //println(s"$step gap: ${this.cGAP(iCenter)} adding $token")
           this.points += vector
           this.tokens += token
-          this.pClasses += vClass
+          this.rel(vClass)(this.tokens.size-1) = this.tokens.size-1
           //println(s"tryas pClasses: ${this.pClasses.toSeq} init?:{$this.initializing}")
           viPoint = this.points.size - 1
           updatePointsStats
@@ -180,20 +194,23 @@ case class ClusteringNode (
   }
 
   def updatePointsStats {
-    for(i <- It.range(0, this.pCenters.size)) this.pCenters(i) = this.vZero
+    for(center <- It.range(0, this.pCenters.size)) 
+      this.pCenters(center) = 
+        this.classCentersSet(center).iterator
+          .flatMap(cClass => 
+              this.rel.get(cClass).map(r => r.iterator).getOrElse(It[(Int, Int)]())
+                .map{case (i, _) => this.points(i)}
+          ).fold(vZero)((current, next) => (current.sum(next)))
     
-    //println(s"init pClasses: ${this.pClasses.toSeq} (${this.points.size})")
-    for(i <- It.range(0, this.points.size)) {
-      this.pCenters(this.classCenters(this.pClasses(i))) = this.pCenters(this.classCenters(this.pClasses(i))).sum(this.points(i))
-      this.exceptPCenters(i) = vZero
+    for{center <- It.range(0, this.pCenters.size) 
+         (i, _) <- 
+           this.classCentersSet(center).iterator
+             .flatMap(cClass => this.rel.get(cClass).map(r => r.iterator).getOrElse(It[(Int, Int)]()))} {
+      this.exceptPCenters(i) = this.pCenters(center).minus(this.points(i))
     }
 
-    for{i <- It.range(0, this.points.size)
-        j <- It.range(0, this.points.size)
-        if i != j
-        if this.classCenters(this.pClasses(i)) == this.classCenters(this.pClasses(j)) } {
-      this.exceptPCenters(i) = this.exceptPCenters(i).sum(this.points(j))
-    }
+    
+    //println(s"init pClasses: ${this.pClasses.toSeq} (${this.points.size})")
   }
 
   def GAP = {
@@ -211,8 +228,7 @@ case class ClusteringNode (
       }
   }
   def fromClass(toClass:Int) =  
-    this.params
-      .links
+    this.links
       .toSeq
       .flatMap{case (from, to) => 
         if(to(toClass)) Some(from)
@@ -223,8 +239,8 @@ case class ClusteringNode (
   def mergeWith(thatNode:Node):this.type = {
     thatNode match {
       case that:ClusteringNode =>
-        that.params.inClasses.foreach{ inClass =>
-          that.collectLeafPoints(inClass)
+        that.links.keys.foreach{ inClass =>
+          that.collectLeafPoints(inClass = inClass)
             .foreach{case(lVector, lToken, lHits, lCenter) =>
               this.mergeChildren(inClass, lVector, lToken, lHits, lCenter)
             }
@@ -234,7 +250,7 @@ case class ClusteringNode (
     this
   }
   def mergeChildren(inClass:Int, vector:MLVector, token:String, weight:Double, center:MLVector)  {
-    this.hits = this.hits + weight
+    this.params.hits = this.params.hits + weight
     val (bestClass, bestScore) = this.score(
       vector = vector
       , token = token
@@ -243,7 +259,7 @@ case class ClusteringNode (
       , asVCenter = Some(center)
     )
     for{i <- It.range(0, this.children.size)
-        if(this.children(i).params.inClasses(bestClass))
+        if(this.children(i).links.keySet(bestClass))
     } this.children(i).asInstanceOf[ClusteringNode].mergeChildren(bestClass, vector, token, weight, center)
   }
   def resetHitsExtras {
@@ -252,30 +268,34 @@ case class ClusteringNode (
   }
 
   def collectLeafPoints(inClass:Int, buffer:ArrayBuffer[(MLVector, String, Double, MLVector)]=ArrayBuffer[(MLVector, String, Double, MLVector)]()): ArrayBuffer[(MLVector, String, Double, MLVector)]= {
-    if(this.children.size == 0 || this.children.filter(c => c.hits == 0).size > 0)
-      for{i <- It.range(0, this.points.size)
-          if fromClass(this.pClasses(i)) == inClass
-      } {
-        buffer += ((this.points(i), this.tokens(i), this.estimatePointHits(i), this.vCenters(this.classCenters(this.pClasses(i)))))
+    if(this.children.size == 0 || this.children.filter(c => c.params.hits == 0).size > 0)
+      for{outClass <- this.links(inClass).iterator 
+          (i, _) <- this.rel.get(outClass).map(o => o.iterator).getOrElse(It[(Int, Int)]()) } {
+        buffer += ((this.points(i), this.tokens(i), this.estimatePointHits(i), this.vCenters(this.classCenters(outClass))))
       }
     else 
       for{c <- It.range(0, this.children.size)} {
-        this.params.links(inClass)
-          .intersect(this.children(c).params.inClasses)
+        this.links(inClass)
+          .intersect(this.children(c).inClasses)
           .foreach(childInClass => this.children(c).asInstanceOf[ClusteringNode].collectLeafPoints(inClass = childInClass, buffer))
       }
-      buffer
+    buffer
   }
 } 
 object ClusteringNode {
-  def apply(encoded:EncodedNode):ClusteringNode = {
-    val ret = ClusteringNode(name = encoded.name, tokens = encoded.tokens.clone, points = encoded.points.clone, pClasses = encoded.pClasses.clone
-      , params = encoded.params
-      , maxTopWords = encoded.deserialize[Int]("maxTopWords")
-      , classCenters = encoded.classCenters
-      , vectorSize = encoded.deserialize[Int]("vectorSize")
+  def apply(params:NodeParams, index:VectorIndex):ClusteringNode = {
+    val ret = ClusteringNode(
+      points = ArrayBuffer[MLVector]() 
+      , params = params
     )
-    ret.hits = encoded.hits
+    ret.points ++= (index(ret.tokens) match {case map => ret.tokens.map(t => map(t))}) 
+    ret 
+  }
+  def apply(encoded:EncodedNode):ClusteringNode = {
+    val ret = ClusteringNode(
+      points = encoded.points
+      , params = encoded.params
+    )
     ret.initializing = encoded.deserialize[Boolean]("initializing")
     encoded.deserialize[Array[MLVector]]("pCenters").zipWithIndex.foreach{case (v, i) => ret.pCenters(i) = v}
     encoded.deserialize[Array[MLVector]]("vCenters").zipWithIndex.foreach{case (v, i) => ret.vCenters(i) = v}
@@ -286,4 +306,3 @@ object ClusteringNode {
     ret 
   }
 }
-

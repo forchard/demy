@@ -18,7 +18,7 @@ case class ClusteringNode (
   assert(!this.params.vectorSize.isEmpty)
   assert(!this.params.childSplitSize.isEmpty)
   val maxTopWords = this.params.maxTopWords.get
-  val classCenters = this.params.classCenters.get.map{case (classStr, center) => (classStr.toInt, center)}
+  val classCenters = HashMap(this.params.classCenters.get.map{case (classStr, center) => (classStr.toInt, center)}.toSeq :_*)
   val vectorSize = this.params.vectorSize.get
   val pScores = this.params.pScores.getOrElse(Array.fill(maxTopWords)(0.0))
   val childSplitSize = this.params.childSplitSize.get
@@ -26,11 +26,11 @@ case class ClusteringNode (
 
   var initializing = true
   val vZero = Vectors.dense(Array.fill(vectorSize)(0.0))
-  val pCenters = Array.fill(this.classCenters.values.toSet.size)(vZero)
-  val vCenters = Array.fill(this.classCenters.values.toSet.size)(vZero)
-  val cGAP = Array.fill(this.classCenters.values.toSet.size)(1.0)
+  val pCenters = ArrayBuffer.fill(this.classCenters.values.toSet.size)(vZero)
+  val vCenters = ArrayBuffer.fill(this.classCenters.values.toSet.size)(vZero)
+  val cGAP = ArrayBuffer.fill(this.classCenters.values.toSet.size)(1.0)
   val exceptPCenters = Array.fill(maxTopWords)(vZero)
-  val cHits = Array.fill(this.classCenters.values.toSet.size)(0.0)
+  val cHits = ArrayBuffer.fill(this.classCenters.values.toSet.size)(0.0)
   
   def encodeExtras(encoder:EncodedNode) {
     encoder.serialized += (("initializing", serialize(initializing)))
@@ -48,7 +48,7 @@ case class ClusteringNode (
   }
   
   def transform(facts:HashMap[Int, HashMap[Int, Int]], scores:Option[HashMap[Int, HashMap[Int, Double]]]=None, vectors:Seq[MLVector], tokens:Seq[String], cGeneratror:Iterator[Int]) { 
-    if(this.hits > this.childSPlitSize && this.children.size < this.pCenters.size)
+    if(this.params.hits > this.childSplitSize && this.children.size < this.pCenters.size) {
       this.fillChildren(cGenerator)
     }
     for{inClass <- this.links.keySet.iterator
@@ -280,6 +280,21 @@ case class ClusteringNode (
           .foreach(childInClass => this.children(c).asInstanceOf[ClusteringNode].collectLeafPoints(inClass = childInClass, buffer))
       }
     buffer
+  }
+
+  def fillChildren(cGenerator:Iterator[Int]) {
+    for(i <- It.range(this.children.size, this.classCenters.size)) { 
+      val fromMap = this.classCenters.flatMap{case (outClass, iCenter) => if(iCenter == i) Some((this.links.filter{case (from, toSet) => toSet(outClass)}.head._1, outClass)) else None}
+      val toMap = oldClasses.iterator.zip(cGenerator).toSeq.toMap
+      val childParams = 
+        this.params
+          .with
+    if(oldClasses.size == newClasses.size)
+        , strLinks = strLinks.map{case (inClass, outSet) => (inClass, outSet.map(o => newClasses(o)) }
+        , classCenters = classCenters.map(cMap => cMap.map{ case(outClass, center) => (newClasses(outClass.toInt), center)})
+      
+    }
+         
   }
 } 
 object ClusteringNode {

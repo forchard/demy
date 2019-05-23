@@ -47,7 +47,42 @@ case class NodeParams(
     n.children ++= this.children.map(i => others(i).toNode(others, vectorIndex))
     n
   }
-  
+  def withStrLinks(value:Map[String, Set[Int]]) = {
+      NodeParams(
+        name = this.name
+        , annotations = this.annotations.clone
+        , algo = this.algo
+        , strLinks = value
+        , names = this.names
+        , filterMode = this.filterMode
+        , filterValue = this.filterValue.clone
+        , maxTopWords = this.maxTopWords
+        , classCenters = this.classCenters
+        , vectorSize = this.vectorSize
+        , pScores = this.pScores
+        , childSplitSize = this.childSplitSize
+        , children = this.children.clone
+        , hits = this.hits
+      )
+  }
+  def withClassCenters(value:Option[Map[String, Int]]) = {
+      NodeParams(
+        name = this.name
+        , annotations = this.annotations.clone
+        , algo = this.algo
+        , strLinks = value
+        , names = this.names
+        , filterMode = this.filterMode
+        , filterValue = this.filterValue.clone
+        , maxTopWords = this.maxTopWords
+        , classCenters = value
+        , vectorSize = this.vectorSize
+        , pScores = this.pScores
+        , childSplitSize = this.childSplitSize
+        , children = this.children.clone
+        , hits = this.hits
+      )
+  }
 }
 
 case class ClassAlgorithm(value:String)

@@ -30,7 +30,12 @@ case class AnalogyNode (
   def prettyPrintExtras(level:Int = 0, buffer:ArrayBuffer[String]=ArrayBuffer[String](), stopLevel:Int = -1):ArrayBuffer[String] = {
     buffer
   }
-  def transform(facts:HashMap[Int, HashMap[Int, Int]], scores:Option[HashMap[Int, HashMap[Int, Double]]]=None, vectors:Seq[MLVector], tokens:Seq[String], cGeneratror:Iterator[Int]) { 
+  def transform(facts:HashMap[Int, HashMap[Int, Int]]
+      , scores:Option[HashMap[Int, HashMap[Int, Double]]]=None
+      , vectors:Seq[MLVector]
+      , tokens:Seq[String]
+      , parent:Option[Node]
+      , cGeneratror:Iterator[Int]) { 
     (for((iRef, _) <- facts(referenceClass).iterator )
       yield (iRef, (
         for((iBase, _) <- facts(baseClass).iterator)
@@ -99,12 +104,14 @@ case class AnalogyNode (
       }
     }
   }
-  def mergeWith(that:Node):this.type = {
+  def mergeWith(that:Node, cGenerator:Iterator[Int]):this.type = {
     this.params.hits = this.params.hits + that.params.hits
-    It.range(0, this.children.size).foreach(i => this.children(i).mergeWith(that.children(i)))
+    It.range(0, this.children.size).foreach(i => this.children(i).mergeWith(that.children(i), cGenerator))
     this
   }
+  def updateParamsExtras {} 
   def resetHitsExtras {}
+  def cloneUnfittedExtras = this
 }
 
 object AnalogyNode {

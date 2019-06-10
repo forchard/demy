@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.SerializationFeature
 import demy.mllib.index.VectorIndex
 import demy.util.{log => l}
 import demy.mllib.linalg.implicits._
+import demy.mllib.index.{CachedIndex}
 import demy.storage.{FSNode, WriteMode}
 import org.apache.spark.ml.linalg.{Vector => MLVector, Vectors}
 import org.apache.spark.sql.{SparkSession}
@@ -16,73 +17,77 @@ import scala.{Iterator => It}
 import java.io.{ByteArrayOutputStream, ObjectOutputStream}
 import java.io.{ObjectInputStream,ByteArrayInputStream}
 
-case class Annotation(token:String, cat:Int, from:Option[String], inRel:Boolean)
+case class Annotation(token:String, cat:Int, from:Option[String], inRel:Boolean, score:Double)
 case class NodeParams(
   name:String
   , annotations:ArrayBuffer[Annotation]
   , algo:ClassAlgorithm
   , strLinks:Map[String, Set[Int]] = Map[String, Set[Int]]()
+  , strClassPath:Map[String, Set[Int]] = Map[String, Set[Int]]()
   , names:Map[String, Int] = Map[String, Int]()
   , var filterMode:FilterMode = FilterMode.noFilter
   , filterValue:ArrayBuffer[Int] = ArrayBuffer[Int]()
   , maxTopWords:Option[Int]=None
   , classCenters:Option[Map[String, Int]]=None
   , vectorSize:Option[Int] = None
-  , pScores: Option[Array[Double]]
+  , var cError: Option[Array[Double]]=None
   , childSplitSize: Option[Int] = None
   , children: ArrayBuffer[Int] = ArrayBuffer[Int]()
   , var hits:Double = 0
 ) {
-  //def getOutMap(init:Double) =  HashMap(outClasses.toSeq.map(v => (v, init)):_*) 
-  def toNode(others:ArrayBuffer[NodeParams], vectorIndex:VectorIndex):Node = {
+  def toNode(others:ArrayBuffer[NodeParams]= ArrayBuffer[NodeParams](), vectorIndex:Option[VectorIndex]= None):Node = {
    
    val n =
       if(this.algo == ClassAlgorithm.clustering) 
         ClusteringNode(this, vectorIndex)
       else if(this.algo == ClassAlgorithm.supervised)
-        ClassifierNode(this, vectorIndex)
+        ClassifierNode(this, vectorIndex.get)
       else if(this.algo == ClassAlgorithm.analogy)
-        AnalogyNode(this, vectorIndex)
+        AnalogyNode(this, vectorIndex.get)
       else throw new Exception(s"Unknown algorithm ${this.algo}")
     n.children ++= this.children.map(i => others(i).toNode(others, vectorIndex))
     n
   }
-  def withStrLinks(value:Map[String, Set[Int]]) = {
-      NodeParams(
-        name = this.name
-        , annotations = this.annotations.clone
-        , algo = this.algo
-        , strLinks = value
-        , names = this.names
-        , filterMode = this.filterMode
-        , filterValue = this.filterValue.clone
-        , maxTopWords = this.maxTopWords
-        , classCenters = this.classCenters
-        , vectorSize = this.vectorSize
-        , pScores = this.pScores
-        , childSplitSize = this.childSplitSize
-        , children = this.children.clone
-        , hits = this.hits
-      )
+  def cloneWith(classMapping:Option[Map[Int, Int]], unFit:Boolean = true) = {
+    if(!classMapping.isEmpty && classMapping.get.size != this.strLinks.keySet.size + this.strLinks.values.flatMap(v => v).toSet.size)
+        None
+    else
+      Some(NodeParams(
+      name = this.name
+      , annotations = if(unFit) ArrayBuffer[Annotation]() else this.annotations.clone
+      , algo = this.algo
+      , strLinks = classMapping match {
+          case Some(classMap) => this.strLinks.map{case (inClass, outSet) => (classMap(inClass.toInt).toString, outSet.map(o => classMap(o))) }
+          case None => strLinks
+      }
+      , strClassPath =  classMapping match {
+          case Some(classMap) => this.strClassPath.map{case (inClass, parentSet) => (classMap(inClass.toInt).toString, parentSet + inClass.toInt) }
+          case None => strClassPath
+      }
+      , names = this.names
+      , filterMode = this.filterMode
+      , filterValue = classMapping match {
+          case Some(classMap) => this.filterValue.map(c => classMap(c))
+          case None => filterValue.clone
+      }
+      , maxTopWords = this.maxTopWords
+      , classCenters = classMapping match {
+          case Some(classMap) => this.classCenters.map(cCenters => cCenters.map{ case(outClass, center) => (classMap(outClass.toInt).toString, center)})
+          case None => classCenters
+      }
+      , vectorSize = this.vectorSize
+      , childSplitSize = this.childSplitSize
+      , children = if(unFit) ArrayBuffer[Int]() else this.children.clone
+      , hits = if(unFit) 0.0 else  this.hits
+    ))
   }
-  def withClassCenters(value:Option[Map[String, Int]]) = {
-      NodeParams(
-        name = this.name
-        , annotations = this.annotations.clone
-        , algo = this.algo
-        , strLinks = value
-        , names = this.names
-        , filterMode = this.filterMode
-        , filterValue = this.filterValue.clone
-        , maxTopWords = this.maxTopWords
-        , classCenters = value
-        , vectorSize = this.vectorSize
-        , pScores = this.pScores
-        , childSplitSize = this.childSplitSize
-        , children = this.children.clone
-        , hits = this.hits
-      )
+  def allTokens(ret:HashSet[String]=HashSet[String](), others:Seq[NodeParams]):HashSet[String] = {
+    ret ++= this.annotations.map(a => a.token)
+    ret ++= this.annotations.flatMap(a => a.from)
+    this.children.foreach(i => others(i).allTokens(ret, others))
+    ret
   }
+
 }
 
 case class ClassAlgorithm(value:String)
@@ -103,9 +108,39 @@ trait Node{
   val points:ArrayBuffer[MLVector]
   val children:ArrayBuffer[Node]
 
-  def walk(facts:HashMap[Int, HashMap[Int, Int]], scores:Option[HashMap[Int, HashMap[Int, Double]]]=None, vectors:Seq[MLVector], tokens:Seq[String], cGenerator:Iterator[Int]) { 
+  val links = this.params.strLinks.map(p => (p._1.toInt, p._2))
+  val classPath = this.params.strClassPath.map(p => (p._1.toInt, p._2))
+  val tokens = params.annotations.map(n => n.token) ++ params.annotations.flatMap(n => n.from) 
+  lazy val outClasses = links.values.toSeq.flatMap(v => v).toSet
+  lazy val rel = {
+    val fromIndex = params.annotations.zipWithIndex.filter{case (n, i) => !n.from.isEmpty}.zipWithIndex.map{case ((_, i), j) => (i, params.annotations.size + j)}.toMap
+    HashMap(
+      params.annotations
+       .zipWithIndex
+       .map{case (n, i) => (n.cat, i, fromIndex.get(i).getOrElse(i))}
+       .groupBy{case (cat, i, j) => cat}
+       .mapValues{s => HashMap(s.map{case (cat, i, j) => (i, j)}:_*)}
+       .toSeq :_*
+   )
+  }
+  lazy val inRel = {
+    val fromIndex = params.annotations.zipWithIndex.filter{case (n, i) => !n.from.isEmpty}.zipWithIndex.map{case ((_, i), j) => (i, params.annotations.size + j)}.toMap
+    HashMap(
+      params.annotations
+       .zipWithIndex
+       .map{case (n, i) => (n.cat, i, fromIndex.get(i).getOrElse(i), n.inRel)}
+       .groupBy{case (cat, i, j, inRel) => cat}
+       .mapValues{s => HashMap(s.map{case (cat, i, j, inRel) => ((i, j), inRel)}:_*)}
+       .toSeq :_*
+   )
+  }
+  lazy val inClasses = links.keySet
+  lazy val linkPairs = links.toSeq.flatMap{case (from, toSet) => toSet.map(to => (from, to))}
+  lazy val inMap = linkPairs.map{case (from, to) => (to, from)}.toMap
+
+  def walk(facts:HashMap[Int, HashMap[Int, Int]], scores:Option[HashMap[Int, HashMap[Int, Double]]]=None, vectors:Seq[MLVector], tokens:Seq[String], parent:Option[Node], cGenerator:Iterator[Int]) { 
     this.params.hits = this.params.hits + 1
-    transform(facts, scores, vectors, tokens, cGeneratror)
+    transform(facts, scores, vectors, tokens, parent, cGenerator)
     
     for(i <- It.range(0, this.children.size)) {
       if(this.children(i).params.filterMode == FilterMode.noFilter
@@ -118,38 +153,10 @@ trait Node{
                 .filter(inChild => facts.contains(inChild))
                 .size > 0 
       )
-      this.children(i).walk(facts, scores, vectors, tokens, cGeneratror)
+      this.children(i).walk(facts, scores, vectors, tokens, Some(this), cGenerator)
     }
   }
-  val links = this.params.strLinks.map(p => (p._1.toInt, p._2))
-  val tokens = params.annotations.map(n => n.token) ++ params.annotations.flatMap(n => n.from) 
-  val outClasses = links.values.toSeq.flatMap(v => v).toSet
-  val rel = {
-    val fromIndex = params.annotations.zipWithIndex.filter{case (n, i) => !n.from.isEmpty}.zipWithIndex.map{case ((_, i), j) => (i, params.annotations.size -1 + j)}.toMap
-    HashMap(
-      params.annotations
-       .zipWithIndex
-       .map{case (n, i) => (n.cat, i, fromIndex.get(i).getOrElse(i))}
-       .groupBy{case (cat, i, j) => cat}
-       .mapValues{s => HashMap(s.map{case (cat, i, j) => (i, j)}:_*)}
-       .toSeq :_*
-   )
-  }
-  val inRel = {
-    val fromIndex = params.annotations.zipWithIndex.filter{case (n, i) => !n.from.isEmpty}.zipWithIndex.map{case ((_, i), j) => (i, params.annotations.size -1 + j)}.toMap
-    HashMap(
-      params.annotations
-       .zipWithIndex
-       .map{case (n, i) => (n.cat, i, fromIndex.get(i).getOrElse(i), n.inRel)}
-       .groupBy{case (cat, i, j, inRel) => cat}
-       .mapValues{s => HashMap(s.map{case (cat, i, j, inRel) => ((i, j), inRel)}:_*)}
-       .toSeq :_*
-   )
-  }
-  val inClasses = links.keySet
-  val linkPairs = links.toSeq.flatMap{case (from, toSet) => toSet.map(to => (from, to))}
-
-  def transform(facts:HashMap[Int, HashMap[Int, Int]], scores:Option[HashMap[Int, HashMap[Int, Double]]]=None, vectors:Seq[MLVector], tokens:Seq[String], cGeneratror:Iterator[Int])  
+  def transform(facts:HashMap[Int, HashMap[Int, Int]], scores:Option[HashMap[Int, HashMap[Int, Double]]]=None, vectors:Seq[MLVector], tokens:Seq[String], parent:Option[Node], cGeneratror:Iterator[Int])  
   def clusteringGAP:Double = {
     this match {
       case n:ClusteringNode => n.leafsGAP
@@ -200,7 +207,7 @@ trait Node{
   }
   def prettyPrintExtras(level:Int = 0, buffer:ArrayBuffer[String]=ArrayBuffer[String](), stopLevel:Int = -1):ArrayBuffer[String]
   def encodeExtras(encoder:EncodedNode)
-  def mergeWith(that:Node):this.type
+  def mergeWith(that:Node, cGenerator:Iterator[Int]):this.type
   def betterThan(that:Node) = {                    
     val thisGap = this.clusteringGAP
     val thatGap = that.clusteringGAP
@@ -217,10 +224,21 @@ trait Node{
     It.range(0, this.children.size).foreach(i => this.children(i).resetHits)
     this
   }
+  def cloneUnfitted:this.type = {
+    val ret = this.cloneUnfittedExtras
+    ret.params.hits = 0.0
+    val oldChildren = ret.children.clone
+    ret.children.clear
+    ret.children ++= oldChildren.map(c => c.cloneUnfitted)
+    ret
+  }
 
+  def cloneUnfittedExtras:this.type
   def resetHitsExtras
+  def updateParamsExtras 
 
   def save(dest:FSNode, tmp:Option[FSNode]=None) = {
+    this.updateParams()
     val encoded = ArrayBuffer[EncodedNode]()
     this.encode(encoded)
     val bytes = this.serialize(encoded)
@@ -232,7 +250,9 @@ trait Node{
         dest.setContent(new ByteArrayInputStream(bytes), WriteMode.overwrite)
     }
   }
+  
   def saveAsJson(dest:FSNode, tmp:Option[FSNode]=None) = {
+    this.updateParams()
     val mapper = new ObjectMapper()
     mapper.registerModule(DefaultScalaModule)
     mapper.enable(SerializationFeature.INDENT_OUTPUT) 
@@ -247,6 +267,50 @@ trait Node{
         dest.setContent(new ByteArrayInputStream(mapper.writeValueAsBytes(encoded.map(e => e.params))), WriteMode.overwrite)
     }
   }
+  def getClassGenerator(max:Option[Int]) = It.range(this.nodesIterator.flatMap(n => n.links.keys.iterator ++ n.links.values.iterator.flatMap(s => s)).max + 1, max.getOrElse(Int.MaxValue))
+  def updateParams(id:Int = 0):Int = {
+    if(this.rel.keySet != this.inRel.keySet) {
+      println(s"annotations : ${this.params.annotations}")
+      println(s"tokens : ${this.tokens}")
+      println(s"rel : ${this.rel}")
+      println(s"inRel : ${this.inRel}")
+    }
+    val newAnnotations = (
+      this.rel.flatMap{ case (outClass, rels) => 
+        rels.map{case (iOut, iFrom) => 
+          Annotation(
+            token = this.tokens(iOut)
+            , cat = outClass
+            , from = if(iOut == iFrom) None else Some(this.tokens(iFrom))
+            , inRel = this.inRel.get(outClass) match {case Some(map) => map(iOut -> iFrom) case None => true}
+            , score = this match { case c:ClusteringNode =>c.pScores(iOut) case _ => 0.0}
+          )
+        }
+      }
+    )
+
+    this.params.annotations.clear
+    this.params.annotations ++= newAnnotations
+    if(this.rel.keySet != this.inRel.keySet) 
+      println(s"new annotations : ${this.params.annotations}")
+    updateParamsExtras
+    
+    var currentId = id
+    val childrenIds = this.children.map{c => 
+      val thisChildId = currentId + 1
+      currentId = c.updateParams(thisChildId)
+      thisChildId
+    }
+    this.params.children.clear
+    this.params.children ++= childrenIds
+    currentId
+  }
+
+  def allTokens(ret:HashSet[String]=HashSet[String]()):HashSet[String] = {
+    ret ++= this.tokens
+    this.children.foreach(c => c.allTokens(ret))
+    ret
+  }
 }
 
 object Node {
@@ -255,13 +319,29 @@ object Node {
    nodes(0).decode(nodes)
  }
 
- def loadFromJson(from:FSNode, vectorIndex:VectorIndex) = {
+ def loadFromJson(from:FSNode, vectorIndex:Option[VectorIndex]) = {
     val mapper = new ObjectMapper() with ScalaObjectMapper
     mapper.registerModule(DefaultScalaModule)
     val text = from.getContentAsString
     val params = mapper.readValue[ArrayBuffer[NodeParams]](text)
-    params(0).toNode(others = params, vectorIndex = vectorIndex)
+    val cachedIndex = vectorIndex.map(index => CachedIndex(index = index).setCache(params(0).allTokens(others = params).toSeq))
+    params(0).toNode(others = params, vectorIndex = cachedIndex)
  }
+
+ def defaultNode = 
+   NodeParams(
+     name = "Explorer"
+     , annotations = ArrayBuffer[Annotation]()
+     , algo = ClassAlgorithm.clustering
+     , strLinks = Map("0" -> Set(1, 2))
+     , filterMode = FilterMode.allIn
+     , filterValue = ArrayBuffer(0)
+     , maxTopWords = Some(5)
+     , classCenters= Some(Map("1"->0, "2" -> 1))
+     , vectorSize = Some(300)
+     , childSplitSize = Some(50)
+     , hits = 0.0
+   ).toNode()
 }
 
 case class EncodedNode(

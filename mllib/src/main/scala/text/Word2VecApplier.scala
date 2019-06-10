@@ -85,6 +85,9 @@ class Word2VecApplier(override val uid: String) extends Transformer with HasExec
       val stop = spark.sparkContext.broadcast((if(toLower) getOrDefault(stopWords).map(_.toLowerCase) else getOrDefault(stopWords)).toSet)
 
       val vectorsDS:Dataset[(String, MLVector)] = getOrDefault(format) match {
+        case "parquet" => 
+          spark.read.parquet(vPath).as[(String, Array[Double])]
+            .map(p => (p._1, Vectors.dense(p._2)))
         case "spark" => 
           spark.read.parquet(vPath).as[(String, Array[Double])]
             .map(p => (p._1, Vectors.dense(p._2)))

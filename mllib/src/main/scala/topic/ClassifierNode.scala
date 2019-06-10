@@ -23,7 +23,12 @@ case class ClassifierNode (
     buffer
   }
   
-  def transform(facts:HashMap[Int, HashMap[Int, Int]], scores:Option[HashMap[Int, HashMap[Int, Double]]]=None, vectors:Seq[MLVector], tokens:Seq[String], cGeneratror:Iterator[Int]) { 
+  def transform(facts:HashMap[Int, HashMap[Int, Int]]
+      , scores:Option[HashMap[Int, HashMap[Int, Double]]]=None
+      , vectors:Seq[MLVector]
+      , tokens:Seq[String]
+      , parent:Option[Node]
+      , cGeneratror:Iterator[Int]) { 
     for{(inClass, outClass) <- this.linkPairs
       (iIn, _) <- facts(inClass).iterator } {
         this.score(outClass, vectors(iIn)) match {
@@ -71,13 +76,15 @@ case class ClassifierNode (
     l.msg("clasifier fit")
     this
   }
-  def mergeWith(that:Node):this.type = {
+  def mergeWith(that:Node, cGenerator:Iterator[Int]):this.type = {
     this.params.hits = this.params.hits + that.params.hits
-    It.range(0, this.children.size).foreach(i => this.children(i).mergeWith(that.children(i)))
+    It.range(0, this.children.size).foreach(i => this.children(i).mergeWith(that.children(i), cGenerator))
     this
   }
 
+  def updateParamsExtras {} 
   def resetHitsExtras {}
+  def cloneUnfittedExtras = this
 }
 object ClassifierNode {
   def apply(params:NodeParams, index:VectorIndex):ClassifierNode = {

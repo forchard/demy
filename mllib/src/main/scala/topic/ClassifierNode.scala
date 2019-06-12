@@ -28,7 +28,8 @@ case class ClassifierNode (
       , vectors:Seq[MLVector]
       , tokens:Seq[String]
       , parent:Option[Node]
-      , cGeneratror:Iterator[Int]) { 
+      , cGeneratror:Iterator[Int] 
+      , fit:Boolean) { 
     for{(inClass, outClass) <- this.linkPairs
       (iIn, _) <- facts(inClass).iterator } {
         this.score(outClass, vectors(iIn)) match {
@@ -76,9 +77,9 @@ case class ClassifierNode (
     l.msg("clasifier fit")
     this
   }
-  def mergeWith(that:Node, cGenerator:Iterator[Int]):this.type = {
+  def mergeWith(that:Node, cGenerator:Iterator[Int], fit:Boolean):this.type = {
     this.params.hits = this.params.hits + that.params.hits
-    It.range(0, this.children.size).foreach(i => this.children(i).mergeWith(that.children(i), cGenerator))
+    It.range(0, this.children.size).foreach(i => this.children(i).mergeWith(that.children(i), cGenerator, fit))
     this
   }
 

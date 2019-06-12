@@ -138,9 +138,9 @@ trait Node{
   lazy val linkPairs = links.toSeq.flatMap{case (from, toSet) => toSet.map(to => (from, to))}
   lazy val inMap = linkPairs.map{case (from, to) => (to, from)}.toMap
 
-  def walk(facts:HashMap[Int, HashMap[Int, Int]], scores:Option[HashMap[Int, HashMap[Int, Double]]]=None, vectors:Seq[MLVector], tokens:Seq[String], parent:Option[Node], cGenerator:Iterator[Int]) { 
+  def walk(facts:HashMap[Int, HashMap[Int, Int]], scores:Option[HashMap[Int, HashMap[Int, Double]]]=None, vectors:Seq[MLVector], tokens:Seq[String], parent:Option[Node], cGenerator:Iterator[Int], fit:Boolean) { 
     this.params.hits = this.params.hits + 1
-    transform(facts, scores, vectors, tokens, parent, cGenerator)
+    transform(facts, scores, vectors, tokens, parent, cGenerator, fit)
     
     for(i <- It.range(0, this.children.size)) {
       if(this.children(i).params.filterMode == FilterMode.noFilter
@@ -153,10 +153,17 @@ trait Node{
                 .filter(inChild => facts.contains(inChild))
                 .size > 0 
       )
-      this.children(i).walk(facts, scores, vectors, tokens, Some(this), cGenerator)
+      this.children(i).walk(facts, scores, vectors, tokens, Some(this), cGenerator, fit)
     }
   }
-  def transform(facts:HashMap[Int, HashMap[Int, Int]], scores:Option[HashMap[Int, HashMap[Int, Double]]]=None, vectors:Seq[MLVector], tokens:Seq[String], parent:Option[Node], cGeneratror:Iterator[Int])  
+  def transform(facts:HashMap[Int, HashMap[Int, Int]]
+    , scores:Option[HashMap[Int, HashMap[Int, Double]]]=None
+    , vectors:Seq[MLVector]
+    , tokens:Seq[String]
+    , parent:Option[Node]
+    , cGeneratror:Iterator[Int]
+    , fit:Boolean) 
+
   def clusteringGAP:Double = {
     this match {
       case n:ClusteringNode => n.leafsGAP
@@ -178,6 +185,7 @@ trait Node{
   def leafsIteartor = nodesIterator.filter(n => n.children.size == 0)
 
   def encode(childArray:ArrayBuffer[EncodedNode]):Int= {
+    this.updateParams(id = Some(childArray.size), updateChildren = false)
     val encoder = 
       EncodedNode(
         points = this.points
@@ -207,7 +215,7 @@ trait Node{
   }
   def prettyPrintExtras(level:Int = 0, buffer:ArrayBuffer[String]=ArrayBuffer[String](), stopLevel:Int = -1):ArrayBuffer[String]
   def encodeExtras(encoder:EncodedNode)
-  def mergeWith(that:Node, cGenerator:Iterator[Int]):this.type
+  def mergeWith(that:Node, cGenerator:Iterator[Int], fit:Boolean):this.type
   def betterThan(that:Node) = {                    
     val thisGap = this.clusteringGAP
     val thatGap = that.clusteringGAP
@@ -238,7 +246,7 @@ trait Node{
   def updateParamsExtras 
 
   def save(dest:FSNode, tmp:Option[FSNode]=None) = {
-    this.updateParams()
+    this.updateParams(Some(0))
     val encoded = ArrayBuffer[EncodedNode]()
     this.encode(encoded)
     val bytes = this.serialize(encoded)
@@ -252,7 +260,7 @@ trait Node{
   }
   
   def saveAsJson(dest:FSNode, tmp:Option[FSNode]=None) = {
-    this.updateParams()
+    this.updateParams(Some(0))
     val mapper = new ObjectMapper()
     mapper.registerModule(DefaultScalaModule)
     mapper.enable(SerializationFeature.INDENT_OUTPUT) 
@@ -268,13 +276,13 @@ trait Node{
     }
   }
   def getClassGenerator(max:Option[Int]) = It.range(this.nodesIterator.flatMap(n => n.links.keys.iterator ++ n.links.values.iterator.flatMap(s => s)).max + 1, max.getOrElse(Int.MaxValue))
-  def updateParams(id:Int = 0):Int = {
-    if(this.rel.keySet != this.inRel.keySet) {
-      println(s"annotations : ${this.params.annotations}")
-      println(s"tokens : ${this.tokens}")
-      println(s"rel : ${this.rel}")
-      println(s"inRel : ${this.inRel}")
-    }
+  def updateParams(id:Option[Int] = None, updateChildren:Boolean=true):Option[Int] = {
+    //if(this.rel.keySet != this.inRel.keySet) {
+      //println(s"annotations : ${this.params.annotations}")
+      //println(s"tokens : ${this.tokens}")
+      //println(s"rel : ${this.rel}")
+      //println(s"inRel : ${this.inRel}")
+    //}
     val newAnnotations = (
       this.rel.flatMap{ case (outClass, rels) => 
         rels.map{case (iOut, iFrom) => 
@@ -291,18 +299,23 @@ trait Node{
 
     this.params.annotations.clear
     this.params.annotations ++= newAnnotations
-    if(this.rel.keySet != this.inRel.keySet) 
-      println(s"new annotations : ${this.params.annotations}")
+    //if(this.rel.keySet != this.inRel.keySet) 
+    //  println(s"new annotations : ${this.params.annotations}")
     updateParamsExtras
-    
     var currentId = id
-    val childrenIds = this.children.map{c => 
-      val thisChildId = currentId + 1
-      currentId = c.updateParams(thisChildId)
-      thisChildId
+    if(updateChildren) {
+      val childrenIds = 
+        It.range(0, this.children.size)
+          .map{i => 
+             val thisChildId = currentId.map(idd => idd + 1)
+             currentId = this.children(i).updateParams(thisChildId)
+             thisChildId
+          }
+      if(!currentId.isEmpty) {
+        this.params.children.clear
+        this.params.children ++= childrenIds.flatMap(d => d)
+      }
     }
-    this.params.children.clear
-    this.params.children ++= childrenIds
     currentId
   }
 

@@ -35,7 +35,8 @@ case class AnalogyNode (
       , vectors:Seq[MLVector]
       , tokens:Seq[String]
       , parent:Option[Node]
-      , cGeneratror:Iterator[Int]) { 
+      , cGeneratror:Iterator[Int]
+      , fit:Boolean) { 
     (for((iRef, _) <- facts(referenceClass).iterator )
       yield (iRef, (
         for((iBase, _) <- facts(baseClass).iterator)
@@ -104,9 +105,9 @@ case class AnalogyNode (
       }
     }
   }
-  def mergeWith(that:Node, cGenerator:Iterator[Int]):this.type = {
+  def mergeWith(that:Node, cGenerator:Iterator[Int], fit:Boolean):this.type = {
     this.params.hits = this.params.hits + that.params.hits
-    It.range(0, this.children.size).foreach(i => this.children(i).mergeWith(that.children(i), cGenerator))
+    It.range(0, this.children.size).foreach(i => this.children(i).mergeWith(that.children(i), cGenerator, fit))
     this
   }
   def updateParamsExtras {} 

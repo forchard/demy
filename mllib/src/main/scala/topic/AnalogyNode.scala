@@ -31,7 +31,7 @@ case class AnalogyNode (
     buffer
   }
   def transform(facts:HashMap[Int, HashMap[Int, Int]]
-      , scores:Option[HashMap[Int, HashMap[Int, Double]]]=None
+      , scores:HashMap[Int, Double]
       , vectors:Seq[MLVector]
       , tokens:Seq[String]
       , parent:Option[Node]
@@ -52,14 +52,9 @@ case class AnalogyNode (
         case Some(f) => f(iBase) = iRef
         case None => facts(analogyClass) = HashMap(iBase -> iRef)
       }
-      scores match {
-        case Some(theScores) => {
-          theScores.get(analogyClass) match {
-            case Some(s) => s(iBase) = score
-            case None => theScores(analogyClass) = HashMap(iBase -> score)
-          }
-        }
-        case None =>
+      scores.get(analogyClass) match {
+        case Some(s) => scores(analogyClass) = if(s > score) s else score
+        case None => scores(analogyClass) = score
       }
     }
   }

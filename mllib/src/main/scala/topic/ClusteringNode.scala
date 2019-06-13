@@ -53,7 +53,7 @@ case class ClusteringNode (
   }
   
   def transform(facts:HashMap[Int, HashMap[Int, Int]]
-      , scores:Option[HashMap[Int, HashMap[Int, Double]]]=None
+      , scores:HashMap[Int, Double]
       , vectors:Seq[MLVector]
       , tokens:Seq[String]
       , parent:Option[Node]
@@ -73,21 +73,14 @@ case class ClusteringNode (
             , cGenerator = cGenerator
             , fit = fit
           )
-      if(true) {
         facts.get(outClass) match {
           case Some(f) => f(iBase) = iBase
           case None => facts(outClass) = HashMap(iBase -> iBase)
         }
-        scores match {
-          case Some(theScores) => {
-            theScores.get(outClass) match {
-              case Some(s) => s(iBase) = score
-              case None => theScores(outClass) = HashMap(iBase -> score)
-            }
-          }
-          case None =>
-        }
-      }
+    }
+    for{outClass <- this.outClasses
+      outMap <- facts.get(outClass)} {
+        scores(outClass) = this.getClassScore(vectors=vectors, facts = facts, outClass = outClass)
     }
   }
 
@@ -145,6 +138,14 @@ case class ClusteringNode (
   def round(v:Double) = {
     import scala.math.BigDecimal
     BigDecimal(v).setScale(2, BigDecimal.RoundingMode.HALF_UP).toDouble 
+  }
+
+  def getClassScore(vectors:Seq[MLVector], facts:HashMap[Int, HashMap[Int, Int]], outClass:Int) = {
+    var sum = vZero
+    for{i <- facts(outClass).keysIterator } {
+      sum = sum.sum(vectors(i))
+    }
+    sum.similarityScore(pCenters(this.classCenters(outClass)))
   }
   def score(vector:MLVector, token:String, inClass:Int, weight:Double = 1.0, asVCenter:Option[MLVector]=None, parent:Option[ClusteringNode]=None, cGenerator: Iterator[Int], fit:Boolean) = {
     val vectorOrCenter = asVCenter match {case Some(v) => v case None => vector } 

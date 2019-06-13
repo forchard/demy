@@ -24,7 +24,7 @@ case class ClassifierNode (
   }
   
   def transform(facts:HashMap[Int, HashMap[Int, Int]]
-      , scores:Option[HashMap[Int, HashMap[Int, Double]]]=None
+      , scores:HashMap[Int, Double]
       , vectors:Seq[MLVector]
       , tokens:Seq[String]
       , parent:Option[Node]
@@ -39,14 +39,9 @@ case class ClassifierNode (
                 case Some(f) => f(iIn) = iIn
                 case None => facts(outClass) = HashMap(iIn -> iIn)
               }
-              scores match {
-                case Some(theScores) => {
-                  theScores.get(outClass) match {
-                    case Some(s) => s(iIn) = score
-                    case None => theScores(outClass) = HashMap(iIn -> score)
-                  }
-                }
-                case None =>
+              scores.get(outClass) match {
+                case Some(s) => scores(outClass) = if(s > score) s else score
+                case None => scores(outClass) = score
               }
             }
         }

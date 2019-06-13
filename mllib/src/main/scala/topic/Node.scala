@@ -138,7 +138,7 @@ trait Node{
   lazy val linkPairs = links.toSeq.flatMap{case (from, toSet) => toSet.map(to => (from, to))}
   lazy val inMap = linkPairs.map{case (from, to) => (to, from)}.toMap
 
-  def walk(facts:HashMap[Int, HashMap[Int, Int]], scores:Option[HashMap[Int, HashMap[Int, Double]]]=None, vectors:Seq[MLVector], tokens:Seq[String], parent:Option[Node], cGenerator:Iterator[Int], fit:Boolean) { 
+  def walk(facts:HashMap[Int, HashMap[Int, Int]], scores:HashMap[Int, Double], vectors:Seq[MLVector], tokens:Seq[String], parent:Option[Node], cGenerator:Iterator[Int], fit:Boolean) { 
     this.params.hits = this.params.hits + 1
     transform(facts, scores, vectors, tokens, parent, cGenerator, fit)
     
@@ -157,7 +157,7 @@ trait Node{
     }
   }
   def transform(facts:HashMap[Int, HashMap[Int, Int]]
-    , scores:Option[HashMap[Int, HashMap[Int, Double]]]=None
+    , scores:HashMap[Int, Double]
     , vectors:Seq[MLVector]
     , tokens:Seq[String]
     , parent:Option[Node]

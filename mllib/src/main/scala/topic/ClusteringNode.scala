@@ -133,6 +133,8 @@ case class ClusteringNode (
     val total = cHits.sum
     val share = cHits(iCenter)/total
     val boost = cHits.size * (1.0 - share)
+//    if(this.links.contains(1))
+//      println(s"$total, $share, $boost")
     boost
   }
   def round(v:Double) = {
@@ -287,12 +289,11 @@ case class ClusteringNode (
     thatNode match {
       case that:ClusteringNode =>
         if(fit) {
-          that.links.keys.foreach{ inClass =>
-            that.collectLeafPoints(inClass = inClass)
-              .foreach{case(lVector, lToken, lHits, lCenter) =>
+          this.collectLeafPoints(fromNode = Some(that))
+            .foreach{case(inClass, lVector, lToken, lHits, lCenter) =>
+              if(lHits > 0.00001)
                 this.mergeChildren(inClass, lVector, lToken, lHits, lCenter, None, cGenerator)
-              }
-          }
+            }
         }
         else {
           this.params.hits = this.params.hits + that.params.hits
@@ -319,8 +320,8 @@ case class ClusteringNode (
         , true
     )
     for{i <- It.range(0, this.children.size)
-        if(this.children(i).links.keySet(bestClass))
-    } this.children(i).asInstanceOf[ClusteringNode].mergeChildren(bestClass, vector, token, weight, center, Some(this), cGenerator)
+        if(this.children(i).params.filterValue.contains(bestClass))
+    } this.children(i).asInstanceOf[ClusteringNode].mergeChildren(inClass, vector, token, weight, center, Some(this), cGenerator)
   }
   def resetHitsExtras {
     It.range(0, this.pScores.size).foreach(i => pScores(i) = 0.0)
@@ -330,17 +331,20 @@ case class ClusteringNode (
   def updateParamsExtras {
     this.params.cError = Some(this.cError.clone)
   } 
-  def collectLeafPoints(inClass:Int, buffer:ArrayBuffer[(MLVector, String, Double, MLVector)]=ArrayBuffer[(MLVector, String, Double, MLVector)]()): ArrayBuffer[(MLVector, String, Double, MLVector)]= {
-    if(this.children.size == 0 || this.children.filter(c => c.asInstanceOf[ClusteringNode].pScores.sum == 0).size > 0)
-      for{outClass <- this.links(inClass).iterator 
-          (i, _) <- this.rel.get(outClass).map(o => o.iterator).getOrElse(It[(Int, Int)]()) } {
-        buffer += ((this.points(i), this.tokens(i), this.estimatePointHits(i), this.vCenters(this.classCenters(outClass))))
+  def collectLeafPoints(fromNode:Option[ClusteringNode]=None, buffer:ArrayBuffer[(Int, MLVector, String, Double, MLVector)]=ArrayBuffer[(Int, MLVector, String, Double, MLVector)]() 
+  ) : ArrayBuffer[(Int, MLVector, String, Double, MLVector)]= {
+    val from = fromNode.getOrElse(this)
+    if(from.children.size == 0 || from.children.filter(c => c.asInstanceOf[ClusteringNode].pScores.sum == 0).size > 0)
+      for{
+        thisIn <- this.links.keysIterator
+        (itIn, itOut) <- from.links.iterator.flatMap{case (in, outSet) => outSet.iterator.map(o => (in, o))}
+            if from.classPath(itOut).contains(thisIn)
+        (i, _) <- from.rel.get(itOut).map(o => o.iterator).getOrElse(It[(Int, Int)]()) } {
+        buffer += ((thisIn, from.points(i), from.tokens(i), from.estimatePointHits(i), from.vCenters(from.classCenters(itOut))))
       }
     else 
-      for{c <- It.range(0, this.children.size)} {
-        this.links(inClass)
-          .intersect(this.children(c).inClasses)
-          .foreach(childInClass => this.children(c).asInstanceOf[ClusteringNode].collectLeafPoints(inClass = childInClass, buffer))
+      for(c <- It.range(0, from.children.size)) {
+          this.collectLeafPoints(fromNode = Some(from.children(c).asInstanceOf[ClusteringNode]), buffer)
       }
     buffer
   }
@@ -350,11 +354,17 @@ case class ClusteringNode (
       val fromMap = 
         this.classCenters.flatMap{ case (outClass, iCenter) => 
           if(iCenter == i) 
-            Some((this.links.flatMap{case (from, toSet) => if(toSet(outClass)) Some(from) else None}.head, outClass)) 
+            this.links.flatMap{case (from, toSet) => if(toSet(outClass)) Some(from) else None}.head match {case from => Some(from, outClass)} /**/ 
           else None
         }.toMap
       val toMap = this.outClasses.iterator.zip(cGenerator).toSeq.toMap
-      this.children ++=  this.params.cloneWith(classMapping = Some(fromMap ++ toMap), unFit = true).map(p => p.toNode())
+      val filterMap = 
+        this.classCenters
+          .filter{ case (outClass, iCenter) => iCenter == i}
+          .zipWithIndex
+          .map{case ((outClass, iCenter), j) => (this.params.filterValue(j), outClass)}
+          .toMap
+      this.children ++=  this.params.cloneWith(classMapping = Some(fromMap ++ toMap ++ filterMap), unFit = true).map(p => p.toNode())
       val hitDiff = this.params.hits - It.range(0, this.children.size).map(i => this.children(i).params.hits).sum
       val initHits = hitDiff /  It.range(0, this.children.size).filter(i => this.children(i).params.hits == 0).size
       It.range(0, this.children.size).filter(i => this.children(i).params.hits == 0).foreach(i => this.children(i).params.hits = initHits)

@@ -49,37 +49,38 @@ case class NodeParams(
     n
   }
   def cloneWith(classMapping:Option[Map[Int, Int]], unFit:Boolean = true) = {
-    if(!classMapping.isEmpty && classMapping.get.size != this.strLinks.keySet.size + this.strLinks.values.flatMap(v => v).toSet.size)
+    if(!classMapping.isEmpty && !(this.strLinks.keySet.map(_.toInt) ++ this.strLinks.values.flatMap(v => v).toSet ++ this.filterValue.toSet).subsetOf(classMapping.get.keySet))
         None
-    else
+    else {
       Some(NodeParams(
-      name = this.name
-      , annotations = if(unFit) ArrayBuffer[Annotation]() else this.annotations.clone
-      , algo = this.algo
-      , strLinks = classMapping match {
-          case Some(classMap) => this.strLinks.map{case (inClass, outSet) => (classMap(inClass.toInt).toString, outSet.map(o => classMap(o))) }
-          case None => strLinks
-      }
-      , strClassPath =  classMapping match {
-          case Some(classMap) => this.strClassPath.map{case (inClass, parentSet) => (classMap(inClass.toInt).toString, parentSet + inClass.toInt) }
-          case None => strClassPath
-      }
-      , names = this.names
-      , filterMode = this.filterMode
-      , filterValue = classMapping match {
-          case Some(classMap) => this.filterValue.map(c => classMap(c))
-          case None => filterValue.clone
-      }
-      , maxTopWords = this.maxTopWords
-      , classCenters = classMapping match {
-          case Some(classMap) => this.classCenters.map(cCenters => cCenters.map{ case(outClass, center) => (classMap(outClass.toInt).toString, center)})
-          case None => classCenters
-      }
-      , vectorSize = this.vectorSize
-      , childSplitSize = this.childSplitSize
-      , children = if(unFit) ArrayBuffer[Int]() else this.children.clone
-      , hits = if(unFit) 0.0 else  this.hits
-    ))
+        name = this.name
+        , annotations = if(unFit) ArrayBuffer[Annotation]() else this.annotations.clone
+        , algo = this.algo
+        , strLinks = classMapping match {
+            case Some(classMap) => this.strLinks.map{case (inClass, outSet) => (/*classMap(*/inClass/*.toInt).toString*/, outSet.map(o => classMap(o))) }
+            case None => strLinks
+        }
+        , strClassPath =  classMapping match {
+            case Some(classMap) => this.strClassPath.map{case (inClass, parentSet) => (classMap(inClass.toInt).toString, parentSet + inClass.toInt) }
+            case None => strClassPath
+        }
+        , names = this.names
+        , filterMode = this.filterMode
+        , filterValue = classMapping match {
+            case Some(classMap) => this.filterValue.map(c => classMap(c))
+            case None => filterValue.clone
+        }
+        , maxTopWords = this.maxTopWords
+        , classCenters = classMapping match {
+            case Some(classMap) => this.classCenters.map(cCenters => cCenters.map{ case(outClass, center) => (classMap(outClass.toInt).toString, center)})
+            case None => classCenters
+        }
+        , vectorSize = this.vectorSize
+        , childSplitSize = this.childSplitSize
+        , children = if(unFit) ArrayBuffer[Int]() else this.children.clone
+        , hits = if(unFit) 0.0 else  this.hits
+      ))
+    }
   }
   def allTokens(ret:HashSet[String]=HashSet[String](), others:Seq[NodeParams]):HashSet[String] = {
     ret ++= this.annotations.map(a => a.token)
@@ -101,6 +102,7 @@ object FilterMode {
   val noFilter = FilterMode("noFilter")
   val allIn = FilterMode("allIn")
   val anyIn = FilterMode("anyIn")
+  val bestScore = FilterMode("bestScore")
 }
 
 trait Node{
@@ -141,7 +143,7 @@ trait Node{
   def walk(facts:HashMap[Int, HashMap[Int, Int]], scores:HashMap[Int, Double], vectors:Seq[MLVector], tokens:Seq[String], parent:Option[Node], cGenerator:Iterator[Int], fit:Boolean) { 
     this.params.hits = this.params.hits + 1
     transform(facts, scores, vectors, tokens, parent, cGenerator, fit)
-    
+    //val bestChild =  
     for(i <- It.range(0, this.children.size)) {
       if(this.children(i).params.filterMode == FilterMode.noFilter
         || this.children(i).params.filterMode == FilterMode.allIn 
@@ -152,6 +154,14 @@ trait Node{
            &&  this.children(i).inClasses.iterator
                 .filter(inChild => facts.contains(inChild))
                 .size > 0 
+        || this.children(i).params.filterMode == FilterMode.bestScore 
+           &&  (this.children.iterator.zipWithIndex
+                .map{case (child, j) =>
+                  (child.params.filterValue.iterator.map(cInClass => scores.get(cInClass).getOrElse(0.0)).sum / child.inClasses.size, j)}
+                .reduce((p1, p2) => (p1, p2) match {case((score1,  _), (score2, _)) => if(score1 > score2) p1 else p2 }) match {
+                  case (bestScore, bestJ) => 
+                    i == bestJ
+                })
       )
       this.children(i).walk(facts, scores, vectors, tokens, Some(this), cGenerator, fit)
     }
@@ -347,7 +357,7 @@ object Node {
      , annotations = ArrayBuffer[Annotation]()
      , algo = ClassAlgorithm.clustering
      , strLinks = Map("0" -> Set(1, 2))
-     , filterMode = FilterMode.allIn
+     , filterMode = FilterMode.bestScore
      , filterValue = ArrayBuffer(0)
      , maxTopWords = Some(5)
      , classCenters= Some(Map("1"->0, "2" -> 1))

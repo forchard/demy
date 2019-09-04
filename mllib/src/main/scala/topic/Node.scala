@@ -61,7 +61,7 @@ case class NodeParams(
             case None => strLinks
         }
         , strClassPath =  classMapping match {
-            case Some(classMap) => this.strClassPath.map{case (inClass, parentSet) => (classMap(inClass.toInt).toString, parentSet + inClass.toInt) }
+            case Some(classMap) => this.strClassPath.map{case (inClass, parentSet) => (classMap(inClass.toInt).toString, parentSet ++ this.filterValue.map(c => classMap(c))) }
             case None => strClassPath
         }
         , names = this.names
@@ -162,8 +162,10 @@ trait Node{
                   case (bestScore, bestJ) => 
                     i == bestJ
                 })
-      )
-      this.children(i).walk(facts, scores, vectors, tokens, Some(this), cGenerator, fit)
+      ) 
+        this.children(i).walk(facts, scores, vectors, tokens, Some(this), cGenerator, fit)
+      else 
+        this.children(i).params.filterValue.foreach{c => {facts.remove(c);scores.remove(c)}} //this is to avoid setting classes on phrases that are not going to children.
     }
   }
   def transform(facts:HashMap[Int, HashMap[Int, Int]]

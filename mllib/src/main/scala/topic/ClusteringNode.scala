@@ -354,7 +354,7 @@ case class ClusteringNode (
       val fromMap = 
         this.classCenters.flatMap{ case (outClass, iCenter) => 
           if(iCenter == i) 
-            this.links.flatMap{case (from, toSet) => if(toSet(outClass)) Some(from) else None}.head match {case from => Some(from, outClass)} /**/ 
+            this.links.flatMap{case (from, toSet) => if(toSet(outClass)) Some(from) else None}.head match {case from => Some(from, outClass)} 
           else None
         }.toMap
       val toMap = this.outClasses.iterator.zip(cGenerator).toSeq.toMap

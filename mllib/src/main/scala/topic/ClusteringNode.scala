@@ -78,9 +78,8 @@ case class ClusteringNode (
           case None => facts(outClass) = HashMap(iBase -> iBase)
         }
     }
-    for{outClass <- this.outClasses
-      outMap <- facts.get(outClass)} {
-        scores(outClass) = this.getClassScore(vectors=vectors, facts = facts, outClass = outClass)
+    for{(inClass, outClass) <- this.linkPairs} {
+        scores(outClass) = this.getClassScore(vectors=vectors, facts = facts, inClass = inClass, outClass = outClass)
     }
   }
 
@@ -142,12 +141,14 @@ case class ClusteringNode (
     BigDecimal(v).setScale(2, BigDecimal.RoundingMode.HALF_UP).toDouble 
   }
 
-  def getClassScore(vectors:Seq[MLVector], facts:HashMap[Int, HashMap[Int, Int]], outClass:Int) = {
-    var sum = vZero
-    for{i <- facts(outClass).keysIterator } {
-      sum = sum.sum(vectors(i))
-    }
-    sum.similarityScore(pCenters(this.classCenters(outClass)))
+  def getClassScore(vectors:Seq[MLVector], facts:HashMap[Int, HashMap[Int, Int]], inClass:Int, outClass:Int) = {
+    /*if(facts.contains(inClass)) {
+      for{i <- facts(inClass).keysIterator } {
+        sum = sum.sum(vectors(i))
+      }
+    }*/
+   val sum = vectors.filter(_ != null).reduceOption((v1, v2) => v1.sum(v2)).getOrElse(vZero)
+   sum.similarityScore(pCenters(this.classCenters(outClass)))
   }
   def score(vector:MLVector, token:String, inClass:Int, weight:Double = 1.0, asVCenter:Option[MLVector]=None, parent:Option[ClusteringNode]=None, cGenerator: Iterator[Int], fit:Boolean) = {
     val vectorOrCenter = asVCenter match {case Some(v) => v case None => vector } 
@@ -161,16 +162,16 @@ case class ClusteringNode (
       this.fillChildren(cGenerator)
     }
     val (vClass, iCenter, cSimilarity) =  
-    (onInit(vector, token, inClass) match {
-      case forced if(forced >= 0) => Set(forced) 
-      case _ => this.links(inClass) 
-    })
-      .map(outClass => (outClass, this.classCenters(outClass), vectorOrCenter.similarityScore(this.pCenters(this.classCenters(outClass)))*this.centerBoostFactor(this.classCenters(outClass))))
-      .reduce((t1, t2) => (t1, t2) match {
-        case ((class1, iCenter1, score1), (class2, iCenter2, score2)) => 
-          if(score1 > score2 && !score1.isNaN || score2.isNaN) t1 
-          else t2
+      (onInit(vector, token, inClass) match {
+        case forced if(forced >= 0) => Set(forced) 
+        case _ => this.links(inClass) 
       })
+        .map(outClass => (outClass, this.classCenters(outClass), vectorOrCenter.similarityScore(this.pCenters(this.classCenters(outClass)))*this.centerBoostFactor(this.classCenters(outClass))))
+        .reduce((t1, t2) => (t1, t2) match {
+          case ((class1, iCenter1, score1), (class2, iCenter2, score2)) => 
+            if(score1 > score2 && !score1.isNaN || score2.isNaN) t1 
+            else t2
+        })
     val (iPoint, pSimilarity) = 
       (for(i <- this.rel(vClass).keysIterator ) 
          yield (i, vectorOrCenter.similarityScore(this.points(i)))
@@ -188,7 +189,7 @@ case class ClusteringNode (
     val vectorOrCenter =  asVCenter match {case Some(v) => v case _ => vector}
     this.vCenters(iCenter) = this.vCenters(iCenter).scale(cHits(iCenter) + 1.0).sum(vectorOrCenter.scale(weight)).scale(1.0/(cHits(iCenter) + 1 + weight))
 
-    if(this.tokens(iPoint) != token && !this.initializing && fit)
+    if(String.CASE_INSENSITIVE_ORDER.compare(this.tokens(iPoint),token) != 0  && !this.initializing && fit)
       tryAsPoint(vector = vector, token = token, vClass = vClass, iPoint = iPoint, iCenter = iCenter)
     this.cGAP(iCenter) = 1.0 - this.pCenters(iCenter).similarityScore(this.vCenters(iCenter))
     this.cError(iCenter) = (this.cError(iCenter) * (cHits(iCenter) + 1.0) + (1.0 - vectorOrCenter.similarityScore(pCenters(iCenter))) * weight ) / (cHits(iCenter) + 1 + weight)
@@ -207,8 +208,8 @@ case class ClusteringNode (
   def tryAsPoint(vector:MLVector, token:String, vClass:Int, iPoint:Int, iCenter:Int) {
     var viPoint = iPoint
     //Evaluating replacing the closest (and given) point
-    val replacingCenter = this.exceptPCenters(viPoint).sum(vector)
-    if((1.0 - replacingCenter.similarityScore(this.vCenters(iCenter))) - this.cGAP(iCenter) < 0.0001) {
+    val newPCenter = this.exceptPCenters(viPoint).sum(vector)
+    if((1.0 - newPCenter.similarityScore(this.vCenters(iCenter))) - this.cGAP(iCenter) < 0.0001) {
       //println(s"$step gap: ${this.cGAP(iCenter)} replacing $token by ${this.tokens(viPoint)}")
       this.points(viPoint) = vector
       this.tokens(viPoint) = token
@@ -216,8 +217,8 @@ case class ClusteringNode (
     } else {
       if(this.points.size < this.maxTopWords) {
         //Evaluating adding as a new Center
-        val newCenter = this.pCenters(iCenter).sum(vector)
-        if((1.0 - newCenter.similarityScore(this.vCenters(iCenter))) - this.cGAP(iCenter) < 0.0001) {
+        val newPCenter = this.pCenters(iCenter).sum(vector)
+        if((1.0 - newPCenter.similarityScore(this.vCenters(iCenter))) - this.cGAP(iCenter) < 0.0001) {
           //println(s"$step gap: ${this.cGAP(iCenter)} adding $token")
           this.points += vector
           this.tokens += token

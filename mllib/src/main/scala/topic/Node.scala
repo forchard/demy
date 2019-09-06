@@ -298,19 +298,25 @@ trait Node{
     val newAnnotations = (
       this.rel.flatMap{ case (outClass, rels) => 
         rels.map{case (iOut, iFrom) => 
-          Annotation(
-            token = this.tokens(iOut)
-            , cat = outClass
-            , from = if(iOut == iFrom) None else Some(this.tokens(iFrom))
-            , inRel = this.inRel.get(outClass) match {case Some(map) => map(iOut -> iFrom) case None => true}
-            , score = this match { case c:ClusteringNode =>c.pScores(iOut) case _ => 0.0}
-          )
+          (iOut, iFrom, outClass)
         }
       }
+       .toSeq
+       .sortWith(_._1 < _._1)
+       .map{case (iOut, iFrom, outClass) =>
+         Annotation(
+           token = this.tokens(iOut)
+           , cat = outClass
+           , from = if(iOut == iFrom) None else Some(this.tokens(iFrom))
+           , inRel = this.inRel.get(outClass) match {case Some(map) => map(iOut -> iFrom) case None => true}
+           , score = this match { case c:ClusteringNode =>c.pScores(iOut) case _ => 0.0}
+         )
+       }  
     )
 
     this.params.annotations.clear
     this.params.annotations ++= newAnnotations
+      
     //if(this.rel.keySet != this.inRel.keySet) 
     //  println(s"new annotations : ${this.params.annotations}")
     updateParamsExtras

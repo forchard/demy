@@ -180,6 +180,7 @@ case class ClusteringNode (
             if(score1 > score2) p1 
             else p2
       })
+
     this.affectPoint(vector = vector, token = token, vClass = vClass, vScore = pSimilarity, iPoint = iPoint, iCenter = iCenter, weight = weight, asVCenter = asVCenter, fit = fit)
     (vClass, pSimilarity)
   }

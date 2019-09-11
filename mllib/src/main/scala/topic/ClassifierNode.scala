@@ -52,14 +52,14 @@ case class ClassifierNode (
     this.models(forClass).score(vector)
   }
 
-  def fit(spark:SparkSession) ={
+  def fit(spark:SparkSession) = {
     l.msg("start  classifier fitting models")
     this.models.clear
     for(c <- this.outClasses) {
       this.models(c) = 
         WrappedClassifier(
           forClass = c
-          , points = this.points
+          , points = this.points.filter(_ != null)
           , pClasses = 
             (for(i<-It.range(0, this.points.size)) 
               yield(this.rel(c).get(i) match {
@@ -67,6 +67,8 @@ case class ClassifierNode (
                 case _ => -1
               })
             ).toSeq
+             .zip(this.points)
+             .flatMap{case(c, p) => if(p == null) None else Some(c)}
           , spark = spark) 
     }
     l.msg("clasifier fit")
@@ -88,7 +90,7 @@ object ClassifierNode {
       points = ArrayBuffer[MLVector]() 
       , params = params
     )
-    ret.points ++= (index(ret.tokens) match {case map => ret.tokens.map(t => map(t))}) 
+    ret.points ++= (index(ret.tokens) match {case map => ret.tokens.map(t => map.get(t).getOrElse(null))}) 
     ret
   }
   def apply(encoded:EncodedNode):ClassifierNode = {

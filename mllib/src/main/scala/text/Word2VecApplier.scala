@@ -25,7 +25,7 @@ case class Word2VecIndex(spark:SparkSession, applier:Word2VecApplier) extends Ve
       case df =>  applier.transform(df) 
     })
       .as[(Seq[String], MLVector)]
-      .map{case (tokens, vector) => (tokens.mkString(" "), vector)}
+      .flatMap{case (tokens, vector) => if(vector == null) None else Some((tokens.mkString(" "), vector))}
       .collect
       .toMap
   }

@@ -5,7 +5,7 @@ import demy.util.{log => l}
 import demy.mllib.linalg.implicits._
 import org.apache.spark.sql.{SparkSession}
 import org.apache.spark.ml.linalg.{Vector => MLVector, Vectors}
-import scala.collection.mutable.{ArrayBuffer, HashSet, HashMap}
+import scala.collection.mutable.{ArrayBuffer, HashSet, HashMap, ListBuffer}
 import scala.{Iterator => It}
 
 case class ClusteringNode (
@@ -59,63 +59,85 @@ case class ClusteringNode (
       , parent:Option[Node]
       , cGenerator:Iterator[Int]
       , fit:Boolean) {
-    for{inClass <- this.links.keySet.iterator
-      (iBase, _) <- facts.get(inClass).map(o => o.iterator).getOrElse(It[(Int, Int)]()) } {
+
       
-        val (outClass, score) = 
-          this.score(
-            vector = vectors(iBase)
-            , token = tokens(iBase)
-            , inClass = inClass 
-            , weight = 1.0
-            , asVCenter = None
-            , parent = parent match {case Some(c) => c match {case c:ClusteringNode => Some(c) case _ => None} case _ => None}
-            , cGenerator = cGenerator
-            , fit = fit
+    val vectorsInScopeCount =  this.links.keysIterator.map(inClass => facts.get(inClass).map(o => o.size).getOrElse(0)).sum
+
+    val scoresByClass = 
+      for(inClass <- this.links.keySet.iterator)
+        yield {
+          (inClass, 
+            for((iBase, _) <- facts.get(inClass).map(o => o.iterator).getOrElse(It[(Int, Int)]()))
+              yield {
+                val scoredPoint = 
+                  this.score(
+                    iVector = iBase
+                    , vectors = vectors
+                    , vTokens = tokens
+                    , inClass = inClass 
+                    , parent = parent match {case Some(c) => c match {case c:ClusteringNode => Some(c) case _ => None} case _ => None}
+                    , cGenerator = cGenerator
+                    , fit = fit
+                  )
+
+                scoredPoint
+              }
           )
-        facts.get(outClass) match {
-          case Some(f) => f(iBase) = iBase
-          case None => facts(outClass) = HashMap(iBase -> iBase)
         }
-    }
-    for{(inClass, outClass) <- this.linkPairs} {
-        scores(outClass) = this.getClassScore(vectors=vectors, facts = facts, inClass = inClass, outClass = outClass)
-    }
+    
+    val sequenceScore = this.scoreSequence(scoredTokens = scoresByClass.map{case (inClass, scores) => (inClass, scores.flatMap(s => s))})
+    sequenceScore.map{case ScoredSequence(inClass, outClass, score, scoredVectors) => 
+      scores(outClass) = score
+
+      for(ScoredVector(iVector, outVectorClass, outVectorScore, iPoint, iCenter) <- scoredVectors ) {
+        facts.get(outClass) match {
+          case Some(f) => f(iVector) = iVector
+          case None => facts(outClass) = HashMap(iVector -> iVector)
+        }
+        this.affectPoint(
+          vector = vectors(iVector)
+          , token = tokens(iVector)
+          , vClass = outClass
+          , vScore = outVectorScore
+          , iPoint = iPoint
+          , iCenter = iCenter
+          , weight = 1.0 / vectorsInScopeCount
+          , asVCenter = None
+          , fit = fit
+        )
+      }
+    }.size
   }
 
   def onInit(vector:MLVector, token:String, inClass:Int) = {
-    if(initializing) {
-      val asClass = 
-        this.links(inClass).diff(this.rel.keySet).headOption match {
-          case Some(classToFill) if 
-            this.links(inClass).iterator
-              .flatMap(outClass => this.rel.get(outClass).map(o => o.iterator).getOrElse(It[(Int, Int)]()))
-              .filter{case(iOut, _) => this.points(iOut).similarityScore(vector) > 0.999}
-              .size == 0 
-           =>
-            this.tokens += token
-            this.points += vector
-            this.rel.get(classToFill) match {
-              case Some(r) => r(this.tokens.size-1) = this.tokens.size-1
-              case None => {
-                this.rel(classToFill) = HashMap(this.tokens.size -1 -> (this.tokens.size -1))
-                this.inRel(classToFill) = HashMap((this.tokens.size -1 -> (this.tokens.size -1), true))
-              }
-            }
-            //println(s"init pClasses: ${this.pClasses.toSeq}")
-            classToFill
-          case Some(classToFill) =>
-              this.links(inClass).iterator
-                .flatMap(outClass => this.rel.get(outClass).map(o => o.iterator).getOrElse(It[(Int, Int)]()).map(p => (p, outClass)))
-                .filter{case((iOut, _), outCLass) => this.points(iOut).similarityScore(vector) > 0.999}
-                .next match { case ((iOut, _), outClass) => outClass}
-          case _ => -1
-      }
-      initializing = this.rel.keySet != this.links.values.flatMap(v => v).toSet
-      updatePointsStats
-      //println(It.range(1, 3).map(t => s"($t) ${this.classPath.filter{case(cat, parents) => parents(t)}.map{case (cat, _) => this.rel.get(cat) match { case Some(values) => values.map{case (iClass, _) => this.tokens(iClass)}.mkString(",") case None => "-" }}} ").mkString("<---->"))
-      asClass
+    if(initializing && this.points.size < this.maxTopWords) {
+       this.links(inClass).iterator
+         .flatMap(outClass => this.rel.get(outClass).map(o => o.iterator).getOrElse(It[(Int, Int)]()).map(p => (p, outClass)))
+         .filter{case((iOut, _), outCLass) => this.points(iOut).similarityScore(vector) > 0.999}
+         .toSeq.headOption
+         .map{case ((iOut, _), outClass) => outClass}
+         match {
+           case Some(classToFill) => classToFill
+           case None =>
+             val classToFill = this.links(inClass).map(outClass => (outClass, this.rel.get(outClass).map(_.size).getOrElse(0))).toSeq.sortWith(_._2 < _._2).head._1
+             this.tokens += token
+             this.points += vector
+             this.rel.get(classToFill) match {
+               case Some(r) => 
+                 this.rel(classToFill)(this.tokens.size-1) = this.tokens.size-1
+                 this.inRel(classToFill)(this.tokens.size-1 -> (this.tokens.size-1)) = true
+               case None => 
+                 this.rel(classToFill) = HashMap(this.tokens.size -1 -> (this.tokens.size -1))
+                 this.inRel(classToFill) = HashMap((this.tokens.size -1 -> (this.tokens.size -1), true))
+               
+             }
+             initializing = this.points.size < this.maxTopWords
+             updatePointsStats
+             classToFill
+         }
+       //println(s"init pClasses: ${this.pClasses.toSeq}")
     }
+      //println(It.range(1, 3).map(t => s"($t) ${this.classPath.filter{case(cat, parents) => parents(t)}.map{case (cat, _) => this.rel.get(cat) match { case Some(values) => values.map{case (iClass, _) => this.tokens(iClass)}.mkString(",") case None => "-" }}} ").mkString("<---->"))
     else
       -1
   }
@@ -132,8 +154,8 @@ case class ClusteringNode (
     val total = cHits.sum
     val share = cHits(iCenter)/total
     val boost = cHits.size * (1.0 - share)
-//    if(this.links.contains(1))
-//      println(s"$total, $share, $boost")
+    if(this.params.filterValue.contains(1))
+      println(s"$iCenter, $total, $share, $boost")
     boost
   }
   def round(v:Double) = {
@@ -141,17 +163,55 @@ case class ClusteringNode (
     BigDecimal(v).setScale(2, BigDecimal.RoundingMode.HALF_UP).toDouble 
   }
 
-  def getClassScore(vectors:Seq[MLVector], facts:HashMap[Int, HashMap[Int, Int]], inClass:Int, outClass:Int) = {
-    /*if(facts.contains(inClass)) {
-      for{i <- facts(inClass).keysIterator } {
-        sum = sum.sum(vectors(i))
-      }
-    }*/
-   val sum = vectors.filter(_ != null).reduceOption((v1, v2) => v1.sum(v2)).getOrElse(vZero)
-   sum.similarityScore(pCenters(this.classCenters(outClass)))
+  case class ScoredSequence(inClass:Int, outClass:Int, outScore:Double, scoredVectors:Iterator[ScoredVector])
+  def scoreSequence(scoredTokens:Iterator[(Int, Iterator[ScoredVector])]) = {
+    val pointScores = Array.fill(this.maxTopWords)(0.0)   
+    val pointCounts = Array.fill(this.maxTopWords)(0)    
+
+    val sequenceScore = 
+     for((inClass, inClassScores)  <- scoredTokens)
+        yield {
+          
+          val retTokens = this.outClasses.map(o => (o, ListBuffer[ScoredVector]())).toMap
+          val (bestClass, bestScore) = {
+            for(scoredToken  <- inClassScores) {
+
+              pointScores(scoredToken.iPoint) = pointScores(scoredToken.iPoint) + scoredToken.outScore
+              pointCounts(scoredToken.iPoint) = pointCounts(scoredToken.iPoint) + 1
+              retTokens(scoredToken.outClass) += scoredToken 
+            }
+            
+            this.links(inClass).iterator
+              .map{outClass => 
+                var vectorCount = 0
+                val pointScore = 
+                  this.rel.get(outClass).map(_.keysIterator).getOrElse(Iterator[Int]())
+                    .map{iPoint => 
+                      val pointScore = if(pointCounts(iPoint) == 0) 0.0 else pointScores(iPoint)/pointCounts(iPoint)
+                      vectorCount = vectorCount + 1
+                      pointScore
+                    }
+                    .reduceOption(_ + _).getOrElse(0.0)
+                (outClass, if(pointScore == 0) 0.0 else pointScore / vectorCount)
+              }
+              .reduce((p1, p2) => (p1, p2) match {case ((_, score1),(_, score2)) => if(score1 > score2) p1 else p2})
+          }
+
+          ScoredSequence(inClass = inClass, outClass = bestClass, outScore = bestScore, scoredVectors = retTokens(bestClass).iterator)
+        }
+    sequenceScore
   }
-  def score(vector:MLVector, token:String, inClass:Int, weight:Double = 1.0, asVCenter:Option[MLVector]=None, parent:Option[ClusteringNode]=None, cGenerator: Iterator[Int], fit:Boolean) = {
-    val vectorOrCenter = asVCenter match {case Some(v) => v case None => vector } 
+  case class ScoredVector(iVector:Int, outClass:Int, outScore:Double, iPoint:Int, iCenter:Int)
+  def score(
+    iVector:Int
+    , vectors:Seq[MLVector]
+    , vTokens:Seq[String]
+    , inClass:Int
+    , parent:Option[ClusteringNode]=None
+    , cGenerator: Iterator[Int]
+    , fit:Boolean) = {
+      
+    //val vectorOrCenter = asVCenter match {case Some(v) => v case None => vectors(iVector) } 
     if(fit
         && cGenerator.hasNext 
         && this.children.size < this.classCentersMap.size
@@ -161,28 +221,31 @@ case class ClusteringNode (
       //println(s"spawning... ${this.params.annotations}, ${this.inClasses}")
       this.fillChildren(cGenerator)
     }
-    val (vClass, iCenter, cSimilarity) =  
-      (onInit(vector, token, inClass) match {
+    val classCenterSimilarity =  
+      (onInit(vectors(iVector), vTokens(iVector), inClass) match {
         case forced if(forced >= 0) => Set(forced) 
         case _ => this.links(inClass) 
       })
-        .map(outClass => (outClass, this.classCenters(outClass), vectorOrCenter.similarityScore(this.pCenters(this.classCenters(outClass)))*this.centerBoostFactor(this.classCenters(outClass))))
-        .reduce((t1, t2) => (t1, t2) match {
+        .map(outClass => (outClass, this.classCenters(outClass), vectors(iVector).similarityScore(this.pCenters(this.classCenters(outClass)))/**this.centerBoostFactor(this.classCenters(outClass))*/))
+        /*.reduce((t1, t2) => (t1, t2) match {
           case ((class1, iCenter1, score1), (class2, iCenter2, score2)) => 
             if(score1 > score2 && !score1.isNaN || score2.isNaN) t1 
             else t2
-        })
-    val (iPoint, pSimilarity) = 
-      (for(i <- this.rel(vClass).keysIterator ) 
-         yield (i, vectorOrCenter.similarityScore(this.points(i)))
-      ).reduce((p1, p2) => (p1, p2) match {
-          case ((i1, score1), (i2, score2)) => 
-            if(score1 > score2) p1 
-            else p2
-      })
+        })*/
 
-    this.affectPoint(vector = vector, token = token, vClass = vClass, vScore = pSimilarity, iPoint = iPoint, iCenter = iCenter, weight = weight, asVCenter = asVCenter, fit = fit)
-    (vClass, pSimilarity)
+      classCenterSimilarity
+        .map{ case (vClass, iCenter, cSimilarity) =>
+          val (iPoint, pSimilarity) = 
+            (for(i <- this.rel(vClass).keysIterator ) 
+              yield (i, vectors(iVector).similarityScore(this.points(i)))
+            )
+            .reduce((p1, p2) => (p1, p2) match {
+              case ((i1, score1), (i2, score2)) => 
+                if(score1 > score2) p1 
+                else p2
+            })
+          ScoredVector(iVector = iVector, outClass = vClass, outScore = pSimilarity, iPoint = iPoint, iCenter = iCenter)
+        }
   }
 
   def affectPoint(vector:MLVector, token:String, vClass:Int, vScore:Double, iPoint:Int, iCenter:Int, weight:Double = 1.0, asVCenter:Option[MLVector]=None, fit:Boolean) {
@@ -195,16 +258,6 @@ case class ClusteringNode (
     this.cGAP(iCenter) = 1.0 - this.pCenters(iCenter).similarityScore(this.vCenters(iCenter))
     this.cError(iCenter) = (this.cError(iCenter) * (cHits(iCenter) + 1.0) + (1.0 - vectorOrCenter.similarityScore(pCenters(iCenter))) * weight ) / (cHits(iCenter) + 1 + weight)
     cHits(iCenter) = cHits(iCenter) + weight
-  }
-  def pointWeight(i:Int) = {
-    val sum = (It.range(0, this.points.size)
-        .map(j => pScores(j))
-        .sum)
-    if(sum == 0.0) 0.0 else (pScores(i)/sum)
-  }
-  def estimatePointHits(i:Int) = {
-    val ret = pointWeight(i)*this.params.hits
-    ret
   }
   def tryAsPoint(vector:MLVector, token:String, vClass:Int, iPoint:Int, iCenter:Int) {
     var viPoint = iPoint
@@ -287,15 +340,67 @@ case class ClusteringNode (
       }
       .head
 
+  def mergeWithX(thatNode:Node, cGenerator:Iterator[Int], fit:Boolean):this.type = this
   def mergeWith(thatNode:Node, cGenerator:Iterator[Int], fit:Boolean):this.type = {
     thatNode match {
       case that:ClusteringNode =>
-        if(fit) {
-          this.collectLeafPoints(fromNode = Some(that))
-            .foreach{case(inClass, lVector, lToken, lHits, lCenter) =>
-              if(lHits > 0.00001)
-                this.mergeChildren(inClass, lVector, lToken, lHits, lCenter, None, cGenerator)
-            }
+        if(fit & that.children.filter(c => c.params.hits> 0).size > 1) {
+            that.children.filter(c => c.params.hits> 0).foreach(c => this.mergeWith(thatNode = c, cGenerator = cGenerator, fit = fit))
+        } else if(fit) {
+          val vectorsInScopeCount =  that.points.size
+          val outToInClass = 
+            this.links.keysIterator
+              .flatMap(thisIn => that.links(thisIn).map(thatOut => (thatOut, thisIn)))
+              .toSeq
+              .groupBy{case (thatOut, thisIn) => thatOut}
+              .mapValues{s => s.map{case (thatOut, thisIn) => thisIn}.head}
+          
+          (for(iCenter <- It.range(0, that.pCenters.size)) 
+            yield {
+              val scoresByClass = that.classCentersMap(iCenter).iterator
+                .map{leafClass => 
+                   (outToInClass(leafClass)
+                     , that.rel.get(leafClass).map(pairs => pairs.keysIterator).getOrElse(It[Int]()).map{ iLeafPoint =>
+                        val scoredPoint = 
+                          this.score(
+                            iVector = iLeafPoint
+                            , vectors = that.points
+                            , vTokens = that.tokens
+                            , inClass = outToInClass(leafClass) 
+                            , parent = None/*parent match {case Some(c) => c match {case c:ClusteringNode => Some(c) case _ => None} case _ => None}*/
+                            , cGenerator = cGenerator
+                            , fit = fit
+                          )
+                        scoredPoint
+                       }
+                   )
+                }
+              val sequenceScore = this.scoreSequence(scoredTokens = scoresByClass.map{case (inClass, scores) => (inClass, scores.flatMap(s => s))})
+              sequenceScore.map{case ScoredSequence(inClass, outClass, score, scoredVectors) => 
+                for(ScoredVector(iVector, outVectorClass, outVectorScore, iPoint, iCenter) <- scoredVectors ) {
+                  this.params.hits = this.params.hits + that.params.hits / vectorsInScopeCount
+                  this.affectPoint(
+                    vector = that.points(iVector)
+                    , token = that.tokens(iVector)
+                    , vClass = outClass
+                    , vScore = outVectorScore
+                    , iPoint = iPoint
+                    , iCenter = iCenter
+                    , weight = that.params.hits / vectorsInScopeCount
+                    , asVCenter = Some(this.vCenters(iCenter))
+                    , fit = fit
+                  )
+                }
+                (outClass, score)
+              }.reduce((p1, p2) => (p1, p2) match{case((_, score1),(_, score2)) => if(score1>score2)  p1 else p2})
+            }).reduce((p1, p2) => (p1, p2) match{case((_, score1),(_, score2)) => if(score1>score2)  p1 else p2})
+             match {
+               case (outClass, _) =>
+                 for(i <- It.range(0, this.children.size)) {
+                   if(this.children(i).params.filterValue.contains(outClass)) 
+                     (this.children(i)).mergeWith(thatNode, cGenerator = cGenerator, fit = fit)
+                 }
+             } 
         }
         else {
           this.params.hits = this.params.hits + that.params.hits
@@ -308,23 +413,6 @@ case class ClusteringNode (
     }
     this
   }
-  def mergeChildren(inClass:Int, vector:MLVector, token:String, weight:Double, center:MLVector, parent:Option[ClusteringNode], cGenerator:Iterator[Int])  {
-    this.params.hits = this.params.hits + weight
-    val (bestClass, bestScore) = 
-      this.score(
-        vector = vector
-        , token = token
-        , inClass = inClass
-        , weight= weight
-        , asVCenter = Some(center)
-        , parent
-        , cGenerator
-        , true
-    )
-    for{i <- It.range(0, this.children.size)
-        if(this.children(i).params.filterValue.contains(bestClass))
-    } this.children(i).asInstanceOf[ClusteringNode].mergeChildren(inClass, vector, token, weight, center, Some(this), cGenerator)
-  }
   def resetHitsExtras {
     It.range(0, this.pScores.size).foreach(i => pScores(i) = 0.0)
     It.range(0, this.cHits.size).foreach(i => cHits(i) = 0.0)
@@ -333,23 +421,6 @@ case class ClusteringNode (
   def updateParamsExtras {
     this.params.cError = Some(this.cError.clone)
   } 
-  def collectLeafPoints(fromNode:Option[ClusteringNode]=None, buffer:ArrayBuffer[(Int, MLVector, String, Double, MLVector)]=ArrayBuffer[(Int, MLVector, String, Double, MLVector)]() 
-  ) : ArrayBuffer[(Int, MLVector, String, Double, MLVector)]= {
-    val from = fromNode.getOrElse(this)
-    if(from.children.size == 0 || from.children.filter(c => c.asInstanceOf[ClusteringNode].pScores.sum == 0).size > 0)
-      for{
-        thisIn <- this.links.keysIterator
-        (itIn, itOut) <- from.links.iterator.flatMap{case (in, outSet) => outSet.iterator.map(o => (in, o))}
-            if from.classPath(itOut).contains(thisIn)
-        (i, _) <- from.rel.get(itOut).map(o => o.iterator).getOrElse(It[(Int, Int)]()) } {
-        buffer += ((thisIn, from.points(i), from.tokens(i), from.estimatePointHits(i), from.vCenters(from.classCenters(itOut))))
-      }
-    else 
-      for(c <- It.range(0, from.children.size)) {
-          this.collectLeafPoints(fromNode = Some(from.children(c).asInstanceOf[ClusteringNode]), buffer)
-      }
-    buffer
-  }
 
   def fillChildren(cGenerator:Iterator[Int]) {
     for{i <- It.range(this.children.size, this.classCenters.values.toSet.size) if cGenerator.hasNext } { 
@@ -382,7 +453,7 @@ object ClusteringNode {
       , params = params
     )
     if(ret.tokens.size > 0)
-      ret.points ++= (index.get(ret.tokens) match {case map => ret.tokens.map(t => map(t))}) 
+      ret.points ++= (index.get(ret.tokens) match {case map => ret.tokens.map(t => map.get(t).getOrElse(null))}) 
     ret 
   }
   def apply(encoded:EncodedNode):ClusteringNode = {

@@ -24,31 +24,27 @@ case class ClusteringNode (
   val classCentersMap = classCenters.groupBy{case (cla, center) => center}.mapValues(p => p.map{case (cla, center) => cla}.toSet)
 
   val pScores = if(this.params.annotations.size == maxTopWords) Array(this.params.annotations.map(a => a.score) :_*) else Array.fill(maxTopWords)(0.0)
-  val cError = this.params.cError.getOrElse(Array.fill(this.classCenters.values.toSet.size)(0.0))
+  val numCenters = this.classCenters.values.toSet.size
+  val cError = this.params.cError.getOrElse(Array.fill(numCenters)(0.0))
   
   var initializing = true
   val vZero = Vectors.dense(Array.fill(vectorSize)(0.0))
-  val pCenters = ArrayBuffer.fill(this.classCenters.values.toSet.size)(vZero)
-  val vCenters = ArrayBuffer.fill(this.classCenters.values.toSet.size)(vZero)
-  val cGAP = ArrayBuffer.fill(this.classCenters.values.toSet.size)(1.0)
-  val exceptPCenters = ArrayBuffer.fill(maxTopWords)(vZero)
-  val cHits = ArrayBuffer.fill(this.classCenters.values.toSet.size)(0.0)
+  val vCenters = ArrayBuffer.fill(maxTopWords)(vZero)
+  val pGAP = ArrayBuffer.fill(maxTopWords)(1.0)
+  val cHits = ArrayBuffer.fill(numCenters)(0.0)
   
+
   def encodeExtras(encoder:EncodedNode) {
     //thiese two are not necessary if params are updated at encode time. Please remove after test
     encoder.serialized += (("pScores",serialize(pScores) ))
     encoder.serialized += (("cError",serialize(cError) ))
-
     encoder.serialized += (("initializing", serialize(initializing)))
-    encoder.serialized += (("pCenters",serialize(pCenters )))
     encoder.serialized += (("vCenters",serialize(vCenters )))
-    encoder.serialized += (("cGAP",serialize(cGAP )))
-    encoder.serialized += (("exceptPCenters", serialize(exceptPCenters)))
+    encoder.serialized += (("pGAP",serialize(pGAP )))
     encoder.serialized += (("cHits",serialize(cHits) ))
   }
   def prettyPrintExtras(level:Int = 0, buffer:ArrayBuffer[String]=ArrayBuffer[String](), stopLevel:Int = -1):ArrayBuffer[String] = {
     buffer += (s"${Range(0, level).map(_ => "-").mkString}> classCenters: ${classCenters}\n")
-    buffer += (s"${Range(0, level).map(_ => "-").mkString}> pCenters: ${pCenters.size}\n")
     buffer
   }
   
@@ -221,105 +217,57 @@ case class ClusteringNode (
       //println(s"spawning... ${this.params.annotations}, ${this.inClasses}")
       this.fillChildren(cGenerator)
     }
-    val classCenterSimilarity =  
-      (onInit(vectors(iVector), vTokens(iVector), inClass) match {
-        case forced if(forced >= 0) => Set(forced) 
-        case _ => this.links(inClass) 
-      })
-        .map(outClass => (outClass, this.classCenters(outClass), vectors(iVector).similarityScore(this.pCenters(this.classCenters(outClass)))/**this.centerBoostFactor(this.classCenters(outClass))*/))
-        /*.reduce((t1, t2) => (t1, t2) match {
-          case ((class1, iCenter1, score1), (class2, iCenter2, score2)) => 
-            if(score1 > score2 && !score1.isNaN || score2.isNaN) t1 
-            else t2
-        })*/
-
-      classCenterSimilarity
-        .map{ case (vClass, iCenter, cSimilarity) =>
-          val (iPoint, pSimilarity) = 
-            (for(i <- this.rel(vClass).keysIterator ) 
-              yield (i, vectors(iVector).similarityScore(this.points(i)))
-            )
+    onInit(vectors(iVector), vTokens(iVector), inClass)
+    
+    this.links(inClass).iterator
+      .filter{outClass => this.rel.contains(outClass)}
+      .map{outClass => 
+        val iCenter = this.classCenters(outClass)
+        val (bestPoint, pSimilarity) = 
+           (for(iPoint <- this.rel(outClass).keysIterator) 
+             yield (iPoint, vectors(iVector).similarityScore(this.points(iPoint)))
+           ) 
             .reduce((p1, p2) => (p1, p2) match {
               case ((i1, score1), (i2, score2)) => 
                 if(score1 > score2) p1 
                 else p2
             })
-          ScoredVector(iVector = iVector, outClass = vClass, outScore = pSimilarity, iPoint = iPoint, iCenter = iCenter)
+          ScoredVector(iVector = iVector, outClass = outClass, outScore = pSimilarity, iPoint = bestPoint, iCenter = iCenter)
         }
   }
 
   def affectPoint(vector:MLVector, token:String, vClass:Int, vScore:Double, iPoint:Int, iCenter:Int, weight:Double = 1.0, asVCenter:Option[MLVector]=None, fit:Boolean) {
     this.pScores(iPoint) = this.pScores(iPoint) + vScore * weight
     val vectorOrCenter =  asVCenter match {case Some(v) => v case _ => vector}
-    this.vCenters(iCenter) = this.vCenters(iCenter).scale(cHits(iCenter) + 1.0).sum(vectorOrCenter.scale(weight)).scale(1.0/(cHits(iCenter) + 1 + weight))
+    this.vCenters(iPoint) = this.vCenters(iPoint).scale(pScores(iPoint)/(pScores(iPoint) + weight)).sum(vectorOrCenter.scale(weight).scale(weight/(pScores(iPoint) + weight)))
 
     if(String.CASE_INSENSITIVE_ORDER.compare(this.tokens(iPoint),token) != 0  && !this.initializing && fit)
       tryAsPoint(vector = vector, token = token, vClass = vClass, iPoint = iPoint, iCenter = iCenter)
-    this.cGAP(iCenter) = 1.0 - this.pCenters(iCenter).similarityScore(this.vCenters(iCenter))
-    this.cError(iCenter) = (this.cError(iCenter) * (cHits(iCenter) + 1.0) + (1.0 - vectorOrCenter.similarityScore(pCenters(iCenter))) * weight ) / (cHits(iCenter) + 1 + weight)
-    cHits(iCenter) = cHits(iCenter) + weight
+    this.pGAP(iPoint) = 1.0 - this.vCenters(iPoint).similarityScore(this.points(iPoint))
+    this.cError(iCenter) = this.cError(iCenter) * (cHits(iCenter)/(cHits(iCenter) + weight)) + (1.0 - vectorOrCenter.similarityScore(this.points(iPoint))) * (weight/(cHits(iCenter) + weight))
+    this.cHits(iCenter) = this.cHits(iCenter) + weight
   }
   def tryAsPoint(vector:MLVector, token:String, vClass:Int, iPoint:Int, iCenter:Int) {
-    var viPoint = iPoint
-    //Evaluating replacing the closest (and given) point
-    val newPCenter = this.exceptPCenters(viPoint).sum(vector)
-    if((1.0 - newPCenter.similarityScore(this.vCenters(iCenter))) - this.cGAP(iCenter) < 0.0001) {
+    val newGAP = 1.0 - this.vCenters(iPoint).similarityScore(vector)
+    if(newGAP - this.pGAP(iPoint) < 0.0001) {
       //println(s"$step gap: ${this.cGAP(iCenter)} replacing $token by ${this.tokens(viPoint)}")
-      this.points(viPoint) = vector
-      this.tokens(viPoint) = token
+      this.points(iPoint) = vector
+      this.tokens(iPoint) = token
       updatePointsStats
-    } else {
-      if(this.points.size < this.maxTopWords) {
-        //Evaluating adding as a new Center
-        val newPCenter = this.pCenters(iCenter).sum(vector)
-        if((1.0 - newPCenter.similarityScore(this.vCenters(iCenter))) - this.cGAP(iCenter) < 0.0001) {
-          //println(s"$step gap: ${this.cGAP(iCenter)} adding $token")
-          this.points += vector
-          this.tokens += token
-          this.rel(vClass)(this.tokens.size-1) = this.tokens.size-1
-          this.inRel(vClass)(this.tokens.size-1 -> (this.tokens.size-1)) = true
-          //println(s"tryas pClasses: ${this.pClasses.toSeq} init?:{$this.initializing}")
-          viPoint = this.points.size - 1
-          updatePointsStats
-        }
-      }
     }
-    /*//evaluating removing current vector is better
-    val withoutCenter = this.exceptPCenters(viPoint)
-    if(1.0 - withoutCenter.similarityScore(this.vCenters(iCenter)) - this.cGAP(iCenter) < 0.0001
-        && this.pClasses.filter(c => this.classCenters(c) == iCenter).size > 1) {
-      //println(s"$step gap: ${this.cGAP(iCenter)} removing ${this.tokens(viPoint)}")
-      this.points.remove(viPoint)
-      thights.tokens.remove(viPoint)
-      this.pClasses.remove(viPoint)
-      updatePointsStats
-    }*/
   }
 
   def updatePointsStats {
-    for(center <- It.range(0, this.pCenters.size)) 
-      this.pCenters(center) = 
-        this.classCentersMap(center).iterator
-          .flatMap(cClass => 
-              this.rel.get(cClass).map(r => r.iterator).getOrElse(It[(Int, Int)]())
-                .map{case (i, _) => this.points(i)}
-          ).fold(vZero)((current, next) => (current.sum(next)))
-    
-    for{center <- It.range(0, this.pCenters.size) 
-         (i, _) <- 
-           this.classCentersMap(center).iterator
-             .flatMap(cClass => this.rel.get(cClass).map(r => r.iterator).getOrElse(It[(Int, Int)]()))} {
-      this.exceptPCenters(i) = this.pCenters(center).minus(this.points(i))
-    }
-    
     this.updateParams(None, false)
-    
     //println(s"init pClasses: ${this.pClasses.toSeq} (${this.points.size})")
   }
 
   def GAP = {
     updatePointsStats
-    (this.cGAP.sum)/(this.cGAP.size)
+    val allScores = this.pScores.sum
+    It.range(0, this.pGAP.size)
+      .map{iPoint => this.pGAP(iPoint)*(this.pScores(iPoint)/allScores)}
+      .reduce(_ + _)
   }
 
   def leafsGAP = {
@@ -340,7 +288,6 @@ case class ClusteringNode (
       }
       .head
 
-  def mergeWithX(thatNode:Node, cGenerator:Iterator[Int], fit:Boolean):this.type = this
   def mergeWith(thatNode:Node, cGenerator:Iterator[Int], fit:Boolean):this.type = {
     thatNode match {
       case that:ClusteringNode =>
@@ -355,7 +302,7 @@ case class ClusteringNode (
               .groupBy{case (thatOut, thisIn) => thatOut}
               .mapValues{s => s.map{case (thatOut, thisIn) => thisIn}.head}
           
-          (for(iCenter <- It.range(0, that.pCenters.size)) 
+          (for(iCenter <- It.range(0, this.numCenters)) 
             yield {
               val scoresByClass = that.classCentersMap(iCenter).iterator
                 .map{leafClass => 
@@ -416,6 +363,9 @@ case class ClusteringNode (
   def resetHitsExtras {
     It.range(0, this.pScores.size).foreach(i => pScores(i) = 0.0)
     It.range(0, this.cHits.size).foreach(i => cHits(i) = 0.0)
+    It.range(0, this.pGAP.size).foreach(i => pGAP(i) = 0.0)
+    It.range(0, this.cError.size).foreach(i => cError(i) = 0.0)
+    It.range(0, this.pGAP.size).foreach(i => pGAP(i) = 0.0)
   }
   def cloneUnfittedExtras = this.params.cloneWith(classMapping = None, unFit = true).get.toNode().asInstanceOf[this.type]
   def updateParamsExtras {
@@ -466,10 +416,8 @@ object ClusteringNode {
     encoded.deserialize[Array[Double]]("cError").zipWithIndex.foreach{case (v, i) => ret.cError(i) = v}
     
     ret.initializing = encoded.deserialize[Boolean]("initializing")
-    encoded.deserialize[ArrayBuffer[MLVector]]("pCenters").zipWithIndex.foreach{case (v, i) => ret.pCenters(i) = v}
     encoded.deserialize[ArrayBuffer[MLVector]]("vCenters").zipWithIndex.foreach{case (v, i) => ret.vCenters(i) = v}
-    encoded.deserialize[ArrayBuffer[Double]]("cGAP").zipWithIndex.foreach{case (v, i) => ret.cGAP(i) = v}
-    encoded.deserialize[ArrayBuffer[MLVector]]("exceptPCenters").zipWithIndex.foreach{case (v, i) => ret.exceptPCenters(i) = v}
+    encoded.deserialize[ArrayBuffer[Double]]("pGAP").zipWithIndex.foreach{case (v, i) => ret.pGAP(i) = v}
     encoded.deserialize[ArrayBuffer[Double]]("cHits").zipWithIndex.foreach{case (v, i) => ret.cHits(i) = v}
     ret 
   }

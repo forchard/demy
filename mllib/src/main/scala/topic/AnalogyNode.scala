@@ -116,7 +116,7 @@ object AnalogyNode {
       points = ArrayBuffer[MLVector]() 
       , params = params
     )
-    ret.points ++= (index(ret.tokens) match {case map => ret.tokens.map(t => map(t))})  
+    ret.points ++= (index(ret.sequences.flatMap(t => t).distinct) match {case map => ret.sequences.map(tts => tts.flatMap(token => map.get(token)).reduceOption(_.sum(_)).getOrElse(null))})  
     ret
   }
   def apply(encoded:EncodedNode):AnalogyNode = {

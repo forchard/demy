@@ -92,7 +92,7 @@ case class ClusteringNode (
         }
         this.affectPoint(
           vector = vectors(iVector)
-          , token = tokens(iVector)
+          , tokens = Seq(tokens(iVector))
           , vClass = outClass
           , vScore = outVectorScore
           , iPoint = iPoint
@@ -105,7 +105,7 @@ case class ClusteringNode (
     }.size
   }
 
-  def onInit(vector:MLVector, token:String, inClass:Int) = {
+  def onInit(vector:MLVector, tokens:Seq[String], inClass:Int) = {
     if(initializing && this.points.size < this.maxTopWords) {
        this.links(inClass).iterator
          .flatMap(outClass => this.rel.get(outClass).map(o => o.iterator).getOrElse(It[(Int, Int)]()).map(p => (p, outClass)))
@@ -116,15 +116,15 @@ case class ClusteringNode (
            case Some(classToFill) => classToFill
            case None =>
              val classToFill = this.links(inClass).map(outClass => (outClass, this.rel.get(outClass).map(_.size).getOrElse(0))).toSeq.sortWith(_._2 < _._2).head._1
-             this.tokens += token
+             this.sequences += tokens
              this.points += vector
              this.rel.get(classToFill) match {
                case Some(r) => 
-                 this.rel(classToFill)(this.tokens.size-1) = this.tokens.size-1
-                 this.inRel(classToFill)(this.tokens.size-1 -> (this.tokens.size-1)) = true
+                 this.rel(classToFill)(this.sequences.size-1) = this.sequences.size-1
+                 this.inRel(classToFill)(this.sequences.size-1 -> (this.sequences.size-1)) = true
                case None => 
-                 this.rel(classToFill) = HashMap(this.tokens.size -1 -> (this.tokens.size -1))
-                 this.inRel(classToFill) = HashMap((this.tokens.size -1 -> (this.tokens.size -1), true))
+                 this.rel(classToFill) = HashMap(this.sequences.size -1 -> (this.sequences.size -1))
+                 this.inRel(classToFill) = HashMap((this.sequences.size -1 -> (this.sequences.size -1), true))
                
              }
              initializing = this.points.size < this.maxTopWords
@@ -217,7 +217,7 @@ case class ClusteringNode (
       //println(s"spawning... ${this.params.annotations}, ${this.inClasses}")
       this.fillChildren(cGenerator)
     }
-    onInit(vectors(iVector), vTokens(iVector), inClass)
+    onInit(vectors(iVector), Seq(vTokens(iVector)), inClass)
     
     this.links(inClass).iterator
       .filter{outClass => this.rel.contains(outClass)}
@@ -236,23 +236,28 @@ case class ClusteringNode (
         }
   }
 
-  def affectPoint(vector:MLVector, token:String, vClass:Int, vScore:Double, iPoint:Int, iCenter:Int, weight:Double = 1.0, asVCenter:Option[MLVector]=None, fit:Boolean) {
+  def affectPoint(vector:MLVector, tokens:Seq[String], vClass:Int, vScore:Double, iPoint:Int, iCenter:Int, weight:Double = 1.0, asVCenter:Option[MLVector]=None, fit:Boolean) {
     this.pScores(iPoint) = this.pScores(iPoint) + vScore * weight
     val vectorOrCenter =  asVCenter match {case Some(v) => v case _ => vector}
     this.vCenters(iPoint) = this.vCenters(iPoint).scale(pScores(iPoint)/(pScores(iPoint) + weight)).sum(vectorOrCenter.scale(weight).scale(weight/(pScores(iPoint) + weight)))
 
-    if(String.CASE_INSENSITIVE_ORDER.compare(this.tokens(iPoint),token) != 0  && !this.initializing && fit)
-      tryAsPoint(vector = vector, token = token, vClass = vClass, iPoint = iPoint, iCenter = iCenter)
+    if((this.sequences(iPoint).size != tokens.size 
+          || It.range(0, tokens.size).map(i => String.CASE_INSENSITIVE_ORDER.compare(this.sequences(iPoint)(i),tokens(i)) != 0).contains(false)
+        )  
+        && !this.initializing 
+        && fit
+      )
+      tryAsPoint(vector = vector, tokens = tokens, vClass = vClass, iPoint = iPoint, iCenter = iCenter)
     this.pGAP(iPoint) = 1.0 - this.vCenters(iPoint).similarityScore(this.points(iPoint))
     this.cError(iCenter) = this.cError(iCenter) * (cHits(iCenter)/(cHits(iCenter) + weight)) + (1.0 - vectorOrCenter.similarityScore(this.points(iPoint))) * (weight/(cHits(iCenter) + weight))
     this.cHits(iCenter) = this.cHits(iCenter) + weight
   }
-  def tryAsPoint(vector:MLVector, token:String, vClass:Int, iPoint:Int, iCenter:Int) {
+  def tryAsPoint(vector:MLVector, tokens:Seq[String], vClass:Int, iPoint:Int, iCenter:Int) {
     val newGAP = 1.0 - this.vCenters(iPoint).similarityScore(vector)
     if(newGAP - this.pGAP(iPoint) < 0.0001) {
       //println(s"$step gap: ${this.cGAP(iCenter)} replacing $token by ${this.tokens(viPoint)}")
       this.points(iPoint) = vector
-      this.tokens(iPoint) = token
+      this.sequences(iPoint) = tokens
       updatePointsStats
     }
   }
@@ -312,7 +317,7 @@ case class ClusteringNode (
                           this.score(
                             iVector = iLeafPoint
                             , vectors = that.points
-                            , vTokens = that.tokens
+                            , vTokens = that.sequences.map(t => t match {case Seq(t) => t case _ => throw new Exception("Multi token clustering not yet suported")})
                             , inClass = outToInClass(leafClass) 
                             , parent = None/*parent match {case Some(c) => c match {case c:ClusteringNode => Some(c) case _ => None} case _ => None}*/
                             , cGenerator = cGenerator
@@ -328,7 +333,7 @@ case class ClusteringNode (
                   this.params.hits = this.params.hits + that.params.hits / vectorsInScopeCount
                   this.affectPoint(
                     vector = that.points(iVector)
-                    , token = that.tokens(iVector)
+                    , tokens = that.sequences(iVector)
                     , vClass = outClass
                     , vScore = outVectorScore
                     , iPoint = iPoint
@@ -402,8 +407,8 @@ object ClusteringNode {
       points = ArrayBuffer[MLVector]() 
       , params = params
     )
-    if(ret.tokens.size > 0)
-      ret.points ++= (index.get(ret.tokens) match {case map => ret.tokens.map(t => map.get(t).getOrElse(null))}) 
+    if(ret.sequences.size > 0)
+      ret.points ++= (index.get(ret.sequences.flatMap(t => t).distinct) match {case map => ret.sequences.map(tts => tts.flatMap(token => map.get(token)).reduceOption(_.sum(_)).getOrElse(null))})  
     ret 
   }
   def apply(encoded:EncodedNode):ClusteringNode = {

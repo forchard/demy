@@ -17,7 +17,6 @@ import scala.{Iterator => It}
 import java.io.{ByteArrayOutputStream, ObjectOutputStream}
 import java.io.{ObjectInputStream,ByteArrayInputStream}
 
-case class Annotation(token:String, cat:Int, from:Option[String], inRel:Boolean, score:Double)
 case class NodeParams(
   name:String
   , annotations:ArrayBuffer[Annotation]
@@ -83,9 +82,14 @@ case class NodeParams(
     }
   }
   def allTokens(ret:HashSet[String]=HashSet[String](), others:Seq[NodeParams]):HashSet[String] = {
-    ret ++= this.annotations.map(a => a.token)
-    ret ++= this.annotations.flatMap(a => a.from)
+    ret ++= this.annotations.flatMap(a => a.tokens ++ a.from.getOrElse(Seq[String]()))
     this.children.foreach(i => others(i).allTokens(ret, others))
+    ret
+  }
+  def allSequences(ret:HashSet[Seq[String]]=HashSet[Seq[String]](), others:Seq[NodeParams]):HashSet[Seq[String]] = {
+    ret ++= this.annotations.map(a => a.tokens)
+    ret ++= this.annotations.flatMap(a => a.from)
+    this.children.foreach(i => others(i).allSequences(ret, others))
     ret
   }
 
@@ -112,16 +116,16 @@ trait Node{
 
   val links = this.params.strLinks.map(p => (p._1.toInt, p._2))
   val classPath = this.params.strClassPath.map(p => (p._1.toInt, p._2))
-  val tokens = params.annotations.map(n => n.token) ++ params.annotations.flatMap(n => n.from) 
+  val sequences = params.annotations.map(n => n.tokens) ++ params.annotations.flatMap(n => n.from) 
   lazy val outClasses = links.values.toSeq.flatMap(v => v).toSet
   lazy val rel = {
     val fromIndex = params.annotations.zipWithIndex.filter{case (n, i) => !n.from.isEmpty}.zipWithIndex.map{case ((_, i), j) => (i, params.annotations.size + j)}.toMap
     HashMap(
       params.annotations
        .zipWithIndex
-       .map{case (n, i) => (n.cat, i, fromIndex.get(i).getOrElse(i))}
-       .groupBy{case (cat, i, j) => cat}
-       .mapValues{s => HashMap(s.map{case (cat, i, j) => (i, j)}:_*)}
+       .map{case (n, i) => (n.tag, i, fromIndex.get(i).getOrElse(i))}
+       .groupBy{case (tag, i, j) => tag}
+       .mapValues{s => HashMap(s.map{case (tag, i, j) => (i, j)}:_*)}
        .toSeq :_*
    )
   }
@@ -130,9 +134,9 @@ trait Node{
     HashMap(
       params.annotations
        .zipWithIndex
-       .map{case (n, i) => (n.cat, i, fromIndex.get(i).getOrElse(i), n.inRel)}
-       .groupBy{case (cat, i, j, inRel) => cat}
-       .mapValues{s => HashMap(s.map{case (cat, i, j, inRel) => ((i, j), inRel)}:_*)}
+       .map{case (n, i) => (n.tag, i, fromIndex.get(i).getOrElse(i), n.inRel)}
+       .groupBy{case (tag, i, j, inRel) => tag}
+       .mapValues{s => HashMap(s.map{case (tag, i, j, inRel) => ((i, j), inRel)}:_*)}
        .toSeq :_*
    )
   }
@@ -306,9 +310,9 @@ trait Node{
        .map{case (iOut, iFrom, outClass) =>
          //print(s"--->($iOut, $iFrom, $outClass)")
          val ret = Annotation(
-           token = this.tokens(iOut)
-           , cat = outClass
-           , from = if(iOut == iFrom) None else Some(this.tokens(iFrom))
+           tokens = this.sequences(iOut)
+           , tag = outClass
+           , from = if(iOut == iFrom) None else Some(this.sequences(iFrom))
            , inRel = this.inRel.get(outClass) match {case Some(map) => map(iOut -> iFrom) case None => true}
            , score = this match { case c:ClusteringNode =>c.pScores(iOut) case _ => 0.0}
          )
@@ -339,11 +343,12 @@ trait Node{
     currentId
   }
 
-  def allTokens(ret:HashSet[String]=HashSet[String]()):HashSet[String] = {
-    ret ++= this.tokens
-    this.children.foreach(c => c.allTokens(ret))
+  def allSequences(ret:HashSet[Seq[String]]=HashSet[Seq[String]]()):HashSet[Seq[String]] = {
+    ret ++= this.sequences
+    this.children.foreach(c => c.allSequences(ret))
     ret
   }
+
 }
 
 object Node {

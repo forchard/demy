@@ -1,6 +1,7 @@
 package demy.mllib.topic
 
 import demy.mllib.index.VectorIndex
+import demy.mllib.linalg.implicits._
 import demy.util.{log => l}
 import org.apache.spark.ml.linalg.{Vector => MLVector}
 import org.apache.spark.sql.{SparkSession}
@@ -90,7 +91,7 @@ object ClassifierNode {
       points = ArrayBuffer[MLVector]() 
       , params = params
     )
-    ret.points ++= (index(ret.tokens) match {case map => ret.tokens.map(t => map.get(t).getOrElse(null))}) 
+    ret.points ++= (index(ret.sequences.flatMap(t => t).distinct) match {case map => ret.sequences.map(tts => tts.flatMap(token => map.get(token)).reduceOption(_.sum(_)).getOrElse(null))})  
     ret
   }
   def apply(encoded:EncodedNode):ClassifierNode = {

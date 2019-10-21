@@ -12,7 +12,6 @@ import demy.storage.WriteMode
 import scala.reflect._
 import scala.reflect.runtime.universe
 
-//case class SparkLuceneReader(indexPartition:String, reuseSnapShot:Boolean = false, useSparkFiles:Boolean = false, usePopularity:Boolean=false) {
 case class SparkLuceneReader(indexPartition:String, reuseSnapShot:Boolean = false, useSparkFiles:Boolean = false,
                              usePopularity:Boolean=false, indexStrategy:String, strategyParams:Map[String,String]) {
   lazy val sparkStorage = Storage.getSparkStorage

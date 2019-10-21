@@ -10,7 +10,7 @@ import demy.storage.Storage
 import demy.util.log
 
 object implicits {
-  implicit class DatasetUtil(val left: Dataset[_]) {
+  implicit class DatasetUtil(val ds: Dataset[_]) {
     def luceneLookup(
       right:Dataset[_]
       , query:Column
@@ -37,51 +37,116 @@ object implicits {
         ++ rightSelect
         ) :_*)
 
-      //Building index if does not exists
       val sparkStorage = Storage.getSparkStorage
-
       val indexNode = sparkStorage.getNode(path = indexPath)
       val exists = indexNode.exists
-      if(!reuseExistingIndex && exists)
-        indexNode.delete(recurse = true)
-
-      //writing the index with the right part dataset
+      
+      //Building index if does not exists ou if it is not to be reused
       if(!exists || !reuseExistingIndex) {
-        val rdd = rightApplied.rdd
-        val partedRdd = 
-          if(rdd.getNumPartitions<indexPartitions) rdd.repartition(indexPartitions)
-          else rdd.coalesce(indexPartitions)
-          
-        val popPosition = popularity match {case Some(c) => Some(1) case _ => None }
-        val popPositionSet = popularity match {case Some(c) => Set(1) case _ =>Set[Int]()}
-        partedRdd.mapPartitions{iter => 
-          //Index creation
-          var index = SparkLuceneWriter(indexDestination=indexPath,  boostAcronyms=boostAcronyms)
-          var createIndex = true
-          var indexInfo:SparkLuceneWriterInfo = null
-          var indexHDFSDest:String = null
-          iter.foreach{row => 
-            if(createIndex) {
-                indexInfo = index.create
-                createIndex = false
-            }
-            indexInfo.indexRow(
-              row = row
-              , textFieldPosition = 0
-              , popularityPosition = popPosition
-              , notStoredPositions = Set(0) ++ popPositionSet, tokenisation = tokenizeText 
-            )
-          }
-          if(indexInfo != null) {
-            indexInfo.push(deleteSource = true)
-            Array(indexHDFSDest).iterator
-          } else {
-            Array[String]().iterator
-          }
-        }
-        .collect
+        ds.index(
+          indexPath = indexPath
+          , fields = rightSelect
+          , text = text
+          , tokenizeText = tokenizeText
+          , popularity = popularity
+          , boostAcronyms = boostAcronyms
+          , indexPartitions = indexPartitions
+        ) 
       }
       //Reading the index
+      ds.indexLookUp(
+        query = query
+        , maxLevDistance = maxLevDistance
+        , indexPath = indexPath
+        , indexSchema = right.select(rightSelect :_*).schema
+        , leftSelect = leftSelect
+        , popularity = popularity
+        , maxRowsInMemory = maxRowsInMemory
+        , indexScanParallelism = indexScanParallelism
+        , minScore = minScore
+        , boostAcronyms = boostAcronyms
+        , termWeightsColumnName = termWeightsColumnName
+        , strategy = strategy
+        , strategyParams = strategyParams
+      ) 
+    }
+
+    def index(
+      indexPath:String
+      , fields:Array[Column]=Array(col("*"))
+      , text:Column
+      , tokenizeText:Boolean=true
+      , popularity:Option[Column]=None
+      , boostAcronyms:Boolean=false
+      , indexPartitions:Int = 1
+    ) {
+    
+      val sparkStorage = Storage.getSparkStorage
+      val indexNode = sparkStorage.getNode(path = indexPath)
+      val exists = indexNode.exists
+      if(exists)
+        indexNode.delete(recurse = true)
+
+      val dsApplied = ds.select((
+        Array(text.as("_text_")) 
+        ++ (popularity match {case Some(c) => Array(c.as("_pop_")) case _ => Array[Column]()}) 
+        ++ fields
+        ) :_*)
+
+      val rdd = dsApplied.rdd
+      val partedRdd = 
+        if(rdd.getNumPartitions<indexPartitions) rdd.repartition(indexPartitions)
+        else rdd.coalesce(indexPartitions)
+        
+      val popPosition = popularity match {case Some(c) => Some(1) case _ => None }
+      val popPositionSet = popularity match {case Some(c) => Set(1) case _ =>Set[Int]()}
+
+      partedRdd.mapPartitions{iter => 
+        //Index creation
+        var index = SparkLuceneWriter(indexDestination=indexPath,  boostAcronyms=boostAcronyms)
+        var createIndex = true
+        var indexInfo:SparkLuceneWriterInfo = null
+        var indexHDFSDest:String = null
+        iter.foreach{row => 
+          if(createIndex) {
+              indexInfo = index.create
+              createIndex = false
+          }
+          indexInfo.indexRow(
+            row = row
+            , textFieldPosition = 0
+            , popularityPosition = popPosition
+            , notStoredPositions = Set(0) ++ popPositionSet, tokenisation = tokenizeText 
+          )
+        }
+        if(indexInfo != null) {
+          indexInfo.push(deleteSource = true)
+          Array(indexHDFSDest).iterator
+        } else {
+          Array[String]().iterator
+        }
+      }
+      .collect
+    }
+
+    def indexLookUp(
+      query:Column
+      , maxLevDistance:Int=0
+      , indexPath:String
+      , indexSchema:StructType
+      , leftSelect:Array[Column]=Array(col("*"))
+      , popularity:Option[Column]=None
+      , maxRowsInMemory:Int=100
+      , indexScanParallelism:Int = 2
+      , minScore:Double=0.0
+      , boostAcronyms:Boolean=false
+      , termWeightsColumnName:Option[String]=None
+      , strategy:String = "demy.mllib.index.StandardStrategy"
+      , strategyParams: Map[String, String]=Map.empty[String,String]
+      
+    ) = {
+      val sparkStorage = Storage.getSparkStorage
+      val indexNode = sparkStorage.getNode(path = indexPath)
       val indexFiles =  
         indexNode.list.toArray
         .map{node => 
@@ -96,7 +161,7 @@ object implicits {
               , strategyParams = strategyParams)
         }
       //Preparing the results
-      val leftApplied = left.select((Array(query.as("_text_")) ++ leftSelect) :_*)
+      val leftApplied = ds.select((Array(query.as("_text_")) ++ leftSelect) :_*)
 
 
       val isArrayJoin = 
@@ -121,18 +186,22 @@ object implicits {
 
       val leftOutFields = leftApplied.schema.fields.slice(1, leftApplied.schema.fields.size)
       val leftOutSchema = new StructType(leftOutFields)
-      val rightRequestFields = rightApplied.schema.fields
-        .slice(popularity match {case Some(c) => 2 case _ => 1}, rightApplied.schema.fields.size)
-        .map(f => new StructField(name = f.name, dataType = f.dataType, nullable = true, metadata = f.metadata))
+      val rightRequestFields = 
+        indexSchema
+          .fields
+          .map(f => new StructField(
+            name = f.name
+            , dataType = f.dataType
+            , nullable = true
+            , metadata = f.metadata)
+          )
 
-      val rightOutFields = (rightApplied.schema.fields
-        .slice(popularity match {case Some(c) => 2 case _ => 1}, rightApplied.schema.fields.size)
-        .map(f => new StructField(name = f.name, dataType = f.dataType, nullable = true, metadata = f.metadata)) 
-         ++ Array(
+      val rightOutFields = 
+        rightRequestFields ++ Array(
            new StructField("_score_", FloatType)
            , new StructField("_tags_", ArrayType(StringType))
            ,new StructField("_startIndex_", IntegerType), new StructField("_endIndex_", IntegerType)
-           ))
+           )
 
       val rightOutSchema = 
         if(!isArrayJoin) new StructType(rightOutFields)
@@ -175,10 +244,6 @@ object implicits {
                         Seq(Some(leftRow.getAs[Seq[Double]](leftRow.fieldIndex(termWeightsColumnName.get))))
                       else 
                         leftRow.getAs[Seq[Seq[Double]]](leftRow.fieldIndex(termWeightsColumnName.get)).map(value => Some(value))
-//                    else if(isArrayJoinWeights.get) 
-//                      leftRow.getSeq[Seq[Double]](leftRow.fieldIndex(termWeightsColumnName.get)).map(value => Some(value.toArray))
-//                    else 
-//                      leftRow.getAs[Seq[Seq[Double]]](leftRow.fieldIndex(termWeightsColumnName.get)).map(value => Some(value.toArray))
                    }
                    val resultsArray = righResults match {case Some(array) => 
                      array case None => queries.map(q => None)
@@ -226,8 +291,7 @@ object implicits {
                 , rightOutSchema)
           Row.merge(leftRow, rightRow)
         }
-      right.sparkSession.createDataFrame(resultRdd, new StructType(leftOutFields ++ rightOutSchema.fields))
-//        (resultRdd, new StructType(leftOutFields ++ rightOutSchema.fields))
+      ds.sparkSession.createDataFrame(resultRdd, new StructType(leftOutFields ++ rightOutSchema.fields))
     }
   }
 }

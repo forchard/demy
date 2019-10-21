@@ -86,12 +86,15 @@ case class ClassifierNode (
   def cloneUnfittedExtras = this
 }
 object ClassifierNode {
-  def apply(params:NodeParams, index:VectorIndex):ClassifierNode = {
+  def apply(params:NodeParams, index:Option[VectorIndex]):ClassifierNode = {
     val ret = ClassifierNode(
       points = ArrayBuffer[MLVector]() 
       , params = params
     )
-    ret.points ++= (index(ret.sequences.flatMap(t => t).distinct) match {case map => ret.sequences.map(tts => tts.flatMap(token => map.get(token)).reduceOption(_.sum(_)).getOrElse(null))})  
+    index match {
+      case Some(ix) => ret.points ++= (ix(ret.sequences.flatMap(t => t).distinct) match {case map => ret.sequences.map(tts => tts.flatMap(token => map.get(token)).reduceOption(_.sum(_)).getOrElse(null))})
+      case _ =>
+    }
     ret
   }
   def apply(encoded:EncodedNode):ClassifierNode = {

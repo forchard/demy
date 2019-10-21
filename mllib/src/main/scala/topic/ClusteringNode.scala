@@ -407,8 +407,11 @@ object ClusteringNode {
       points = ArrayBuffer[MLVector]() 
       , params = params
     )
-    if(ret.sequences.size > 0)
-      ret.points ++= (index.get(ret.sequences.flatMap(t => t).distinct) match {case map => ret.sequences.map(tts => tts.flatMap(token => map.get(token)).reduceOption(_.sum(_)).getOrElse(null))})  
+    index match {
+      case Some(ix) if ret.sequences.size > 0 =>
+        ret.points ++= (ix(ret.sequences.flatMap(t => t).distinct) match {case map => ret.sequences.map(tts => tts.flatMap(token => map.get(token)).reduceOption(_.sum(_)).getOrElse(null))})  
+      case _ =>
+    }
     ret 
   }
   def apply(encoded:EncodedNode):ClusteringNode = {

@@ -51,5 +51,21 @@ case class AnnotationSource(
     )
 
   def toAnnotation(tagMap:Map[String, Int]) = Annotation(tokens = tokens, tag = tagMap(tag), from = from, inRel = inRel, score = score)
+  def key = (Seq(tag) ++ tokens ++ from.getOrElse(Seq[String]())).mkString(" ")
+  def mergeWith(that:AnnotationSource) = { 
+    val (newer, older) = if(this.timestamp.after(that.timestamp)) (this, that) else (that, this)
+    AnnotationSource(
+      tokens = newer.tokens
+      , tag = newer.tag
+      , from = newer.from
+      , inRel = newer.inRel
+      , score = newer.score  
+      , sourceId = newer.sourceId.orElse(older.sourceId)
+      , allTokens = newer.allTokens.orElse(older.allTokens)
+      , tokensIndexes = newer.tokensIndexes.orElse(older.tokensIndexes)
+      , fromIndexes = newer.fromIndexes.orElse(older.fromIndexes)
+      , timestamp = newer.timestamp
+    )
+  }
 }
 

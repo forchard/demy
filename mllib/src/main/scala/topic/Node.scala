@@ -35,14 +35,13 @@ case class NodeParams(
   , var hits:Double = 0
 ) {
   def toNode(others:ArrayBuffer[NodeParams]= ArrayBuffer[NodeParams](), vectorIndex:Option[VectorIndex]= None):Node = {
-   
    val n =
       if(this.algo == ClassAlgorithm.clustering) 
         ClusteringNode(this, vectorIndex)
       else if(this.algo == ClassAlgorithm.supervised)
-        ClassifierNode(this, vectorIndex.get)
+        ClassifierNode(this, vectorIndex)
       else if(this.algo == ClassAlgorithm.analogy)
-        AnalogyNode(this, vectorIndex.get)
+        AnalogyNode(this, vectorIndex)
       else throw new Exception(s"Unknown algorithm ${this.algo}")
     n.children ++= this.children.map(i => others(i).toNode(others, vectorIndex))
     n

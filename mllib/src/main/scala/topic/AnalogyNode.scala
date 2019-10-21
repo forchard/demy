@@ -111,13 +111,16 @@ case class AnalogyNode (
 }
 
 object AnalogyNode {
-  def apply(params:NodeParams, index:VectorIndex):AnalogyNode = {
+  def apply(params:NodeParams, index:Option[VectorIndex]):AnalogyNode = {
     val ret = AnalogyNode(
       points = ArrayBuffer[MLVector]() 
       , params = params
     )
-    ret.points ++= (index(ret.sequences.flatMap(t => t).distinct) match {case map => ret.sequences.map(tts => tts.flatMap(token => map.get(token)).reduceOption(_.sum(_)).getOrElse(null))})  
-    ret
+    index match {
+      case Some(ix) => ret.points ++= (ix(ret.sequences.flatMap(t => t).distinct) match {case map => ret.sequences.map(tts => tts.flatMap(token => map.get(token)).reduceOption(_.sum(_)).getOrElse(null))})  
+      case _ =>
+    }
+      ret
   }
   def apply(encoded:EncodedNode):AnalogyNode = {
     val ret = AnalogyNode(

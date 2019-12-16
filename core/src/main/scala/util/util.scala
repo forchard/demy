@@ -31,12 +31,24 @@ object util {
 
     def checkpoint(df:DataFrame, path:String, partitionBy:Option[Array[String]]=None, reuseExisting:Boolean = false):DataFrame =
     {
+      val toEnc = Seq(',',';','{','}','(',')','\n','\t','=', ' ').map(c => (c.toString, s">>${c.toInt}<<"))
+
+      val encCols = df.schema.flatMap{f => 
+          val none = None.asInstanceOf[Option[String]]
+          toEnc
+            .filter(c => f.name.contains(c._1))
+            .foldLeft(none)((current, iter) => current.orElse(Some(f.name)).map(newCol => newCol.replace(iter._1, iter._2))).map(newCol => (f.name, newCol))
+      }
+
+      val encodedDF = encCols.foldLeft(df)((current, iter) => current.withColumnRenamed(iter._1, iter._2))
       if((new java.io.File(path)) match {case f => !reuseExisting || !f.exists || f.listFiles().isEmpty})
-        ((df.write.mode("overwrite"), partitionBy)  match {
+        ((encodedDF.write.mode("overwrite"), partitionBy)  match {
           case(w, Some(cols)) => w.partitionBy(cols:_*)
           case(w, _) => w
         }).parquet(path)
-      df.sparkSession.read.parquet(path)
+      val readDF = df.sparkSession.read.parquet(path)
+
+      encCols.foldLeft(readDF)((current, iter) => current.withColumnRenamed(iter._2, iter._1))
     }
     def getStackTraceString(e:Exception) = {
      val sw = new java.io.StringWriter();

@@ -36,7 +36,7 @@ case class NodeParams(
 ) {
   def toNode(others:ArrayBuffer[NodeParams]= ArrayBuffer[NodeParams](), vectorIndex:Option[VectorIndex]= None):Node = {
    val n =
-      if(this.algo == ClassAlgorithm.clustering) 
+      if(this.algo == ClassAlgorithm.clustering)
         ClusteringNode(this, vectorIndex)
       else if(this.algo == ClassAlgorithm.supervised)
         ClassifierNode(this, vectorIndex)
@@ -115,7 +115,7 @@ trait Node{
 
   val links = this.params.strLinks.map(p => (p._1.toInt, p._2))
   val classPath = this.params.strClassPath.map(p => (p._1.toInt, p._2))
-  val sequences = params.annotations.map(n => n.tokens) ++ params.annotations.flatMap(n => n.from) 
+  val sequences = params.annotations.map(n => n.tokens) ++ params.annotations.flatMap(n => n.from)
   lazy val outClasses = links.values.toSeq.flatMap(v => v).toSet
   lazy val rel = {
     val fromIndex = params.annotations.zipWithIndex.filter{case (n, i) => !n.from.isEmpty}.zipWithIndex.map{case ((_, i), j) => (i, params.annotations.size + j)}.toMap
@@ -143,31 +143,31 @@ trait Node{
   lazy val linkPairs = links.toSeq.flatMap{case (from, toSet) => toSet.map(to => (from, to))}
   lazy val inMap = linkPairs.map{case (from, to) => (to, from)}.toMap
 
-  def walk(facts:HashMap[Int, HashMap[Int, Int]], scores:HashMap[Int, Double], vectors:Seq[MLVector], tokens:Seq[String], parent:Option[Node], cGenerator:Iterator[Int], fit:Boolean) { 
+  def walk(facts:HashMap[Int, HashMap[Int, Int]], scores:HashMap[Int, Double], vectors:Seq[MLVector], tokens:Seq[String], parent:Option[Node], cGenerator:Iterator[Int], fit:Boolean) {
     this.params.hits = this.params.hits + 1
     transform(facts, scores, vectors, tokens, parent, cGenerator, fit)
-    //val bestChild =  
+    //val bestChild =
     for(i <- It.range(0, this.children.size)) {
       if(this.children(i).params.filterMode == FilterMode.noFilter
-        || this.children(i).params.filterMode == FilterMode.allIn 
+        || this.children(i).params.filterMode == FilterMode.allIn
            &&  this.children(i).inClasses.iterator
                 .filter(inChild => !facts.contains(inChild))
-                .size == 0 
-        || this.children(i).params.filterMode == FilterMode.anyIn 
+                .size == 0
+        || this.children(i).params.filterMode == FilterMode.anyIn
            &&  this.children(i).inClasses.iterator
                 .filter(inChild => facts.contains(inChild))
-                .size > 0 
-        || this.children(i).params.filterMode == FilterMode.bestScore 
+                .size > 0
+        || this.children(i).params.filterMode == FilterMode.bestScore
            &&  (this.children.iterator.zipWithIndex
                 .map{case (child, j) =>
                   (child.params.filterValue.iterator.map(cInClass => scores.get(cInClass).getOrElse(0.0)).sum / child.inClasses.size, j)}
                 .reduce((p1, p2) => (p1, p2) match {case((score1,  _), (score2, _)) => if(score1 > score2) p1 else p2 }) match {
-                  case (bestScore, bestJ) => 
+                  case (bestScore, bestJ) =>
                     i == bestJ
                 })
-      ) 
+      )
         this.children(i).walk(facts, scores, vectors, tokens, Some(this), cGenerator, fit)
-      else 
+      else
         this.children(i).params.filterValue.foreach{c => {facts.remove(c);scores.remove(c)}} //this is to avoid setting classes on phrases that are not going to children.
     }
   }
@@ -177,7 +177,7 @@ trait Node{
     , tokens:Seq[String]
     , parent:Option[Node]
     , cGeneratror:Iterator[Int]
-    , fit:Boolean) 
+    , fit:Boolean)
 
   def clusteringGAP:Double = {
     this match {
@@ -201,7 +201,7 @@ trait Node{
 
   def encode(childArray:ArrayBuffer[EncodedNode]):Int= {
     this.updateParams(id = Some(childArray.size), updateChildren = false)
-    val encoder = 
+    val encoder =
       EncodedNode(
         points = this.points
         , params = this.params
@@ -231,14 +231,14 @@ trait Node{
   def prettyPrintExtras(level:Int = 0, buffer:ArrayBuffer[String]=ArrayBuffer[String](), stopLevel:Int = -1):ArrayBuffer[String]
   def encodeExtras(encoder:EncodedNode)
   def mergeWith(that:Node, cGenerator:Iterator[Int], fit:Boolean):this.type
-  def betterThan(that:Node) = {                    
+  def betterThan(that:Node) = {
     val thisGap = this.clusteringGAP
     val thatGap = that.clusteringGAP
     val thisEmpty =  this.nodesIterator.filter(n => n.points.size < 2).size
     val thatEmpty =  that.nodesIterator.filter(n => n.points.size < 2).size
 
     //if(this.algo == ClassAlgorithm.supervised)  println(s"thisGap $thisGap, thatGap: $thatGap, thisEmpty $thisEmpty, thatEmpty $thatEmpty")
-    (thisEmpty + thatEmpty > 0 && thisEmpty != thatEmpty) && thisEmpty < thatEmpty || 
+    (thisEmpty + thatEmpty > 0 && thisEmpty != thatEmpty) && thisEmpty < thatEmpty ||
     (thisEmpty + thatEmpty == 0 || thisEmpty == thatEmpty) && thisGap < thatGap
   }
   def resetHits:this.type = {
@@ -258,7 +258,7 @@ trait Node{
 
   def cloneUnfittedExtras:this.type
   def resetHitsExtras
-  def updateParamsExtras 
+  def updateParamsExtras
 
   def save(dest:FSNode, tmp:Option[FSNode]=None) = {
     this.updateParams(Some(0))
@@ -273,12 +273,12 @@ trait Node{
         dest.setContent(new ByteArrayInputStream(bytes), WriteMode.overwrite)
     }
   }
-  
+
   def saveAsJson(dest:FSNode, tmp:Option[FSNode]=None) = {
     this.updateParams(Some(0))
     val mapper = new ObjectMapper()
     mapper.registerModule(DefaultScalaModule)
-    mapper.enable(SerializationFeature.INDENT_OUTPUT) 
+    mapper.enable(SerializationFeature.INDENT_OUTPUT)
     val encoded = ArrayBuffer[EncodedNode]()
     this.encode(encoded)
     tmp match {
@@ -299,8 +299,8 @@ trait Node{
       //println(s"inRel : ${this.inRel}")
     //}
     val newAnnotations = (
-      this.rel.flatMap{ case (outClass, rels) => 
-        rels.map{case (iOut, iFrom) => 
+      this.rel.flatMap{ case (outClass, rels) =>
+        rels.map{case (iOut, iFrom) =>
           (iOut, iFrom, outClass)
         }
       }
@@ -317,19 +317,19 @@ trait Node{
          )
          //println(ret)
          ret
-       }  
+       }
     )
     this.params.annotations.clear
     this.params.annotations ++= newAnnotations
-      
-    //if(this.rel.keySet != this.inRel.keySet) 
+
+    //if(this.rel.keySet != this.inRel.keySet)
     //  println(s"new annotations : ${this.params.annotations}")
     updateParamsExtras
     var currentId = id
     if(updateChildren) {
-      val childrenIds = 
+      val childrenIds =
         It.range(0, this.children.size)
-          .map{i => 
+          .map{i =>
              val thisChildId = currentId.map(idd => idd + 1)
              currentId = this.children(i).updateParams(thisChildId)
              thisChildId
@@ -365,7 +365,7 @@ object Node {
     params(0).toNode(others = params, vectorIndex = cachedIndex)
  }
 
- def defaultNode = 
+ def defaultNode =
    NodeParams(
      name = "Explorer"
      , annotations = ArrayBuffer[Annotation]()
@@ -394,7 +394,12 @@ case class EncodedNode(
     }
     var obj:Any = null
     if (bytes!=null) {
-       val in=new ObjectInputStream(new ByteArrayInputStream(bytes))
+      val in=new ObjectInputStream(new ByteArrayInputStream(bytes)) {
+        override def resolveClass(desc: java.io.ObjectStreamClass): Class[_] = {
+          try { Class.forName(desc.getName, false, getClass.getClassLoader) }
+          catch { case ex: ClassNotFoundException => super.resolveClass(desc) }
+         }
+       }
        obj = in.readObject()
        in.close()
     }
@@ -403,7 +408,7 @@ case class EncodedNode(
 
   def decode(others:ArrayBuffer[EncodedNode]):Node = {
     val n =
-      if(this.params.algo == ClassAlgorithm.clustering) 
+      if(this.params.algo == ClassAlgorithm.clustering)
         ClusteringNode(this)
       else if(this.params.algo == ClassAlgorithm.supervised)
         ClassifierNode(this)
@@ -432,11 +437,16 @@ object EncodedNode {
   def deserialize[T](bytes:Array[Byte]) = {
     var obj:Any = null
     if (bytes!=null) {
-       val in=new ObjectInputStream(new ByteArrayInputStream(bytes))
+       val in=new ObjectInputStream(new ByteArrayInputStream(bytes)) {
+         override def resolveClass(desc: java.io.ObjectStreamClass): Class[_] = {
+           try { Class.forName(desc.getName, false, getClass.getClassLoader) }
+           catch { case ex: ClassNotFoundException => super.resolveClass(desc) }
+          }
+        }
        obj = in.readObject()
        in.close()
     }
     obj.asInstanceOf[T]
   }
 
-}  
+}

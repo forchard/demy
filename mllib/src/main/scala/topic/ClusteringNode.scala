@@ -239,23 +239,25 @@ case class ClusteringNode (
   def affectPoint(vector:MLVector, tokens:Seq[String], vClass:Int, vScore:Double, iPoint:Int, iCenter:Int, weight:Double = 1.0, asVCenter:Option[MLVector]=None, fit:Boolean) {
     this.pScores(iPoint) = this.pScores(iPoint) + vScore * weight
     val vectorOrCenter =  asVCenter match {case Some(v) => v case _ => vector}
-    this.vCenters(iPoint) = this.vCenters(iPoint).scale(pScores(iPoint)/(pScores(iPoint) + weight)).sum(vectorOrCenter.scale(weight).scale(weight/(pScores(iPoint) + weight)))
 
     if((this.sequences(iPoint).size != tokens.size 
-          || It.range(0, tokens.size).map(i => String.CASE_INSENSITIVE_ORDER.compare(this.sequences(iPoint)(i),tokens(i)) != 0).contains(false)
+          || It.range(0, tokens.size).map(i => String.CASE_INSENSITIVE_ORDER.compare(this.sequences(iPoint)(i),tokens(i)) == 0).contains(false)
         )  
         && !this.initializing 
         && fit
       )
       tryAsPoint(vector = vector, tokens = tokens, vClass = vClass, iPoint = iPoint, iCenter = iCenter)
+    this.vCenters(iPoint) = this.vCenters(iPoint).scale(pScores(iPoint)/(pScores(iPoint) + weight)).sum(vectorOrCenter.scale(weight).scale(weight/(pScores(iPoint) + weight)))
     this.pGAP(iPoint) = 1.0 - this.vCenters(iPoint).similarityScore(this.points(iPoint))
     this.cError(iCenter) = this.cError(iCenter) * (cHits(iCenter)/(cHits(iCenter) + weight)) + (1.0 - vectorOrCenter.similarityScore(this.points(iPoint))) * (weight/(cHits(iCenter) + weight))
     this.cHits(iCenter) = this.cHits(iCenter) + weight
   }
   def tryAsPoint(vector:MLVector, tokens:Seq[String], vClass:Int, iPoint:Int, iCenter:Int) {
     val newGAP = 1.0 - this.vCenters(iPoint).similarityScore(vector)
-    if(newGAP - this.pGAP(iPoint) < 0.0001) {
-      //println(s"$step gap: ${this.cGAP(iCenter)} replacing $token by ${this.tokens(viPoint)}")
+    if(newGAP - this.pGAP(iPoint) < 0) {
+      /*if(Seq(2, 3).contains(vClass)){
+        println(s"gap: ${this.pGAP(iPoint)}> $newGAP replacing ${this.sequences(iPoint)} ${newGAP - this.pGAP(iPoint)} by ${tokens} ${this.points(iPoint).similarityScore(vector)}")
+      }*/
       this.points(iPoint) = vector
       this.sequences(iPoint) = tokens
       updatePointsStats

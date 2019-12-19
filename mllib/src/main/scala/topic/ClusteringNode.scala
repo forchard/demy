@@ -75,13 +75,14 @@ case class ClusteringNode (
                     , cGenerator = cGenerator
                     , fit = fit
                   )
-
                 scoredPoint
               }
           )
         }
-    
+
+
     val sequenceScore = this.scoreSequence(scoredTokens = scoresByClass.map{case (inClass, scores) => (inClass, scores.flatMap(s => s))})
+
     sequenceScore.map{case ScoredSequence(inClass, outClass, score, scoredVectors) => 
       scores(outClass) = score
 
@@ -109,7 +110,7 @@ case class ClusteringNode (
     if(initializing && this.points.size < this.maxTopWords) {
        this.links(inClass).iterator
          .flatMap(outClass => this.rel.get(outClass).map(o => o.iterator).getOrElse(It[(Int, Int)]()).map(p => (p, outClass)))
-         .filter{case((iOut, _), outCLass) => this.points(iOut).similarityScore(vector) > 0.999}
+         .filter{case((iOut, _), outClass) => this.points(iOut).similarityScore(vector) > 0.999}
          .toSeq.headOption
          .map{case ((iOut, _), outClass) => outClass}
          match {
@@ -128,7 +129,6 @@ case class ClusteringNode (
                
              }
              initializing = this.points.size < this.maxTopWords
-             updatePointsStats
              classToFill
          }
        //println(s"init pClasses: ${this.pClasses.toSeq}")
@@ -260,17 +260,11 @@ case class ClusteringNode (
       }*/
       this.points(iPoint) = vector
       this.sequences(iPoint) = tokens
-      updatePointsStats
+      this.updateParams(None, false)
     }
   }
 
-  def updatePointsStats {
-    this.updateParams(None, false)
-    //println(s"init pClasses: ${this.pClasses.toSeq} (${this.points.size})")
-  }
-
   def GAP = {
-    updatePointsStats
     val allScores = this.pScores.sum
     It.range(0, this.pGAP.size)
       .map{iPoint => this.pGAP(iPoint)*(this.pScores(iPoint)/allScores)}

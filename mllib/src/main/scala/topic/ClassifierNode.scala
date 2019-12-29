@@ -8,6 +8,7 @@ import org.apache.spark.sql.{SparkSession}
 import scala.collection.mutable.{ArrayBuffer, HashSet, HashMap}
 import org.apache.spark.ml.classification.{LinearSVC, LinearSVCModel}
 import scala.{Iterator => It}
+import java.sql.Timestamp 
 
 
 case class ClassifierNode (
@@ -23,6 +24,17 @@ case class ClassifierNode (
   def prettyPrintExtras(level:Int = 0, buffer:ArrayBuffer[String]=ArrayBuffer[String](), stopLevel:Int = -1):ArrayBuffer[String] = {
     buffer
   }
+  def toTag(id:Int):TagSource = ClassifierTagSource(
+    id = id
+    , operation = TagOperation.create 
+    , timestamp = new Timestamp(System.currentTimeMillis())
+    , name = this.params.name
+    , inTag = this.params.strLinks.keys.map(_.toInt).toSet.toSeq match {case Seq(inTag) => inTag case _ => throw new Exception("Cannot transformle multi in classifier to Tag")}
+    , outTags = this.params.strLinks.values.flatMap(e => e).toSet
+    , oFilterMode = Some(this.params.filterMode)
+    , oFilterValue = Some(this.params.filterValue.toSet)
+    , vectorSize = this.params.vectorSize.get
+  )
   
   def transform(facts:HashMap[Int, HashMap[Int, Int]]
       , scores:HashMap[Int, Double]

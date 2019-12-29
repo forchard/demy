@@ -143,6 +143,22 @@ trait Node{
   lazy val linkPairs = links.toSeq.flatMap{case (from, toSet) => toSet.map(to => (from, to))}
   lazy val inMap = linkPairs.map{case (from, to) => (to, from)}.toMap
 
+  def toTag(id:Int):TagSource
+  def cloneUnfittedExtras:this.type
+  def resetHitsExtras
+  def updateParamsExtras
+  def prettyPrintExtras(level:Int = 0, buffer:ArrayBuffer[String]=ArrayBuffer[String](), stopLevel:Int = -1):ArrayBuffer[String]
+  def encodeExtras(encoder:EncodedNode)
+  def mergeWith(that:Node, cGenerator:Iterator[Int], fit:Boolean):this.type
+  
+  def transform(facts:HashMap[Int, HashMap[Int, Int]]
+    , scores:HashMap[Int, Double]
+    , vectors:Seq[MLVector]
+    , tokens:Seq[String]
+    , parent:Option[Node]
+    , cGeneratror:Iterator[Int]
+    , fit:Boolean)
+  
   def walk(facts:HashMap[Int, HashMap[Int, Int]], scores:HashMap[Int, Double], vectors:Seq[MLVector], tokens:Seq[String], parent:Option[Node], cGenerator:Iterator[Int], fit:Boolean) {
     this.params.hits = this.params.hits + 1
     transform(facts, scores, vectors, tokens, parent, cGenerator, fit)
@@ -171,13 +187,6 @@ trait Node{
         this.children(i).params.filterValue.foreach{c => {facts.remove(c);scores.remove(c)}} //this is to avoid setting classes on phrases that are not going to children.
     }
   }
-  def transform(facts:HashMap[Int, HashMap[Int, Int]]
-    , scores:HashMap[Int, Double]
-    , vectors:Seq[MLVector]
-    , tokens:Seq[String]
-    , parent:Option[Node]
-    , cGeneratror:Iterator[Int]
-    , fit:Boolean)
 
   def clusteringGAP:Double = {
     this match {
@@ -195,7 +204,10 @@ trait Node{
     this.children.foreach(n => n.fitClassifiers(spark))
   }
   def nodesIterator:Iterator[Node] = {
-    It(this) ++ (for(i <- It.range(0, this.children.size)) yield this.children(i).nodesIterator).reduceOption(_ ++ _).getOrElse(It[Node]())
+    It(this) ++ (for{i <- It.range(0, this.children.size)} yield this.children(i).nodesIterator).reduceOption(_ ++ _).getOrElse(It[Node]())
+  }
+  def userDefinedNodesIterator:Iterator[Node] = {
+    It(this) ++ (for{i <- It.range(0, this.children.size) if this.params.algo != ClassAlgorithm.clustering } yield this.children(i).userDefinedNodesIterator).reduceOption(_ ++ _).getOrElse(It[Node]())
   }
   def leafsIteartor = nodesIterator.filter(n => n.children.size == 0)
 
@@ -228,9 +240,6 @@ trait Node{
       this.children.foreach(c => c.prettyPrint(level = level + 1, buffer = buffer, stopLevel = stopLevel))
     buffer
   }
-  def prettyPrintExtras(level:Int = 0, buffer:ArrayBuffer[String]=ArrayBuffer[String](), stopLevel:Int = -1):ArrayBuffer[String]
-  def encodeExtras(encoder:EncodedNode)
-  def mergeWith(that:Node, cGenerator:Iterator[Int], fit:Boolean):this.type
   def betterThan(that:Node) = {
     val thisGap = this.clusteringGAP
     val thatGap = that.clusteringGAP
@@ -255,10 +264,6 @@ trait Node{
     ret.children ++= oldChildren.map(c => c.cloneUnfitted)
     ret
   }
-
-  def cloneUnfittedExtras:this.type
-  def resetHitsExtras
-  def updateParamsExtras
 
   def save(dest:FSNode, tmp:Option[FSNode]=None) = {
     this.updateParams(Some(0))

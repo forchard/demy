@@ -8,6 +8,7 @@ import org.apache.spark.sql.{SparkSession}
 import org.apache.spark.ml.classification.{LinearSVC, LinearSVCModel}
 import scala.collection.mutable.{ArrayBuffer, HashSet, HashMap}
 import scala.{Iterator => It}
+import java.sql.Timestamp 
 
 case class AnalogyNode (
   points:ArrayBuffer[MLVector] = ArrayBuffer[MLVector]()
@@ -30,6 +31,18 @@ case class AnalogyNode (
   def prettyPrintExtras(level:Int = 0, buffer:ArrayBuffer[String]=ArrayBuffer[String](), stopLevel:Int = -1):ArrayBuffer[String] = {
     buffer
   }
+  def toTag(id:Int):TagSource = AnalogyTagSource(
+    id = id
+    , operation = TagOperation.create
+    , timestamp = new Timestamp(System.currentTimeMillis())
+    , name = this.params.name
+    , referenceTag = this.referenceClass.toInt
+    , baseTag = this.referenceClass.toInt
+    , analogyClass = this.analogyClass.toInt
+    , oFilterMode = Some(this.params.filterMode)
+    , oFilterValue = Some(this.params.filterValue.toSet)
+    , vectorSize = this.params.vectorSize.get
+    )
   def transform(facts:HashMap[Int, HashMap[Int, Int]]
       , scores:HashMap[Int, Double]
       , vectors:Seq[MLVector]

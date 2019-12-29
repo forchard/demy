@@ -7,6 +7,7 @@ import org.apache.spark.sql.{SparkSession}
 import org.apache.spark.ml.linalg.{Vector => MLVector, Vectors}
 import scala.collection.mutable.{ArrayBuffer, HashSet, HashMap, ListBuffer}
 import scala.{Iterator => It}
+import java.sql.Timestamp 
 
 case class ClusteringNode (
   params:NodeParams
@@ -27,7 +28,7 @@ case class ClusteringNode (
   val numCenters = this.classCenters.values.toSet.size
   val cError = this.params.cError.getOrElse(Array.fill(numCenters)(0.0))
   
-  var initializing = true
+  var initializing = this.points.size < this.maxTopWords
   val vZero = Vectors.dense(Array.fill(vectorSize)(0.0))
   val vCenters = ArrayBuffer.fill(maxTopWords)(vZero)
   val pGAP = ArrayBuffer.fill(maxTopWords)(1.0)
@@ -48,6 +49,18 @@ case class ClusteringNode (
     buffer
   }
   
+  def toTag(id:Int):TagSource = ClusterTagSource(
+    id = id
+    , operation = TagOperation.create
+    , timestamp = new Timestamp(System.currentTimeMillis())
+    , name = this.params.name
+    , strLinks = this.params.strLinks
+    , maxTopWords = this.params.maxTopWords.get
+    , vectorSize = this.params.vectorSize.get
+    , childSplitSize = this.params.childSplitSize.get
+    , oFilterMode = Some(this.params.filterMode)
+    , oFilterValue = Some(this.params.filterValue.toSet)
+  )  
   def transform(facts:HashMap[Int, HashMap[Int, Int]]
       , scores:HashMap[Int, Double]
       , vectors:Seq[MLVector]
@@ -107,8 +120,9 @@ case class ClusteringNode (
   }
 
   def onInit(vector:MLVector, tokens:Seq[String], inClass:Int) = {
+    //if(this.params.hits < 10) println(s"${this.children.size} ${this.classCentersMap.size} ${this.initializing} ${this.pScores.sum} ${this.childSplitSize} ${this.points.size} < ${this.maxTopWords} ${this.params.filterValue} ${inClass}")
     if(initializing && this.points.size < this.maxTopWords) {
-       this.links(inClass).iterator
+        this.links(inClass).iterator
          .flatMap(outClass => this.rel.get(outClass).map(o => o.iterator).getOrElse(It[(Int, Int)]()).map(p => (p, outClass)))
          .filter{case((iOut, _), outClass) => this.points(iOut).similarityScore(vector) > 0.999}
          .toSeq.headOption

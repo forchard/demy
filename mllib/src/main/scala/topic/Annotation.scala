@@ -11,7 +11,8 @@ case class Annotation(
   def toAnnotationSource(tagMap:Map[Int, String])= 
     AnnotationSource(
       tokens = tokens
-      , tag = tagMap(tag)
+      , tag = tag
+      , tagName = tagMap(tag)
       , from = from
       , inRel = inRel
       , score = score  
@@ -26,7 +27,8 @@ case class Annotation(
 
 case class AnnotationSource(
   tokens:Seq[String]
-  , tag:String
+  , tag:Int
+  , tagName:String
   , from:Option[Seq[String]]
   , inRel:Boolean
   , score:Double
@@ -40,6 +42,7 @@ case class AnnotationSource(
     AnnotationSource(
       tokens = tokens
       , tag = tag
+      , tagName = tagName
       , from = from
       , inRel = inRel
       , score = score  
@@ -50,13 +53,14 @@ case class AnnotationSource(
       , timestamp = new Timestamp(System.currentTimeMillis())
     )
 
-  def toAnnotation(tagMap:Map[String, Int]) = Annotation(tokens = tokens, tag = tagMap(tag), from = from, inRel = inRel, score = score)
+  def toAnnotation = Annotation(tokens = tokens, tag = tag, from = from, inRel = inRel, score = score)
   def key = (Seq(tag) ++ tokens ++ from.getOrElse(Seq[String]())).mkString(" ")
   def mergeWith(that:AnnotationSource) = { 
     val (newer, older) = if(this.timestamp.after(that.timestamp)) (this, that) else (that, this)
     AnnotationSource(
       tokens = newer.tokens
       , tag = newer.tag
+      , tagName = newer.tagName
       , from = newer.from
       , inRel = newer.inRel
       , score = newer.score  

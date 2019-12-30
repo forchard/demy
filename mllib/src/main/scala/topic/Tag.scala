@@ -16,9 +16,9 @@ trait TagSource {
   val operation:TagOperation
   var timestamp:Timestamp
   val name:String
-  val filterMode:FilterMode
-  val filterValue:Set[Int]
   val vectorSize:Int
+  def filterMode:FilterMode
+  def filterValue:Set[Int]
   def outClasses(iClass:Int):Option[Set[Int]]
   def toSomeSource = SomeTagSource(this)
   def toNodeParams(children:Set[Int], classPath:Map[Int, Set[Int]]):NodeParams
@@ -33,8 +33,8 @@ trait TagSource {
 }
 
 case class SomeTagSource(classifier:ClassifierTagSource, clustering:ClusterTagSource, analogy:AnalogyTagSource ) {
-  val source:TagSource = if(clustering == null && analogy == null) classifier else if(clustering == null && classifier == null) analogy else clustering
-  val resetTimestamp = {source.resetTimestamp;this}
+  def source:TagSource = if(clustering == null && analogy == null) classifier else if(clustering == null && classifier == null) analogy else clustering
+  def resetTimestamp = {source.resetTimestamp;this}
 }
 object SomeTagSource {
   def apply(source:TagSource):SomeTagSource = source match {
@@ -137,8 +137,8 @@ case class ClassifierTagSource(
   , oFilterValue:Option[Set[Int]]
   , vectorSize:Int
 ) extends TagSource {
-  val filterMode = this.oFilterMode.getOrElse(FilterMode.anyIn)
-  val filterValue = this.oFilterValue.getOrElse(Set(inTag))
+  def filterMode = this.oFilterMode.getOrElse(FilterMode.anyIn)
+  def filterValue = this.oFilterValue.getOrElse(Set(inTag))
   def outClasses(iClass:Int) = if(iClass == inTag) Some(outTags) else None
   def toNodeParams(children:Set[Int], classPath:Map[Int, Set[Int]]) =
     NodeParams(
@@ -169,8 +169,8 @@ case class AnalogyTagSource(
   , oFilterValue:Option[Set[Int]] = None
   , vectorSize:Int
 ) extends TagSource {
-  val filterValue = this.oFilterValue.getOrElse(Set(baseTag,referenceTag))
-  val filterMode = this.oFilterMode.getOrElse(FilterMode.allIn)
+  def filterValue = this.oFilterValue.getOrElse(Set(baseTag,referenceTag))
+  def filterMode = this.oFilterMode.getOrElse(FilterMode.allIn)
   def outClasses(iClass:Int) = if(iClass == baseTag) Some(Set(analogyClass)) else None 
   def toNodeParams(children:Set[Int], classPath:Map[Int, Set[Int]]) =
     NodeParams(
@@ -201,8 +201,8 @@ case class ClusterTagSource (
   , oFilterMode:Option[FilterMode] = None
   , oFilterValue:Option[Set[Int]] = None
 ) extends TagSource {
-  val filterValue = this.oFilterValue.getOrElse(this.strLinks.keys.map(_.toInt).toSet)
-  val filterMode = this.oFilterMode.getOrElse(FilterMode.allIn)
+  def filterValue = this.oFilterValue.getOrElse(this.strLinks.keys.map(_.toInt).toSet)
+  def filterMode = this.oFilterMode.getOrElse(FilterMode.allIn)
   def outClasses(iClass:Int) = strLinks.get(iClass.toString)
   def toNodeParams(children:Set[Int], classPath:Map[Int, Set[Int]]) =
     NodeParams(

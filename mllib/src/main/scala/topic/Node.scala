@@ -105,6 +105,7 @@ object FilterMode {
   val noFilter = FilterMode("noFilter")
   val allIn = FilterMode("allIn")
   val anyIn = FilterMode("anyIn")
+  val noneIn = FilterMode("noneIn")
   val bestScore = FilterMode("bestScore")
 }
 
@@ -173,6 +174,10 @@ trait Node{
            &&  this.children(i).inClasses.iterator
                 .filter(inChild => facts.contains(inChild))
                 .size > 0
+        || this.children(i).params.filterMode == FilterMode.noneIn
+           &&  this.children(i).inClasses.iterator
+                .filter(inChild => facts.contains(inChild))
+                .size == 0
         || this.children(i).params.filterMode == FilterMode.bestScore
            &&  (this.children.iterator.zipWithIndex
                 .map{case (child, j) =>

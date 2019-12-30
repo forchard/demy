@@ -19,7 +19,8 @@ trait TagSource {
   val vectorSize:Int
   def filterMode:FilterMode
   def filterValue:Set[Int]
-  def outClasses(iClass:Int):Option[Set[Int]]
+  def outClassesFor(iClass:Int):Option[Set[Int]]
+  def outClasses():Set[Int]
   def toSomeSource = SomeTagSource(this)
   def toNodeParams(children:Set[Int], classPath:Map[Int, Set[Int]]):NodeParams
   def resetTimestamp:this.type = {this.timestamp = new Timestamp(System.currentTimeMillis());this}
@@ -83,7 +84,7 @@ object TagSource {
       tags.map{tag => 
         if(tag.filterValue.isEmpty || tag.filterValue == Set(0)) {
           nodes += tag
-          classPath += tag.outClasses(0).get.map(oClass => oClass -> Set(0)).toMap
+          classPath += tag.outClassesFor(0).get.map(oClass => oClass -> Set(0)).toMap
           children += Set[Int]()
           ((Some(nodes.size-1), None))
         }
@@ -95,7 +96,7 @@ object TagSource {
                   .flatMap{case (oClass, parents) => 
                     val path = (parents + oClass)
                     if(fClass == oClass)
-                      Some(path.flatMap(pClass => tag.outClasses(pClass)).head.map(cOut => (cOut -> path)))
+                      Some(path.flatMap(pClass => tag.outClassesFor(pClass)).head.map(cOut => (cOut -> path)))
                     else
                       None
                   }
@@ -139,7 +140,8 @@ case class ClassifierTagSource(
 ) extends TagSource {
   def filterMode = this.oFilterMode.getOrElse(FilterMode.anyIn)
   def filterValue = this.oFilterValue.getOrElse(Set(inTag))
-  def outClasses(iClass:Int) = if(iClass == inTag) Some(outTags) else None
+  def outClassesFor(iClass:Int):Option[Set[Int]] = if(iClass == inTag) Some(outTags) else None 
+  def outClasses() = outTags
   def toNodeParams(children:Set[Int], classPath:Map[Int, Set[Int]]) =
     NodeParams(
      name = this.name
@@ -171,7 +173,8 @@ case class AnalogyTagSource(
 ) extends TagSource {
   def filterValue = this.oFilterValue.getOrElse(Set(baseTag,referenceTag))
   def filterMode = this.oFilterMode.getOrElse(FilterMode.allIn)
-  def outClasses(iClass:Int) = if(iClass == baseTag) Some(Set(analogyClass)) else None 
+  def outClassesFor(iClass:Int) = if(iClass == baseTag) Some(Set(analogyClass)) else None 
+  def outClasses() = Set(analogyClass)
   def toNodeParams(children:Set[Int], classPath:Map[Int, Set[Int]]) =
     NodeParams(
      name = this.name
@@ -203,7 +206,8 @@ case class ClusterTagSource (
 ) extends TagSource {
   def filterValue = this.oFilterValue.getOrElse(this.strLinks.keys.map(_.toInt).toSet)
   def filterMode = this.oFilterMode.getOrElse(FilterMode.allIn)
-  def outClasses(iClass:Int) = strLinks.get(iClass.toString)
+  def outClassesFor(iClass:Int) = strLinks.get(iClass.toString)
+  def outClasses() = strLinks.values.flatMap(v => v).toSet
   def toNodeParams(children:Set[Int], classPath:Map[Int, Set[Int]]) =
     NodeParams(
      name = this.name

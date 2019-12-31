@@ -6,6 +6,36 @@
   roles: 
   - hadoop_commons 
   tasks:
+  - name: get mem total
+    tags: memtotal
+    shell: |
+      free --giga
+    register: out
+    changed_when: false
+  - name: output disk
+    tags: memtotal
+    delegate_to: localhost
+    become: false
+    copy: 
+      content: | 
+        {{ inventory_hostname }}:
+        {{ out.stdout }} 
+      dest: "./monitor.mem.{{ inventory_hostname }}"
+  - name: get disk usage
+    tags: check_disk
+    shell: |
+      df -h | grep space
+    register: out
+    changed_when: false
+  - name: output disk
+    tags: check_disk
+    delegate_to: localhost
+    become: false
+    copy: 
+      content: | 
+        {{ inventory_hostname }}:
+        {{ out.stdout }} 
+      dest: "./monitor.disk.{{ inventory_hostname }}"
   - name: get processes using more memory
     tags: check_memory
     shell: |
@@ -20,4 +50,4 @@
       content: | 
         {{ inventory_hostname }}:
         {{ out.stdout }} 
-      dest: "./monitor.out.{{ inventory_hostname }}"
+      dest: "./monitor.topmem.{{ inventory_hostname }}"

@@ -1,6 +1,6 @@
 #general
-ansible_become_pass: "{{lookup('keyring', 'epi-servers bgdta')}}"
-decrypt_disk_pass: "{{lookup('keyring', 'epi-servers disks')}}"
+ansible_become_pass: "{{lookup('passwordstore', 'infra/bgdt')}}"
+decrypt_disk_pass: "{{lookup('passwordstore', 'infra/bgdt-disk')}}"
 proxy_host: proxy.admin2.oxa.tld
 proxy_port: 3128 
 cran_mirror: http://cran.irsn.fr
@@ -72,19 +72,19 @@ zeppelin_https_cert_auth_enabled: "false"
 zeppelin_https_port: "8443"
 zeppelin_https_bundle_cert: "/space/etc/ssl/wildcard.voozanoo.net.bundle.crt"
 zeppelin_https_private_key: "/space/etc/ssl/wildcard.voozanoo.net.key"
-zeppelin_keystore_pass: "{{lookup('keyring', 'epi-servers zeppelin_keystore_pass')}}"
+zeppelin_keystore_pass: "{{lookup('passwordstore', 'bgdt-zeppelin-kstore')}}"
 zeppelin_driver_memory_mb: "1024"
 zeppelin_driver_cores: "1"
 zeppelin_executor_memory_mb: "2000"
 zeppelin_executor_cores: "3"
 zeppelin_anonymous_enabled: false
 zeppelin_shiro_config:
-- [users,"fod=","fod={{lookup('keyring', 'epi-servers zeppelin_fod_pass')}},admin"]
-- [users,"stage=","stage={{lookup('keyring', 'epi-servers zeppelin_stage_pass')}},contributor"]
-- [users,"jp=","jp={{lookup('keyring', 'epi-servers zeppelin_jp_pass')}},contributor"]
-- [users,"thomas=","thomas={{lookup('keyring', 'epi-servers zeppelin_thomas_pass')}},contributor"]
-- [users,"pascal=","pascal={{lookup('keyring', 'epi-servers pascal')}},contributor"]
-- [users,"adrian=","adrian={{lookup('keyring', 'epi-servers pascal')}},admin"]
+- [users,"fod=","fod={{lookup('passwordstore', 'zeppelin-pass-fod')}},admin"]
+- [users,"stage=","stage={{lookup('passwordstore', 'zeppelin-pass-stage')}},contributor"]
+- [users,"jp=","jp={{lookup('passwordstore', 'zeppelin-pass-jp')}},contributor"]
+- [users,"thomas=","thomas={{lookup('passwordstore', 'zeppelin-pass-thomas')}},contributor"]
+- [users,"pascal=","pascal={{lookup('passwordstore', 'zeppelin-pass-pascal')}},contributor"]
+- [users,"adrian=","adrian={{lookup('passwordstore', 'zeppelin-pass-adrian')}},admin"]
 - [main,"shiro.loginUrl =", "shiro.loginUrl = /api/login"]
 - [main,"securityManager.sessionManager.globalSessionTimeout =", "securityManager.sessionManager.globalSessionTimeout = {{ 1000 * 3600 * 24 }}"]
 - [main,"securityManager.sessionManager =", "securityManager.sessionManager = $sessionManager"]

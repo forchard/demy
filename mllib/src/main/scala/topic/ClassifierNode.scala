@@ -27,13 +27,13 @@ case class ClassifierNode (
   def toTag(id:Int):TagSource = ClassifierTagSource(
     id = id
     , operation = TagOperation.create 
-    , timestamp = new Timestamp(System.currentTimeMillis())
-    , name = this.params.name
-    , inTag = this.params.strLinks.keys.map(_.toInt).toSet.toSeq match {case Seq(inTag) => inTag case _ => throw new Exception("Cannot transformle multi in classifier to Tag")}
-    , outTags = this.params.strLinks.values.flatMap(e => e).toSet
+    , timestamp = Some(new Timestamp(System.currentTimeMillis()))
+    , name = Some(this.params.name)
+    , color = this.params.color
+    , inTag = Some(this.params.strLinks.keys.map(_.toInt).toSet.toSeq match {case Seq(inTag) => inTag case _ => throw new Exception("Cannot transformle multi in classifier to Tag")})
+    , outTags = Some(this.params.strLinks.values.flatMap(e => e).toSet)
     , oFilterMode = Some(this.params.filterMode)
     , oFilterValue = Some(this.params.filterValue.toSet)
-    , vectorSize = this.params.vectorSize.get
   )
   
   def transform(facts:HashMap[Int, HashMap[Int, Int]]

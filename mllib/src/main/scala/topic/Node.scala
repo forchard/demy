@@ -17,97 +17,6 @@ import scala.{Iterator => It}
 import java.io.{ByteArrayOutputStream, ObjectOutputStream}
 import java.io.{ObjectInputStream,ByteArrayInputStream}
 
-case class NodeParams(
-  name:String
-  , annotations:ArrayBuffer[Annotation]
-  , algo:ClassAlgorithm
-  , strLinks:Map[String, Set[Int]] = Map[String, Set[Int]]()
-  , strClassPath:Map[String, Set[Int]] = Map[String, Set[Int]]()
-  , names:Map[String, Int] = Map[String, Int]()
-  , var filterMode:FilterMode = FilterMode.noFilter
-  , filterValue:ArrayBuffer[Int] = ArrayBuffer[Int]()
-  , maxTopWords:Option[Int]=None
-  , classCenters:Option[Map[String, Int]]=None
-  , vectorSize:Option[Int] = None
-  , var cError: Option[Array[Double]]=None
-  , childSplitSize: Option[Int] = None
-  , children: ArrayBuffer[Int] = ArrayBuffer[Int]()
-  , var hits:Double = 0
-) {
-  def toNode(others:ArrayBuffer[NodeParams]= ArrayBuffer[NodeParams](), vectorIndex:Option[VectorIndex]= None):Node = {
-   val n =
-      if(this.algo == ClassAlgorithm.clustering)
-        ClusteringNode(this, vectorIndex)
-      else if(this.algo == ClassAlgorithm.supervised)
-        ClassifierNode(this, vectorIndex)
-      else if(this.algo == ClassAlgorithm.analogy)
-        AnalogyNode(this, vectorIndex)
-      else throw new Exception(s"Unknown algorithm ${this.algo}")
-    n.children ++= this.children.map(i => others(i).toNode(others, vectorIndex))
-    n
-  }
-  def cloneWith(classMapping:Option[Map[Int, Int]], unFit:Boolean = true) = {
-    if(!classMapping.isEmpty && !(this.strLinks.keySet.map(_.toInt) ++ this.strLinks.values.flatMap(v => v).toSet ++ this.filterValue.toSet).subsetOf(classMapping.get.keySet))
-        None
-    else {
-      Some(NodeParams(
-        name = this.name
-        , annotations = if(unFit) ArrayBuffer[Annotation]() else this.annotations.clone
-        , algo = this.algo
-        , strLinks = classMapping match {
-            case Some(classMap) => this.strLinks.map{case (inClass, outSet) => (/*classMap(*/inClass/*.toInt).toString*/, outSet.map(o => classMap(o))) }
-            case None => strLinks
-        }
-        , strClassPath =  classMapping match {
-            case Some(classMap) => this.strClassPath.map{case (inClass, parentSet) => (classMap(inClass.toInt).toString, parentSet ++ this.filterValue.map(c => classMap(c))) }
-            case None => strClassPath
-        }
-        , names = this.names
-        , filterMode = this.filterMode
-        , filterValue = classMapping match {
-            case Some(classMap) => this.filterValue.map(c => classMap(c))
-            case None => filterValue.clone
-        }
-        , maxTopWords = this.maxTopWords
-        , classCenters = classMapping match {
-            case Some(classMap) => this.classCenters.map(cCenters => cCenters.map{ case(outClass, center) => (classMap(outClass.toInt).toString, center)})
-            case None => classCenters
-        }
-        , vectorSize = this.vectorSize
-        , childSplitSize = this.childSplitSize
-        , children = if(unFit) ArrayBuffer[Int]() else this.children.clone
-        , hits = if(unFit) 0.0 else  this.hits
-      ))
-    }
-  }
-  def allTokens(ret:HashSet[String]=HashSet[String](), others:Seq[NodeParams]):HashSet[String] = {
-    ret ++= this.annotations.flatMap(a => a.tokens ++ a.from.getOrElse(Seq[String]()))
-    this.children.foreach(i => others(i).allTokens(ret, others))
-    ret
-  }
-  def allSequences(ret:HashSet[Seq[String]]=HashSet[Seq[String]](), others:Seq[NodeParams]):HashSet[Seq[String]] = {
-    ret ++= this.annotations.map(a => a.tokens)
-    ret ++= this.annotations.flatMap(a => a.from)
-    this.children.foreach(i => others(i).allSequences(ret, others))
-    ret
-  }
-
-}
-
-case class ClassAlgorithm(value:String)
-object ClassAlgorithm {
-  val analogy = ClassAlgorithm("analogy")
-  val supervised= ClassAlgorithm("supervised")
-  val clustering = ClassAlgorithm("clustering")
-}
-case class FilterMode(value:String)
-object FilterMode {
-  val noFilter = FilterMode("noFilter")
-  val allIn = FilterMode("allIn")
-  val anyIn = FilterMode("anyIn")
-  val noneIn = FilterMode("noneIn")
-  val bestScore = FilterMode("bestScore")
-}
 
 trait Node{
   val params:NodeParams
@@ -168,16 +77,13 @@ trait Node{
       if(this.children(i).params.filterMode == FilterMode.noFilter
         || this.children(i).params.filterMode == FilterMode.allIn
            &&  this.children(i).inClasses.iterator
-                .filter(inChild => !facts.contains(inChild))
+                .filter(inChild => if(inChild >= 0) !facts.contains(inChild) else facts.contains(-inChild))
                 .size == 0
         || this.children(i).params.filterMode == FilterMode.anyIn
            &&  this.children(i).inClasses.iterator
+                .filter(inChild => if(inChild >= 0) facts.contains(inChild) else !facts.contains(-inChild))
                 .filter(inChild => facts.contains(inChild))
                 .size > 0
-        || this.children(i).params.filterMode == FilterMode.noneIn
-           &&  this.children(i).inClasses.iterator
-                .filter(inChild => facts.contains(inChild))
-                .size == 0
         || this.children(i).params.filterMode == FilterMode.bestScore
            &&  (this.children.iterator.zipWithIndex
                 .map{case (child, j) =>
@@ -378,6 +284,7 @@ object Node {
  def defaultNode =
    NodeParams(
      name = "Explorer"
+     , color = None
      , annotations = ArrayBuffer[Annotation]()
      , algo = ClassAlgorithm.clustering
      , strLinks = Map("0" -> Set(1, 2))
@@ -385,7 +292,6 @@ object Node {
      , filterValue = ArrayBuffer(0)
      , maxTopWords = Some(5)
      , classCenters= Some(Map("1"->0, "2" -> 1))
-     , vectorSize = Some(300)
      , childSplitSize = Some(50)
      , hits = 0.0
    ).toNode()

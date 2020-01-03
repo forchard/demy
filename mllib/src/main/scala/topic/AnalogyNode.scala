@@ -34,14 +34,14 @@ case class AnalogyNode (
   def toTag(id:Int):TagSource = AnalogyTagSource(
     id = id
     , operation = TagOperation.create
-    , timestamp = new Timestamp(System.currentTimeMillis())
-    , name = this.params.name
-    , referenceTag = this.referenceClass.toInt
-    , baseTag = this.referenceClass.toInt
-    , analogyClass = this.analogyClass.toInt
+    , timestamp = Some(new Timestamp(System.currentTimeMillis()))
+    , name = Some(this.params.name)
+    , color = this.params.color
+    , referenceTag = Some(this.referenceClass.toInt)
+    , baseTag = Some(this.referenceClass.toInt)
+    , analogyClass = Some(this.analogyClass.toInt)
     , oFilterMode = Some(this.params.filterMode)
     , oFilterValue = Some(this.params.filterValue.toSet)
-    , vectorSize = this.params.vectorSize.get
     )
   def transform(facts:HashMap[Int, HashMap[Int, Int]]
       , scores:HashMap[Int, Double]

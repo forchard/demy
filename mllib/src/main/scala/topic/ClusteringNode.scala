@@ -16,11 +16,9 @@ case class ClusteringNode (
 ) extends Node {
   assert(!this.params.maxTopWords.isEmpty)
   assert(!this.params.classCenters.isEmpty)
-  assert(!this.params.vectorSize.isEmpty)
   assert(!this.params.childSplitSize.isEmpty)
   val maxTopWords = this.params.maxTopWords.get
   val classCenters = HashMap(this.params.classCenters.get.map{case (classStr, center) => (classStr.toInt, center)}.toSeq :_*)
-  val vectorSize = this.params.vectorSize.get
   val childSplitSize = this.params.childSplitSize.get
   val classCentersMap = classCenters.groupBy{case (cla, center) => center}.mapValues(p => p.map{case (cla, center) => cla}.toSet)
 
@@ -29,8 +27,9 @@ case class ClusteringNode (
   val cError = this.params.cError.getOrElse(Array.fill(numCenters)(0.0))
   
   var initializing = this.points.size < this.maxTopWords
-  val vZero = Vectors.dense(Array.fill(vectorSize)(0.0))
-  val vCenters = ArrayBuffer.fill(maxTopWords)(vZero)
+  lazy val vectorSize = this.points(0).size
+  lazy val vZero = Vectors.dense(Array.fill(vectorSize)(0.0))
+  lazy val vCenters = ArrayBuffer.fill(maxTopWords)(vZero)
   val pGAP = ArrayBuffer.fill(maxTopWords)(1.0)
   val cHits = ArrayBuffer.fill(numCenters)(0.0)
   
@@ -40,7 +39,7 @@ case class ClusteringNode (
     encoder.serialized += (("pScores",serialize(pScores) ))
     encoder.serialized += (("cError",serialize(cError) ))
     encoder.serialized += (("initializing", serialize(initializing)))
-    encoder.serialized += (("vCenters",serialize(vCenters )))
+    if(this.points.size > 0) encoder.serialized += (("vCenters",serialize(vCenters )))
     encoder.serialized += (("pGAP",serialize(pGAP )))
     encoder.serialized += (("cHits",serialize(cHits) ))
   }
@@ -52,12 +51,12 @@ case class ClusteringNode (
   def toTag(id:Int):TagSource = ClusterTagSource(
     id = id
     , operation = TagOperation.create
-    , timestamp = new Timestamp(System.currentTimeMillis())
-    , name = this.params.name
-    , strLinks = this.params.strLinks
-    , maxTopWords = this.params.maxTopWords.get
-    , vectorSize = this.params.vectorSize.get
-    , childSplitSize = this.params.childSplitSize.get
+    , timestamp = Some(new Timestamp(System.currentTimeMillis()))
+    , name = Some(this.params.name)
+    , color = this.params.color
+    , strLinks = Some(this.params.strLinks)
+    , maxTopWords = this.params.maxTopWords
+    , childSplitSize = this.params.childSplitSize
     , oFilterMode = Some(this.params.filterMode)
     , oFilterValue = Some(this.params.filterValue.toSet)
   )  
@@ -434,7 +433,7 @@ object ClusteringNode {
     encoded.deserialize[Array[Double]]("cError").zipWithIndex.foreach{case (v, i) => ret.cError(i) = v}
     
     ret.initializing = encoded.deserialize[Boolean]("initializing")
-    encoded.deserialize[ArrayBuffer[MLVector]]("vCenters").zipWithIndex.foreach{case (v, i) => ret.vCenters(i) = v}
+    if(encoded.points.size > 0) encoded.deserialize[ArrayBuffer[MLVector]]("vCenters").zipWithIndex.foreach{case (v, i) => ret.vCenters(i) = v}
     encoded.deserialize[ArrayBuffer[Double]]("pGAP").zipWithIndex.foreach{case (v, i) => ret.pGAP(i) = v}
     encoded.deserialize[ArrayBuffer[Double]]("cHits").zipWithIndex.foreach{case (v, i) => ret.cHits(i) = v}
     ret 

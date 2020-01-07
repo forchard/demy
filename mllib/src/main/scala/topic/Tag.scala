@@ -10,7 +10,7 @@ object TagOperation {
   val delete = TagOperation("delete")
   val update = TagOperation("update")
   val addFilter = TagOperation("addFilter")
-  val fullOperations = Set(create, delete, update)
+  val fullOperations = Set(create, update)
 }
 
 trait TagSource {
@@ -39,6 +39,7 @@ trait TagSource {
     }
   }
   def addFilter(toAdd:Set[Int]):this.type
+  def isFull =  TagOperation.fullOperations(this.operation)
 }
 
 case class TagTree(tag:SomeTagSource, children:Seq[TagTree]) 
@@ -169,6 +170,7 @@ case class ClassifierTagSource(
     NodeParams(
      name = this.name.get
      , color = this.color
+     , tagId = Some(this.id)
      , algo = ClassAlgorithm.supervised
      , strLinks = Map(inTag.get.toString -> outTags.get) 
      , filterMode = this.filterMode  
@@ -206,6 +208,7 @@ case class AnalogyTagSource(
     NodeParams(
      name = this.name.get
      , color = this.color
+     , tagId = Some(this.id)
      , algo = ClassAlgorithm.analogy
      , strLinks = Map(baseTag.get.toString -> Set(analogyClass.get)) 
      , filterMode = this.filterMode 
@@ -243,6 +246,7 @@ case class ClusterTagSource (
     NodeParams(
      name = this.name.get
      , color = this.color
+     , tagId = Some(this.id)
      , algo = ClassAlgorithm.clustering
      , strLinks = strLinks.get
      , filterMode = this.filterMode

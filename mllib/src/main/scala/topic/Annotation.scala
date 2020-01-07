@@ -1,4 +1,7 @@
 package demy.mllib.topic
+import org.apache.spark.sql.{Dataset , SparkSession}
+import org.apache.spark.sql.functions.{col}
+import scala.collection.mutable.{HashMap}
 import java.sql.Timestamp 
 
 case class Annotation(
@@ -70,6 +73,24 @@ case class AnnotationSource(
       , fromIndexes = newer.fromIndexes.orElse(older.fromIndexes)
       , timestamp = newer.timestamp
     )
+  }
+} 
+object AnnotationSource {
+  def mergeAnnotations(ds:Dataset[AnnotationSource]) = {
+    import ds.sparkSession.implicits._
+    ds.map(a => (a.key, a.timestamp, a))
+      .repartition(col("_1"))
+      .sortWithinPartitions(col("_2"))
+      .mapPartitions{iter => 
+        val ret = HashMap[String, AnnotationSource]()
+        iter.foreach{case (id, ts, a1) => 
+          ret(id) = ret.get(id) match {
+            case Some(a2) => a1.mergeWith(a2)
+            case None => a1
+          }
+        }
+        ret.values.iterator
+      }
   }
 }
 

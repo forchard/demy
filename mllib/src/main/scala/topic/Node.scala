@@ -284,6 +284,7 @@ object Node {
  def defaultNode =
    NodeParams(
      name = "Explorer"
+     , tagId = None
      , color = None
      , annotations = ArrayBuffer[Annotation]()
      , algo = ClassAlgorithm.clustering

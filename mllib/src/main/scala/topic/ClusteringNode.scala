@@ -49,7 +49,7 @@ case class ClusteringNode (
   }
   
   def toTag(id:Int):TagSource = ClusterTagSource(
-    id = id
+    id = this.params.tagId.getOrElse(id)
     , operation = TagOperation.create
     , timestamp = Some(new Timestamp(System.currentTimeMillis()))
     , name = Some(this.params.name)

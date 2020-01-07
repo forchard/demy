@@ -20,6 +20,7 @@ import java.io.{ObjectInputStream,ByteArrayInputStream}
 
 case class NodeParams(
   name:String
+  , tagId:Option[Int] = None
   , color:Option[String] = None
   , annotations:ArrayBuffer[Annotation]
   , algo:ClassAlgorithm
@@ -54,6 +55,7 @@ case class NodeParams(
       Some(NodeParams(
         name = this.name
         , color = this.color
+        , tagId = if(unFit) None else this.tagId
         , annotations = if(unFit) ArrayBuffer[Annotation]() else this.annotations.clone
         , algo = this.algo
         , strLinks = classMapping match {

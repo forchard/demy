@@ -1,7 +1,7 @@
 package demy.mllib.topic
 import org.apache.spark.sql.{Dataset}
 import org.apache.spark.sql.functions.{col}
-import java.sql.Timestamp 
+import java.sql.Timestamp
 import scala.collection.mutable.{ArrayBuffer, HashSet, HashMap}
 
 case class TagOperation(op:String)
@@ -13,20 +13,45 @@ object TagOperation {
   val fullOperations = Set(create, update)
 }
 
+
+/** Abstract Class for Tag object */
 trait TagSource {
+  /** Creates a Tag object
+   * @param id @tparam Int The id of the tag
+   * @param operation @tparam [[TagOperation]] The tag operation; for instance: "create", "delete" or "update"
+   * @param timestamp @tparam Option[Timestamp] The time stamp of the tag
+   * @param name @tparam Option[String] The name of the tag
+   * @param color @tparam Option[String] The color of the tag
+  **/
   val id:Int
   val operation:TagOperation
   var timestamp:Option[Timestamp]
   val name:Option[String]
   val color:Option[String]
+  /** Filter mode to decide which sentence/token goes in which node, for instance: "bestScore" */
   def filterMode:FilterMode
+  /** Describing the nodes whose sentences/tokens are to be filtered */
   def filterValue:Set[Int]
+  /** TODO
+    *
+    * @param iClass @tparam Int TODO
+    */
   def outClassesFor(iClass:Int):Option[Set[Int]]
+  /** TODO
+    */
   def outClasses():Set[Int]
+  /** TODO
+    */
   def toSomeSource = SomeTagSource(this)
+  /** TODO
+    */
   def toNodeParams(children:Seq[Int], classPath:Map[Int, Set[Int]]):NodeParams
+  /** TODO
+    */
   def resetTimestamp:this.type = {this.timestamp = Some(new Timestamp(System.currentTimeMillis()));this}
-  def mergeWith(that:TagSource) = { 
+  /** TODO
+    */
+  def mergeWith(that:TagSource) = {
     val (newer, older) = if(this.timestamp.get.after(that.timestamp.get)) (this, that) else (that, this)
     (older.operation, newer.operation) match {
       case (TagOperation.delete, TagOperation.create) => newer
@@ -38,17 +63,19 @@ trait TagSource {
       case _ => newer
     }
   }
+  /** TODO
+    */
   def addFilter(toAdd:Set[Int]):this.type
   def isFull =  TagOperation.fullOperations(this.operation)
 }
 
-case class TagTree(tag:SomeTagSource, children:Seq[TagTree]) 
+case class TagTree(tag:SomeTagSource, children:Seq[TagTree])
 object TagTree {
-  def apply(i:Int, nodes:Seq[(TagSource, Seq[Int])], added:Set[Int] = Set[Int]()):TagTree = 
+  def apply(i:Int, nodes:Seq[(TagSource, Seq[Int])], added:Set[Int] = Set[Int]()):TagTree =
   if(added(i)) throw new Exception("Loop found on TagTree")
-  else nodes(i) match {case (tag, children) => TagTree(tag.toSomeSource, children.map(j =>TagTree(j, nodes)))}   
+  else nodes(i) match {case (tag, children) => TagTree(tag.toSomeSource, children.map(j =>TagTree(j, nodes)))}
 }
- 
+
 case class SomeTagSource(classifier:Option[ClassifierTagSource], clustering:Option[ClusterTagSource], analogy:Option[AnalogyTagSource]) {
   assert(!classifier.orElse(clustering).orElse(analogy).isEmpty)
   def source:TagSource = classifier.orElse(clustering).orElse(analogy).get
@@ -69,9 +96,9 @@ object TagSource {
     ds.map(a => (a.source.id, a.source.timestamp.get, a))
       .repartition(col("_1"))
       .sortWithinPartitions(col("_2"))
-      .mapPartitions{iter => 
+      .mapPartitions{iter =>
         val ret = HashMap[Int, SomeTagSource]()
-        iter.foreach{case (id, ts, a1) => 
+        iter.foreach{case (id, ts, a1) =>
           ret(id) = ret.get(id) match {
             case Some(a2) => SomeTagSource(a1.source.mergeWith(a2.source))
             case None => a1
@@ -85,7 +112,7 @@ object TagSource {
   }
 
   def getNodeParams(tags:Seq[TagSource]):Seq[NodeParams] =  calculateTree(tags).map{case (tag, children, cPath) => tag.toNodeParams(children, cPath)}
-  def getNodeParams(ds:Dataset[SomeTagSource]):Seq[NodeParams] = getNodeParams(getTags(ds)) 
+  def getNodeParams(ds:Dataset[SomeTagSource]):Seq[NodeParams] = getNodeParams(getTags(ds))
   def getTagTree(ds:Dataset[SomeTagSource]):TagTree =  getTagTree(getTags(ds))
   def getTagTree(tags:Seq[TagSource]):TagTree =  TagTree(0, calculateTree(tags).map{case (tag, children, cPath) => (tag, children)})
 
@@ -103,20 +130,20 @@ object TagSource {
     println(s"leafs: $leafs")
     println(s"children: $children")
     println(s"classPath: $classPath")*/
-    val (newLeafs, rest) = 
-      tags.map{tag => 
+    val (newLeafs, rest) =
+      tags.map{tag =>
         if(tag.filterValue.isEmpty || tag.filterValue == Set(0)) {
           nodes += tag
           classPath += tag.outClassesFor(0).get.map(oClass => oClass -> Set(0)).toMap
           children += Seq[Int]()
           ((Some(nodes.size-1), None))
         }
-        else { 
-          leafs.flatMap{iNode => 
+        else {
+          leafs.flatMap{iNode =>
             tag.filterValue
-              .flatMap{fClass => 
+              .flatMap{fClass =>
                 classPath(iNode)
-                  .flatMap{case (oClass, parents) => 
+                  .flatMap{case (oClass, parents) =>
                     val path = (parents + oClass)
                     if(fClass == oClass)
                       Some(path.flatMap(pClass => tag.outClassesFor(pClass)).head.map(cOut => (cOut -> path)))
@@ -136,7 +163,7 @@ object TagSource {
               }
           }.headOption match {
             case Some(iTag) => ((Some(iTag), None))
-            case None => (None, Some(tag)) 
+            case None => (None, Some(tag))
           }
         }
       }
@@ -145,7 +172,7 @@ object TagSource {
       nodes.zip(children.zip(classPath)).map{case(n, (ch, cPath)) => (n, ch, cPath)}
     } else if(rest.size ==  tags.size) {
       throw new Exception("Cannot obtain node tree representation, cannot match nodes to add as leafs and there are still nodes to be included")
-    } else 
+    } else
       calculateTree(tags = rest, nodes = nodes, leafs = newLeafs, children = children, classPath = classPath)
   }
 }
@@ -156,15 +183,15 @@ case class ClassifierTagSource(
   , var timestamp:Option[Timestamp]
   , name: Option[String]
   , color:Option[String]
-  , inTag:Option[Int] 
+  , inTag:Option[Int]
   , outTags: Option[Set[Int]]
   , oFilterMode:Option[FilterMode]=None
   , var oFilterValue:Option[Set[Int]]=None
 ) extends TagSource {
-  assert(!TagOperation.fullOperations(this.operation) || (!inTag.isEmpty && !name.isEmpty && !outTags.isEmpty)) 
+  assert(!TagOperation.fullOperations(this.operation) || (!inTag.isEmpty && !name.isEmpty && !outTags.isEmpty))
   def filterMode = this.oFilterMode.getOrElse(FilterMode.anyIn)
   def filterValue = this.oFilterValue.getOrElse(Set(inTag.get))
-  def outClassesFor(iClass:Int):Option[Set[Int]] = if(iClass == inTag.get) Some(outTags.get) else None 
+  def outClassesFor(iClass:Int):Option[Set[Int]] = if(iClass == inTag.get) Some(outTags.get) else None
   def outClasses() = outTags.get
   def toNodeParams(children:Seq[Int], classPath:Map[Int, Set[Int]]) =
     NodeParams(
@@ -172,8 +199,8 @@ case class ClassifierTagSource(
      , color = this.color
      , tagId = Some(this.id)
      , algo = ClassAlgorithm.supervised
-     , strLinks = Map(inTag.get.toString -> outTags.get) 
-     , filterMode = this.filterMode  
+     , strLinks = Map(inTag.get.toString -> outTags.get)
+     , filterMode = this.filterMode
      , filterValue = ArrayBuffer(this.filterValue.toSeq:_*)
      , maxTopWords = None
      , classCenters= None
@@ -181,11 +208,11 @@ case class ClassifierTagSource(
      , annotations = ArrayBuffer[Annotation]()
      , hits = 0.0
      , children = ArrayBuffer(children:_*)
-     , strClassPath = classPath.map(p => (p._1.toString, p._2)) 
+     , strClassPath = classPath.map(p => (p._1.toString, p._2))
    )
   def addFilter(toAdd:Set[Int]) = {
     this.oFilterValue =  Some(this.filterValue ++ toAdd)
-    this  
+    this
   }
 }
 case class AnalogyTagSource(
@@ -202,7 +229,7 @@ case class AnalogyTagSource(
 ) extends TagSource {
   def filterValue = this.oFilterValue.getOrElse(Set(baseTag.get,referenceTag.get))
   def filterMode = this.oFilterMode.getOrElse(FilterMode.allIn)
-  def outClassesFor(iClass:Int) = if(iClass == baseTag.get) Some(Set(analogyClass.get)) else None 
+  def outClassesFor(iClass:Int) = if(iClass == baseTag.get) Some(Set(analogyClass.get)) else None
   def outClasses() = Set(analogyClass.get)
   def toNodeParams(children:Seq[Int], classPath:Map[Int, Set[Int]]) =
     NodeParams(
@@ -210,8 +237,8 @@ case class AnalogyTagSource(
      , color = this.color
      , tagId = Some(this.id)
      , algo = ClassAlgorithm.analogy
-     , strLinks = Map(baseTag.get.toString -> Set(analogyClass.get)) 
-     , filterMode = this.filterMode 
+     , strLinks = Map(baseTag.get.toString -> Set(analogyClass.get))
+     , filterMode = this.filterMode
      , filterValue = ArrayBuffer(this.filterValue.toSeq:_*)
      , maxTopWords = None
      , classCenters= None
@@ -219,11 +246,11 @@ case class AnalogyTagSource(
      , annotations = ArrayBuffer[Annotation]()
      , hits = 0.0
      , children = ArrayBuffer(children:_*)
-     , strClassPath = classPath.map(p => (p._1.toString, p._2)) 
+     , strClassPath = classPath.map(p => (p._1.toString, p._2))
    )
   def addFilter(toAdd:Set[Int]) = {
     this.oFilterValue =  Some(this.filterValue ++ toAdd)
-    this  
+    this
   }
 }
 case class ClusterTagSource (
@@ -252,7 +279,7 @@ case class ClusterTagSource (
      , filterMode = this.filterMode
      , filterValue = ArrayBuffer(this.filterValue.toSeq:_*)
      , maxTopWords = Some(this.maxTopWords.get)
-     , classCenters =  
+     , classCenters =
          Some(Map(
            strLinks.get
              .flatMap{case (in, outs) => outs.zipWithIndex}
@@ -264,11 +291,10 @@ case class ClusterTagSource (
      , annotations = ArrayBuffer[Annotation]()
      , hits = 0.0
      , children = ArrayBuffer(children:_*)
-     , strClassPath = classPath.map(p => (p._1.toString, p._2)) 
+     , strClassPath = classPath.map(p => (p._1.toString, p._2))
    )
   def addFilter(toAdd:Set[Int]) = {
     this.oFilterValue =  Some(this.filterValue ++ toAdd)
-    this  
+    this
   }
 }
-

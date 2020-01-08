@@ -40,16 +40,16 @@ trait TagSource {
   /** TODO
     */
   def outClasses():Set[Int]
-  /** TODO
+  /** Transforms the instance to SomeTagSource, which can be used as a dataset
     */
   def toSomeSource = SomeTagSource(this)
-  /** TODO
+  /** Transforms the instance to NodeParam, which can be used to create the stree structure
     */
   def toNodeParams(children:Seq[Int], classPath:Map[Int, Set[Int]]):NodeParams
-  /** TODO
+  /** Resets th timestamp to the current time
     */
   def resetTimestamp:this.type = {this.timestamp = Some(new Timestamp(System.currentTimeMillis()));this}
-  /** TODO
+  /** Merging this tag with another. This method is used to apply changes to tags and to get latest version
     */
   def mergeWith(that:TagSource) = {
     val (newer, older) = if(this.timestamp.get.after(that.timestamp.get)) (this, that) else (that, this)
@@ -63,9 +63,11 @@ trait TagSource {
       case _ => newer
     }
   }
-  /** TODO
+  /** Add or remove a class to the tag scope. Note that negative values means explusion of classes
     */
   def addFilter(toAdd:Set[Int]):this.type
+  /** Indicates wether the tag contains all information necessary for its creation. It woul be false when the opration is anly addFilter
+  */
   def isFull =  TagOperation.fullOperations(this.operation)
 }
 

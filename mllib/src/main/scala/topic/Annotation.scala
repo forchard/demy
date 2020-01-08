@@ -4,6 +4,12 @@ import org.apache.spark.sql.functions.{col}
 import scala.collection.mutable.{HashMap}
 import java.sql.Timestamp 
 
+case class AnnotationOperation(op:String)
+object AnnotationOperation {
+  val create = AnnotationOperation("create")
+  val delete = AnnotationOperation("delete")
+  val update = AnnotationOperation("update")
+}
 case class Annotation(
   tokens:Seq[String]
   , tag:Int
@@ -24,6 +30,7 @@ case class Annotation(
       , tokensIndexes = None
       , fromIndexes = None
       , timestamp = new Timestamp(System.currentTimeMillis())
+      , operation = None
     )
 }
 
@@ -40,6 +47,7 @@ case class AnnotationSource(
   , tokensIndexes:Option[Seq[Int]]
   , fromIndexes:Option[Seq[Int]]
   , timestamp:Timestamp
+  , operation:Option[AnnotationOperation]
 ) {
   def resetTimestamp = 
     AnnotationSource(
@@ -54,8 +62,10 @@ case class AnnotationSource(
       , tokensIndexes = tokensIndexes
       , fromIndexes = fromIndexes
       , timestamp = new Timestamp(System.currentTimeMillis())
+      , operation = operation
     )
 
+  def getOperation = this.operation.getOrElse(AnnotationOperation.create)
   def toAnnotation = Annotation(tokens = tokens, tag = tag, from = from, inRel = inRel, score = score)
   def key = (Seq(tag) ++ tokens ++ from.getOrElse(Seq[String]())).mkString(" ")
   def mergeWith(that:AnnotationSource) = { 
@@ -72,6 +82,7 @@ case class AnnotationSource(
       , tokensIndexes = newer.tokensIndexes.orElse(older.tokensIndexes)
       , fromIndexes = newer.fromIndexes.orElse(older.fromIndexes)
       , timestamp = newer.timestamp
+      , operation = if(older.getOperation == AnnotationOperation.delete && newer.getOperation != AnnotationOperation.create) older.operation else newer.operation
     )
   }
 } 

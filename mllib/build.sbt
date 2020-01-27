@@ -1,3 +1,4 @@
+lazy val sparkVersion = if(System.getenv("SPARK_VERSION")==null) "2.3.2" else  System.getenv("SPARK_VERSION")
 lazy val core = RootProject(file("../core"))
 
 lazy val root = (project in file("."))
@@ -6,9 +7,9 @@ lazy val root = (project in file("."))
     name := "demy-machine-learning-library",
     scalaVersion := "2.11.8",
     version := "1.0",
-    libraryDependencies += "org.apache.spark" %% "spark-core" % "2.3.2" % "provided",
-    libraryDependencies += "org.apache.spark" %% "spark-sql" % "2.3.2" % "provided",
-    libraryDependencies += "org.apache.spark" %% "spark-mllib" % "2.3.2" % "provided",
+    libraryDependencies += "org.apache.spark" %% "spark-core" % sparkVersion % "provided",
+    libraryDependencies += "org.apache.spark" %% "spark-sql" % sparkVersion % "provided",
+    libraryDependencies += "org.apache.spark" %% "spark-mllib" % sparkVersion % "provided",
     libraryDependencies += "org.apache.lucene" % "lucene-core" % "7.2.1", 
     libraryDependencies += "org.apache.lucene" % "lucene-queryparser" % "7.2.1",
     libraryDependencies += "org.apache.lucene" % "lucene-analyzers-common" % "7.2.1", 

@@ -1,3 +1,4 @@
+lazy val sparkVersion = if(System.getenv("SPARK_VERSION")==null) "2.3.2" else  System.getenv("SPARK_VERSION")
 lazy val root = (project in file(".")).
   settings(
     name := "demy-core",
@@ -5,8 +6,8 @@ lazy val root = (project in file(".")).
     version := "1.0",
     libraryDependencies += "org.scalactic" %% "scalactic" % "3.0.5",
     libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.5" % "test",
-    libraryDependencies += "org.apache.spark" %% "spark-core" % "2.3.2" % "provided",
-    libraryDependencies += "org.apache.spark" %% "spark-sql" % "2.3.2" % "provided",
+    libraryDependencies += "org.apache.spark" %% "spark-core" % sparkVersion % "provided",
+    libraryDependencies += "org.apache.spark" %% "spark-sql" % sparkVersion % "provided",
 
     libraryDependencies += "org.apache.httpcomponents" % "httpmime" % "4.5.6" ,
     //libraryDependencies += "org.scala-lang.modules" %% "scala-xml" % "1.1.1", 

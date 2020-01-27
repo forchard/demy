@@ -10,6 +10,7 @@ object TagOperation {
   val delete = TagOperation("delete")
   val update = TagOperation("update")
   val addFilter = TagOperation("addFilter")
+  val removeFilter = TagOperation("removeFilter")
   val fullOperations = Set(create, update)
 }
 
@@ -60,6 +61,10 @@ trait TagSource {
         older.addFilter(newer.filterValue)
         older
       }
+      case (_, TagOperation.removeFilter) => {
+        older.removeFilter(newer.filterValue)
+        older
+      }
       case _ => newer
     }
   }
@@ -68,6 +73,8 @@ trait TagSource {
   def addFilter(toAdd:Set[Int]):this.type
   /** Indicates wether the tag contains all information necessary for its creation. It woul be false when the opration is anly addFilter
   */
+  def removeFilter(toRemove:Set[Int]):this.type
+
   def isFull =  TagOperation.fullOperations(this.operation)
 }
 
@@ -216,6 +223,10 @@ case class ClassifierTagSource(
     this.oFilterValue =  Some(this.filterValue ++ toAdd)
     this
   }
+  def removeFilter(toRemove:Set[Int]) = {
+    this.oFilterValue =  Some(this.filterValue -- toRemove)
+    this
+  }
 }
 case class AnalogyTagSource(
   id:Int
@@ -252,6 +263,10 @@ case class AnalogyTagSource(
    )
   def addFilter(toAdd:Set[Int]) = {
     this.oFilterValue =  Some(this.filterValue ++ toAdd)
+    this
+  }
+  def removeFilter(toRemove:Set[Int]) = {
+    this.oFilterValue =  Some(this.filterValue -- toRemove)
     this
   }
 }
@@ -297,6 +312,10 @@ case class ClusterTagSource (
    )
   def addFilter(toAdd:Set[Int]) = {
     this.oFilterValue =  Some(this.filterValue ++ toAdd)
+    this
+  }
+  def removeFilter(toRemove:Set[Int]) = {
+    this.oFilterValue =  Some(this.filterValue -- toRemove)
     this
   }
 }

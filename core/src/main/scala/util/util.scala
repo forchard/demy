@@ -17,17 +17,27 @@ case class EnumerationFromIterator[T](it:Iterator[T]) extends java.util.Enumerat
 
 
 object util {
-    def restoreCheckPoint(path:String)(implicit spark:SparkSession) = {
+    def decodeColumnName(s:String):String = {
       val toEnc = Seq(',',';','{','}','(',')','\n','\t','=', ' ').map(c => (c.toString, s">>${c.toInt}<<"))
+      (s.indexOf(">>"), s.indexOf("<<")) match {
+        case (i0, i1) if i0 >=0 && i1 > i0 => 
+          decodeColumnName(s.slice(0, i0) + s.slice(i0+2, i1).toInt.toChar.toString + s.substring(i1+2))
+        case _ => 
+          s
+      }
+    }
+    def restoreCheckPoint(path:String)(implicit spark:SparkSession) = {
        
       Try(spark.read.parquet(path))
         .toOption
         .map(df => df.select(
           df.schema
             .map(f => 
-              col(f.name match {case s => 
-                (s.indexOf("<<"), s.indexOf(">>")) match {case (i0, i1) if i0 >=0 && i1 > i0 => s.slice(0, i0) + s.slice(i0+2, i1).toInt.toChar.toString + s.substring(i1+2) case _ => s}
-            }))
+              (f.name, decodeColumnName(f.name)) match {
+                case (name, decoded) if name != decoded => col(name).as(decoded)
+                case _ => col(f.name)  
+              } 
+            )
            :_* )
         )
     }

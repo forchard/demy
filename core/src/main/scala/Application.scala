@@ -12,14 +12,14 @@ trait Application {
     var appName:Option[String] = None
     var config:Option[String] = None
 
-    println(args.toSeq) // => (master, local[*])
+    //println(args.toSeq) // => (master, local[*])
     var printUsage = false
     args.drop(1).foreach{s =>
       if(s.indexOf("=") match {case i if i<=0 || i==s.size-1 => true case _ => false })
         printUsage = true
       else {
         val (prop, value) = (s.slice(0, s.indexOf("=")).toLowerCase, s.substring(s.indexOf("=")+1))
-        println(s"($prop, $value)") // => (config, devscripts/DEV.json)
+        //println(s"($prop, $value)") // => (config, devscripts/DEV.json)
         if(prop == "master") master=Some(value)
         else if(prop == "appname") appName = Some(value)
         else if(prop == "config") config = Some(value)

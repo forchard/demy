@@ -1,5 +1,7 @@
 package demy.util
-import org.apache.spark.sql.{Dataset, DataFrame, Encoder}
+import org.apache.spark.sql.{Dataset, DataFrame, Encoder, SparkSession}
+import org.apache.spark.sql.functions.{col}
+import scala.util.Try
 import scala.reflect.runtime.universe.TypeTag
 case class MergedIterator[T, U](a:Iterator[T], b:Iterator[U], defA:T, defB:U) extends Iterator[(T, U)] {
   def hasNext = a.hasNext || b.hasNext
@@ -15,6 +17,20 @@ case class EnumerationFromIterator[T](it:Iterator[T]) extends java.util.Enumerat
 
 
 object util {
+    def restoreCheckPoint(path:String)(implicit spark:SparkSession) = {
+      val toEnc = Seq(',',';','{','}','(',')','\n','\t','=', ' ').map(c => (c.toString, s">>${c.toInt}<<"))
+       
+      Try(spark.read.parquet(path))
+        .toOption
+        .map(df => df.select(
+          df.schema
+            .map(f => 
+              col(f.name match {case s => 
+                (s.indexOf("<<"), s.indexOf(">>")) match {case (i0, i1) if i0 >=0 && i1 > i0 => s.slice(0, i0) + s.slice(i0+2, i1).toInt.toChar.toString + s.substring(i1+2) case _ => s}
+            }))
+           :_* )
+        )
+    }
     def checkpoint[T : Encoder : TypeTag] (ds:Dataset[T], path:String):Dataset[T] = checkpoint(ds, path, None, false)
     def checkpoint[T : Encoder : TypeTag] (ds:Dataset[T], path:String, reuseExisting:Boolean):Dataset[T] = checkpoint(ds, path, None, reuseExisting)
     def checkpoint[T : Encoder : TypeTag] (ds:Dataset[T], path:String, partitionBy:Option[Array[String]]):Dataset[T] = checkpoint(ds, path, partitionBy, false)

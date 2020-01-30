@@ -27,8 +27,8 @@ trait TagSource {
   val id:Int
   val operation:TagOperation
   var timestamp:Option[Timestamp]
-  val name:Option[String]
-  val color:Option[String]
+  var name:Option[String]
+  var color:Option[String]
   /** Filter mode to decide which sentence/token goes in which node, for instance: "bestScore" */
   def filterMode:FilterMode
   /** Describing the nodes whose sentences/tokens are to be filtered */
@@ -56,7 +56,7 @@ trait TagSource {
     val (newer, older) = if(this.timestamp.get.after(that.timestamp.get)) (this, that) else (that, this)
     (older.operation, newer.operation) match {
       case (TagOperation.delete, TagOperation.create) => newer
-      case (TagOperation.delete, _) => older
+      case (TagOperation.delete, _) =>  older
       case (_, TagOperation.addFilter) => {
         older.addFilter(newer.filterValue)
         older
@@ -64,6 +64,9 @@ trait TagSource {
       case (_, TagOperation.removeFilter) => {
         older.removeFilter(newer.filterValue)
         older
+      }
+      case (_, TagOperation.update) => {
+        newer
       }
       case _ => newer
     }
@@ -190,11 +193,11 @@ case class ClassifierTagSource(
   id:Int
   , operation:TagOperation
   , var timestamp:Option[Timestamp]
-  , name: Option[String]
-  , color:Option[String]
-  , inTag:Option[Int]
-  , outTags: Option[Set[Int]]
-  , oFilterMode:Option[FilterMode]=None
+  , var name: Option[String]
+  , var color:Option[String]
+  , var inTag:Option[Int]
+  , var outTags: Option[Set[Int]]
+  , var oFilterMode:Option[FilterMode]=None
   , var oFilterValue:Option[Set[Int]]=None
 ) extends TagSource {
   assert(!TagOperation.fullOperations(this.operation) || (!inTag.isEmpty && !name.isEmpty && !outTags.isEmpty))
@@ -220,6 +223,8 @@ case class ClassifierTagSource(
      , strClassPath = classPath.map(p => (p._1.toString, p._2))
    )
   def addFilter(toAdd:Set[Int]) = {
+    println("addFilter ClassifierTagSource:")
+    println(toAdd)
     this.oFilterValue =  Some(this.filterValue ++ toAdd)
     this
   }
@@ -227,13 +232,14 @@ case class ClassifierTagSource(
     this.oFilterValue =  Some(this.filterValue -- toRemove)
     this
   }
+
 }
 case class AnalogyTagSource(
   id:Int
   , operation:TagOperation
   , var timestamp:Option[Timestamp]
-  , name:Option[String]
-  , color:Option[String]
+  , var name:Option[String]
+  , var color:Option[String]
   , referenceTag:Option[Int]
   , baseTag:Option[Int]
   , analogyClass:Option[Int]
@@ -262,6 +268,8 @@ case class AnalogyTagSource(
      , strClassPath = classPath.map(p => (p._1.toString, p._2))
    )
   def addFilter(toAdd:Set[Int]) = {
+    println("addFilter AnalogyTagSource:")
+    println(toAdd)
     this.oFilterValue =  Some(this.filterValue ++ toAdd)
     this
   }
@@ -269,13 +277,14 @@ case class AnalogyTagSource(
     this.oFilterValue =  Some(this.filterValue -- toRemove)
     this
   }
+
 }
 case class ClusterTagSource (
   id:Int
   , operation:TagOperation
   , var timestamp:Option[Timestamp]
-  , name:Option[String]
-  , color:Option[String]
+  , var name:Option[String]
+  , var color:Option[String]
   , strLinks:Option[Map[String, Set[Int]]]
   , maxTopWords:Option[Int]
   , childSplitSize:Option[Int]
@@ -311,6 +320,8 @@ case class ClusterTagSource (
      , strClassPath = classPath.map(p => (p._1.toString, p._2))
    )
   def addFilter(toAdd:Set[Int]) = {
+    println("addFilter ClusteringTagSource:")
+    println(toAdd)
     this.oFilterValue =  Some(this.filterValue ++ toAdd)
     this
   }
@@ -318,4 +329,5 @@ case class ClusterTagSource (
     this.oFilterValue =  Some(this.filterValue -- toRemove)
     this
   }
+
 }

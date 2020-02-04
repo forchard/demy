@@ -273,10 +273,7 @@ object Node {
  }
 
  def loadFromJson(from:FSNode, vectorIndex:Option[VectorIndex]) = {
-    val mapper = new ObjectMapper() with ScalaObjectMapper
-    mapper.registerModule(DefaultScalaModule)
-    val text = from.getContentAsString
-    val params = mapper.readValue[ArrayBuffer[NodeParams]](text)
+    val params = NodeParams.loadFromJson(from)
     val cachedIndex = vectorIndex.map(index => CachedIndex(index = index).setCache(params(0).allTokens(others = params).toSeq))
     params(0).toNode(others = params, vectorIndex = cachedIndex)
  }

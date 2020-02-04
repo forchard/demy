@@ -30,7 +30,7 @@ case class ClassifierNode (
     , timestamp = Some(new Timestamp(System.currentTimeMillis()))
     , name = Some(this.params.name)
     , color = this.params.color
-    , inTag = Some(this.params.strLinks.keys.map(_.toInt).toSet.toSeq match {case Seq(inTag) => inTag case _ => throw new Exception("Cannot transformle multi in classifier to Tag")})
+    , inTag = Some(this.params.strLinks.keys.map(_.toInt).toSet.toSeq match {case Seq(inTag) => inTag case _ => throw new Exception("Cannot transforme multi in classifier to Tag")})
     , outTags = Some(this.params.strLinks.values.flatMap(e => e).toSet)
     , oFilterMode = Some(this.params.filterMode)
     , oFilterValue = Some(this.params.filterValue.toSet)
@@ -42,21 +42,91 @@ case class ClassifierNode (
       , tokens:Seq[String]
       , parent:Option[Node]
       , cGeneratror:Iterator[Int] 
-      , fit:Boolean) { 
-    for{(inClass, outClass) <- this.linkPairs
-      (iIn, _) <- facts(inClass).iterator } {
-        this.score(outClass, vectors(iIn)) match {
-          case score => 
-            if(score > 0.5) {
-              facts.get(outClass) match {
-                case Some(f) => f(iIn) = iIn
-                case None => facts(outClass) = HashMap(iIn -> iIn)
+      , fit:Boolean) {
+    
+    var setScores = (idxs:Iterator[Int], oClass:Int, score:Double ) => {
+      var first:Option[Int] = None
+      for(i <- idxs) {
+        first = first.orElse(Some(i))
+        facts.get(oClass) match {
+          case Some(f) => f(i) = first.get
+          case None => facts(oClass) = HashMap(i -> first.get)
+        }
+      }
+      scores.get(oClass) match {
+        case Some(s) => scores(oClass) = if(s > score) s else score
+        case None => scores(oClass) = score
+      }
+    }    
+    for((inClass, outClass) <- this.linkPairs) {
+      val idx = facts(inClass).iterator.map{case (iIn, _) => iIn}.toSeq.sortWith(_ < _) 
+      var allVector:Option[MLVector] = None
+      var bestDocScore = 0.0
+      var bestITo = -1
+      var bestIndScore = 0.0
+      var bestPosScore = 0.0
+      var bestFrom = -1
+      var bestTo = -1
+      var sum:Option[MLVector] = None
+      var bestSum:Option[MLVector] = None
+ 
+      for{(iIn, iPos) <- idx.iterator.zipWithIndex} {
+        Some(this.score(outClass, vectors(iIn)))
+          .map{score => 
+            if(score > 0.5) setScores(It(iIn), outClass, score)
+            if(score > bestIndScore) bestIndScore = score
+          } //always setting if current vector is classifies in the outClass
+
+        allVector = Some(allVector.map(v => v.sum(vectors(iIn))).getOrElse(vectors(iIn)))
+        if(iIn > bestITo) {//start expanding the right side right window
+          bestIndScore = 0.0
+          bestPosScore = 0.0
+          bestFrom = iPos
+          bestTo = iPos
+          sum = None
+          bestSum = None
+          It.range(iPos, idx.size)
+            .map(i => {
+              sum = sum.map(v =>v.sum(vectors(idx(i)))).orElse(Some(vectors(idx(i))));
+              (sum.get, i)
+              })
+            .map{case (vSum, i) => (i, this.score(outClass, vSum), vSum)}
+            .map{case (i, score, vSum) => 
+              if(score > bestPosScore) {
+                bestPosScore = score
+                bestTo = i
+                bestITo = idx(i)
+                bestSum = Some(vSum)
               }
-              scores.get(outClass) match {
-                case Some(s) => scores(outClass) = if(s > score) s else score
-                case None => scores(outClass) = score
+              (i, score)
+            }.takeWhile{case (i, score) => i < iPos + 2 || i < bestTo + 2}
+            .size
+            sum = bestSum
+        } else { //contracting the left side window
+          sum = sum.map(v => v.minus(vectors(idx(iPos -1))))
+          sum
+            .map{v => this.score(outClass, v)}
+            .map{score => 
+              if(score > bestPosScore) {
+                bestPosScore = score
+                bestFrom = iPos
               }
             }
+        }
+        if(iIn == bestITo) {
+          if(bestPosScore > 0.5 && bestPosScore > bestIndScore) {
+            setScores(It.range(bestFrom, bestTo + 1).map(i => idx(i)), outClass, bestPosScore)
+          }
+          if(bestPosScore > bestDocScore) bestDocScore = bestPosScore
+          if(bestIndScore > bestDocScore) bestDocScore = bestIndScore
+        }
+      }
+      allVector
+        .map(v => this.score(outClass, v))
+        .map{allScore => 
+          if(allScore > bestDocScore && allScore > 0.5) {
+            setScores(idx.iterator, outClass, bestDocScore)
+          }
         }
     }
   }

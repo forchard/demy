@@ -63,6 +63,13 @@ object implicits {
          case _ => throw new Exception("Cannot build an iterator on differentr vector types @epi")
        }
       }
+    def norm() = {
+      left match {
+         case (sLeft:SparseVector) => Math.sqrt(sLeft.values.iterator.map(v => v * v).reduce(_ + _))
+         case (dLeft:DenseVector) => blas.dnrm2(dLeft.values.size, dLeft.values, 1)
+         case _ => throw new Exception("Unsupported vector type @epi")
+       }
+      }
     def minus(right:Vector) = {
       val values = VectorsIterator(left, right)
       (left, right) match {

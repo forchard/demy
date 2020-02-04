@@ -97,6 +97,15 @@ case class NodeParams(
 
 }
 
+object NodeParams {
+ def loadFromJson(from:FSNode) = {
+    val mapper = new ObjectMapper() with ScalaObjectMapper
+    mapper.registerModule(DefaultScalaModule)
+    val text = from.getContentAsString
+    mapper.readValue[ArrayBuffer[NodeParams]](text)
+ }
+  
+}
 case class ClassAlgorithm(value:String)
 object ClassAlgorithm {
   val analogy = ClassAlgorithm("analogy")

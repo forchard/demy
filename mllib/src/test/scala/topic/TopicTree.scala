@@ -1,51 +1,54 @@
 package demy.mllib.test.topic
 
 import org.scalatest._
-import demy.mllib.topic.{ClusteringNode, AnalogyNode, ClassifierNode, NodeParams, FilterMode}
+import demy.mllib.topic.{ClusteringNode, AnalogyNode, ClassifierNode, NodeParams, FilterMode, Annotation, ClassAlgorithm}
 import org.apache.spark.ml.linalg.{DenseVector, SparseVector, Vector => MLVector, Vectors}
 import demy.mllib.test.{UnitTest, UnitTestVars}
 import demy.mllib.linalg.implicits._
+import demy.mllib.index.MapIndex
 import scala.collection.mutable.{ArrayBuffer, HashSet, HashMap}
 import scala.util.Random
 trait TopicTreeSpec extends UnitTest{
   import demy.mllib.test.topic.{TopicTreeVars => v}  
  
+/*  "Sums diff " should "match" in {
+    assert({
+      var s = (v.pathologiesTest ++ v.nonPathologiesTest).reduce(_.sum(_))
+      (v.pathologiesTest ++ v.nonPathologiesTest).zipWithIndex.foreach{case (v, i) => print(s"${s.cosineSimilarity(v)} -->");s = s.minus(v);println(s.norm());}
+      s.norm() < 0.00001
+    })
+  }*/
   "AnalogyNode" should "get the expected analogy score" in {
-    assert(v.appliedAnalogy.flatMap{ case(vClasses, resultDag, resultScore, expectedClasses, expectedDag, expectedScore) => 
-      expectedScore
-        .zip(resultScore)
-        .map{case(a, b) => Math.abs(a - b)}
+    assert(v.appliedAnalogy.map{ case(facts, scores, expectedFacts, expectedScores) => 
+      (if(expectedScores.size == scores.size) 0.0 else 1.0) 
+      + (
+        expectedScores.toSeq.sortWith(_._1 < _._1).zip(scores.toSeq.sortWith(_._1 < _._1))
+        .map{case((a1, score1), (a2, score2)) => (if(a1 == a2) 0.0 else 1.0) + Math.abs(score1 - score2)}
+        .reduce(_ + _)
+      )
     }.sum <0.1)
   }
   it should "assign the right classes"in {
     assert(
-      v.appliedAnalogy.flatMap{ case(vClasses, resultDag, resultScore, expectedClasses, expectedDag, expectedScore) => vClasses}.toSeq ==
-      v.appliedAnalogy.flatMap{ case(vClasses, resultDag, resultScore, expectedClasses, expectedDag, expectedScore) => expectedClasses}.toSeq)
-    
+      v.appliedAnalogy.flatMap{ case(facts, scores, expectedFacts, expectedScores) => expectedFacts}.toSeq ==
+      v.appliedAnalogy.flatMap{ case(facts, scores, expectedFacts, expectedScores) => facts}.toSeq)
   } 
-  it should "produce the right dag" in {
-    assert(
-      v.appliedAnalogy.flatMap{ case(vClasses, resultDag, resultScore, expectedClasses, expectedDag, expectedScore) => resultDag}.toSeq ==
-      v.appliedAnalogy.flatMap{ case(vClasses, resultDag, resultScore, expectedClasses, expectedDag, expectedScore) => expectedDag}.toSeq
-    )
-  }
 
-  "ClassifierNode" should "apply the right true classes" in {
-    assert(
-      v.classifiedClasses.take(v.pathologiesTest.size).filter(c => c == v.classifierTrueClass).size.toDouble / v.pathologiesTest.size > 0.8
-    )
+  "ClassifierNode" should "predict the right classes for more than 90% of samplesi when packed classes" in {
+    assert({
+      v.wronglyClassifiedTokens(shuffle = false).size.toDouble / (v.pathologiesTestTokens ++ v.nonPathologiesTestTokens).toSet.size < 0.1
+    })
   }
-  it should "apply the right false classes" in {
-    assert(
-      v.classifiedClasses.drop(v.pathologiesTest.size).filter(c => c == v.classifierFalseClass).size.toDouble / v.nonPathologiesTest.size > 0.8
-    )
+  it should "predict the right classes for more than 80% of samplesi when shuffled classes"in {
+    assert({
+      v.wronglyClassifiedTokens(shuffle = true).size.toDouble / (v.pathologiesTestTokens ++ v.nonPathologiesTestTokens).toSet.size < 0.2
+    })
   }
-
-  "ClusterNode" should " assign the closest center to each vector" in {
+  /*"ClusterNode" should " assign the closest center to each vector" in {
     assert(
       v.pointsInCluster.size == v.clusterVectors.size
     )
-  }
+  }*/
 }
 
 object TopicTreeVars extends UnitTestVars {
@@ -55,89 +58,132 @@ object TopicTreeVars extends UnitTestVars {
     x.toArray.zip(y.toArray).map{case(a, b) => Math.abs(a - b)}.sum
   }
 
-  lazy val treatDiseaseNode = AnalogyNode(
-    name = "analogy"
-    , tokens=ArrayBuffer("treatment", "disease")
-    , points = ArrayBuffer(treatment, disease)
-    , pClasses = ArrayBuffer(2, 1)
-    , pDag = ArrayBuffer(1,-1)
-    , referenceClass = 1
-    , params = NodeParams(
-        inClasses=Set(0)
-        , outClasses=Set(2)
-      )
-    ).fit(spark)
+  lazy val treatDiseaseNode = 
+    Some(NodeParams(
+      name = "analogy"
+      , tagId = Some(2)
+      , annotations = ArrayBuffer(Annotation(tokens = ArrayBuffer("treatment"), tag = 2, from= Some(Seq("disease")), inRel = true, score = 1.0))
+      , algo = ClassAlgorithm.analogy
+      , strLinks = Map("1" -> Set(1), "0" -> Set(2))
+      , strClassPath = Map("1"-> Set(0))
+      , names = Map("referenceClass"->1, "baseClass" -> 0 , "analogyClass" -> 2)
+      , filterMode = FilterMode.anyIn
+      , filterValue = ArrayBuffer(0)
+    ))
+      .map(np => np.toNode(ArrayBuffer(np), Some(index)))
+      .map(n => {n.fitClassifiers(spark);n})
+      .get
 
   def analogyTests = Array(
-      (Array("chemotheraputic", "cancer").toSeq, Array(chemotheraputic, cancer).toSeq, Array(0, 1) ,  Array(0.696956, 0.0), Array(2, 1), Array(1, -1))
-      ,(Array("cisplatinr", "cancer").toSeq, Array(cisplatinr, cancer).toSeq, Array(0, 1), Array(0.652741, 0.0), Array(2, 1), Array(1, -1))
-      ,(Array("chemotherapy", "cancer").toSeq, Array(chemotherapy, cancer).toSeq, Array(0, 1), Array(0.650912, 0.0), Array(2, 1), Array(1, -1))
+      (Array("chemotheraputic", "cancer").toSeq
+        , Array(chemotheraputic, cancer).toSeq
+        , HashMap(0 -> HashMap(0 -> 0), 1 -> HashMap(1 -> 1)) 
+        , HashMap(0 -> HashMap(0 -> 0), 1 -> HashMap(1 -> 1), 2 -> HashMap(0 -> 0)) 
+        , HashMap(2 -> 0.696956)
+        )
+      ,(Array("cisplatinr", "cancer").toSeq
+        , Array(cisplatinr, cancer).toSeq
+        , HashMap(0 -> HashMap(0 -> 0), 1 -> HashMap(1 -> 1)) 
+        , HashMap(0 -> HashMap(0 -> 0), 1 -> HashMap(1 -> 1), 2 -> HashMap(0 -> 0)) 
+        , HashMap(2 -> 0.652741)
+        )
+      ,(Array("chemotherapy", "cancer").toSeq
+        , Array(chemotherapy, cancer).toSeq
+        , HashMap(0 -> HashMap(0 -> 0), 1 -> HashMap(1 -> 1)) 
+        , HashMap(0 -> HashMap(0 -> 0), 1 -> HashMap(1 -> 1), 2 -> HashMap(0 -> 0)) 
+        , HashMap(2 -> 0.650912)
+        )
   )
  
   lazy val appliedAnalogy = 
-    analogyTests.map{case(tokens, vectors, vClasses, expectedScore, expectedClasses, expectedDag) =>
-      val resultScore = Array.fill(tokens.size)(0.0)
-      val resultDag = Array.fill(tokens.size)(-1)
-      
+    analogyTests.map{case(tokens, vectors, facts, expectedFacts, expectedScores) =>
+      val scores = HashMap[Int, Double]()
       treatDiseaseNode
         .transform(
-          vClasses = vClasses
-          , scores = Some(resultScore)
-          , dag = Some(resultDag)
+          facts = facts
+          , scores = scores
           , vectors = vectors
           , tokens = tokens
-          , spark = spark
+          , parent = None
+          , cGeneratror = Iterator[Int]()
+          , fit = false
         )
-      (vClasses, resultDag, resultScore, expectedClasses, expectedDag, expectedScore)
+      (facts, scores, expectedFacts, expectedScores)
     }
 
-  def classifierFalseClass = 0
-  def classifierTrueClass = 1
-  lazy val classifier = 
-    ClassifierNode (
+  def classifierBaseClass = 0
+  def classifierClass = 1
+  
+  lazy val classifier =
+    Some(NodeParams(
       name = "classifier"
-      , tokens = ArrayBuffer(pathologiesTokens ++ nonPathologiesTokens :_*)
-      , points = ArrayBuffer(pathologies ++ nonPathologies :_* )
-      , pClasses = ArrayBuffer(
-        ( Array.fill(pathologies.size)(classifierTrueClass) 
-          ++ Array.fill(nonPathologies.size)(classifierFalseClass)
+      , tagId = Some(1)
+      , annotations = ArrayBuffer(
+        (
+         pathologiesTokens.zip(pathologies).map{case (t, v) => Annotation(tokens = Seq(t), tag = classifierClass, from = None, inRel = true, score = 1.0)}
+         ++ nonPathologiesTokens.zip(nonPathologies).map{case (t, v) => Annotation(tokens = Seq(t), tag = classifierClass, from = None, inRel = false, score = 0.0)}
         ):_*)
-      , params = NodeParams(
-         inClasses=Set(classifierFalseClass)
-         , outClasses=Set(classifierTrueClass)
-      )
-    ).fit(spark)
-  
-  
-  def classifiedClasses = {
-    val classificationClasses = Array.fill(pathologiesTest.size + nonPathologiesTest.size)(classifierFalseClass)
-    val classificationScores =  Array.fill(pathologiesTest.size + nonPathologiesTest.size)(0.0)
+      , algo = ClassAlgorithm.supervised
+      , strLinks = Map("0" -> Set(1))
+      , strClassPath = Map("1"-> Set(0))
+      , filterMode = FilterMode.anyIn
+      , filterValue = ArrayBuffer(0)
+    ))
+      .map(np => np.toNode(ArrayBuffer(np), Some(index)))
+      .map(n => {n.fitClassifiers(spark);n})
+      .get
+
+  def wronglyClassifiedTokens(shuffle:Boolean = false) = {
+    val facts = HashMap(classifierBaseClass -> HashMap(Array.range(0, pathologiesTest.size + nonPathologiesTest.size).map(i => (i -> i)):_*))
+      val classificationScores =  Array.fill(pathologiesTest.size + nonPathologiesTest.size)(0.0)
+      val scores = HashMap[Int, Double]()
+      val (tokensParam, vectorsParam) = 
+        Some((pathologiesTestTokens ++ nonPathologiesTestTokens).zip(pathologiesTest ++ nonPathologiesTest))
+          .map(items => if(shuffle) util.Random.shuffle(items) else items)
+          .map(items => (items.map(_._1), items.map(_._2)))
+          .get
+
       classifier.transform(
-        vClasses = classificationClasses
-        , scores = Some(classificationScores)
-        , dag = None
-        , vectors = pathologiesTest ++ nonPathologiesTest
-        , tokens = pathologiesTestTokens ++ nonPathologiesTestTokens
-        , spark = spark
+          facts = facts
+          , scores = scores
+          , vectors = vectorsParam
+          , tokens = tokensParam
+          , parent = None
+          , cGeneratror = Iterator[Int]()
+          , fit = false
       )
-      classificationClasses
+      val pIn = 
+        facts.get(classifierClass)
+          .map(pClassed => pClassed.map(_._1).toSet)
+          .get
+          .map(i => tokensParam(i))
+      val eIn = pathologiesTestTokens.toSet
+
+      val pOut = tokensParam.toSet -- pIn
+      val eOut = nonPathologiesTestTokens.toSet
+      (
+        ((pIn ++ eIn) -- (pIn.intersect(eIn))) 
+          ++ 
+        ((pOut ++ eOut) -- (pOut.intersect(eOut))) 
+      )
     }
 
+/*
   def clusterInClass = 0
   def clusterOutClass = Array(1, 2)
-  def clusterInVectors =  pathologiesTest ++ nonPathologiesTest ++ pathologies ++ nonPathologies 
+  def clusterInVectors =  pathologiesTest ++ nonPathologiesTest ++ pathologies ++ nonPathologies
   def clusterInTokens = pathologiesTestTokens ++ nonPathologiesTestTokens ++  pathologiesTokens ++ nonPathologiesTokens
   lazy val clusterOutClasses = clusterInVectors.map(v => clusterInClass).toArray
   lazy val clusterTokens = clusterInTokens.toArray
   lazy val clusterVectors = clusterInVectors.toArray
-  
+
   lazy val clusterer =  {
     val c = ClusteringNode (
       name = "clusterer"
       ,params = NodeParams(
         inClasses=Set(clusterInClass)
         , outClasses=Set(clusterOutClass :_*)
-        , links = Map(0 -> Set(1, 2))  
+        , links = Map(0 -> Set(1, 2))
       )
       , maxTopWords = 6
       , classCenters = Map(1->0, 2->1)
@@ -149,8 +195,7 @@ object TopicTreeVars extends UnitTestVars {
         clusterVectors(i) = clusterInVectors(rIndex(i))
         clusterTokens(i) = clusterInTokens(rIndex(i))
       }
-      for(i <- Iterable.range(0, clusterTokens.size)) clusterOutClasses(i) = clusterInClass
-      
+      for(i <- Iterable.range(0, clusterTokens.size)) clusterOutClasses(i) = clusterInClass      
       c.transform(vClasses = clusterOutClasses, scores = None, dag = None
        , vectors = clusterVectors, tokens=clusterTokens, spark = spark) 
     }
@@ -164,65 +209,8 @@ object TopicTreeVars extends UnitTestVars {
         == clusterer.pCenters(clusterer.classCenters(clusterOutClasses(i))).cosineSimilarity(clusterVectors(i))
     )
       .filter(v => v == true)
+*/
 
-
-  /*Ensuring we are on a local maximum 
-  val v1 = vectors.zip(outClasses).filter(p => p._2 == 1).map(_._1)
-  val v2 = vectors.zip(outClasses).filter(p => p._2 == 2).map(_._1)
-  val t1 = tokens.zip(outClasses).filter(p => p._2 == 1).map(_._1)
-  val t2 = tokens.zip(outClasses).filter(p => p._2 == 2).map(_._1)
-  val v1Center = v1.reduce(_.sum(_))
-  val v2Center = v2.reduce(_.sum(_))
-  val p1 = Iterable.range(0, clusterer.points.size).filter(i => clusterer.pClasses(i) == 1).map(i => clusterer.points(i)).toSeq
-  val p2 = Iterable.range(0, clusterer.points.size).filter(i => clusterer.pClasses(i) == 2).map(i => clusterer.points(i)).toSeq
-  val pTok1 = Iterable.range(0, clusterer.points.size).filter(i => clusterer.pClasses(i) == 1).map(i => clusterer.tokens(i)).toSeq
-  val pTok2 = Iterable.range(0, clusterer.points.size).filter(i => clusterer.pClasses(i) == 2).map(i => clusterer.tokens(i)).toSeq
-  val p1Center = p1.reduce(_.sum(_)) 
-  val p2Center = p2.reduce(_.sum(_))
-
-  println(s"gap is ${Seq((v1Center, p1Center), (v2Center, p2Center)).map(p => 1.0 - p._1.similarityScore(p._2)).sum} and should be ${clusterer.GAP}")
-  val cVectors = Seq(v1, v2)
-  val cTokens = Seq(t1, t2)
-  val cPoints = Seq(p1, p2)
-  val cPToks = Seq(pTok1, pTok2)
-  val vCenters = Seq(v1Center, v2Center)
-  val pCenters = Seq(p1Center, p2Center)
-
-  val optimalRespected = 
-    (for{c <- Iterable.range(0, cVectors.size)
-        v <- Iterable.range(0, cVectors(c).size)} 
-      yield {
-        val (closestPoint, closestSim) = 
-          (for(p <- Iterable.range(0, cPoints(c).size))
-            yield (p, cPoints(c)(p).cosineSimilarity(cVectors(c)(v)))
-          ).reduce((p1, p2) => (p1, p2) match {case ((_, sim1), (_, sim2)) => if(sim1 > sim2) p1 else p2})
-        val newCenter = 
-          (for(p <- Iterable.range(0, cPoints(c).size))
-            yield if(p == closestPoint) cVectors(c)(v) else cPoints(c)(p)
-          ).reduce(_.sum(_))
-        if(newCenter.cosineSimilarity(vCenters(c)) - pCenters(c).cosineSimilarity(vCenters(c)) > .00001) {
-          println(s"better found ${cTokens(c)(v)} than ${cPToks(c)(closestPoint)} on $c by ${newCenter.similarityScore(vCenters(c)) - pCenters(c).similarityScore(vCenters(c))}")
-          false
-        }
-        else
-          true
-      }
-    )
-      .filter(v => v == true)
-      .size
-  println(s"Optimal position respected on $optimalRespected instead of ${vectors.size}")  
-
-  println(s"tokens(0) = ${cPToks(0)} getting ${cVectors(0).size} words")
-  println(s"tokens(1) = ${cPToks(1)} getting ${cVectors(1).size} hits")
-  
-  
-  val patC = (DoTest.pathologiesTestTokens ++ DoTest.pathologiesTokens).toSet
-  val nPatC = (DoTest.nonPathologiesTestTokens ++ DoTest.nonPathologiesTokens).toSet
-
-  val m1 = t1.toSet.intersect(patC).size
-  val m2 = t2.toSet.intersect(patC).size
-  println(s"match is ${(if(m1 > m2) m1 else m2).toDouble/patC.size} on gap ${clusterer.GAP}")
-  */
   def pathologiesTestTokens = Seq("migraine", "laryngitis", "leukaemia", "obesity", "lyme", "autism", "giantism", "diarrhea", "flu", "chicken pox", "hepatitis", "polyomyelitis", "polio", "yellow fever", "fever")
   def pathologiesTest = Seq(migraine, laryngitis, leukaemia, obesity, lyme, autism, giantism, diarrhea, flu, chicken_pox, hepatitis, polyomyelitis, polio, yellow_fever, fever)
   def nonPathologiesTest = Seq(experimentation, conclusions, discussion, after, belief, either, worst, death, beginning, end, vaccination)
@@ -442,5 +430,14 @@ def study = Vectors.dense(Array(0.26982,-0.089294,-0.36523,-0.16046,0.18791,0.27
   def polio = Vectors.dense(Array(0.45556,-0.16177,-0.092894,-0.10217,-0.27302,0.039558,0.12876,-0.69901,0.1268,0.017773,0.1299,-0.15677,0.41573,-0.31505,-0.08575,0.46894,-0.3875,0.095446,0.24099,-0.76234,0.72362,-0.38905,-0.1835,0.45906,-0.39469,-0.96441,-0.32819,-0.062715,0.64219,0.34528,0.80847,0.82534,-0.098287,-0.12514,0.30586,-0.15262,-0.33106,0.58809,-0.60583,-0.64716,0.15661,0.45733,0.28,-0.20037,-0.62946,-1.0226,-0.31738,0.67181,0.58284,-0.26943,-0.89068,0.06633,-0.18257,0.013338,-0.45836,-0.37749,0.73572,-0.31944,0.46962,-0.095826,0.67925,-0.23663,-0.11924,-0.50827,0.49946,-0.32562,-0.83631,0.67187,0.54098,0.05618,0.50221,-0.23536,0.16301,0.47445,-0.24692,0.0045674,-0.4736,-0.14862,-0.13332,0.44595,-0.61168,0.75073,-0.090295,0.32012,-0.51094,-0.45691,0.67664,0.088321,0.23717,0.095682,-0.30206,0.48335,0.55123,-0.93023,0.0079076,0.20436,0.23708,-0.4221,-0.020941,-0.28483))
 
   def sentence = Seq[MLVector](complete, response, associated, swith, lenalidomide, and, celecoxib, in, a, scase, of, primary, refractory, hodgkin, lymphoma, hodgkin, lymphoma, hl, represents, s11, of, all, lymphoma, cases, sthis, disease, occurs, in, young, adults, but, also, affects, people, over, s55, years, of, age, despite, the, fact, that, s80, of, all, newly, diagnosed, patients, under, s60, will, achieve, a, sustained, complete, response, cr, s5, s10, of, hl, patients, are, refractory, to, initial, treatment, and, s10, s30, of, patients, will, eventually, relapse, after, an, initial, cr, the, treatment, recommendation, sfor, primary, refractory, or, relapsed, hl, patients, is, salvage, therapy, followed, by, high, dose, chemotherapy, and, autologous, stem, cell, transplantation, following, sthis, approach, a, significant, part, will, still, relapse, at, any, moment, thus, further, research, and, snew, drugs, or, combinations, are, required, overexpression, of, cox, s2, has, been, associated, swith, poor, prognosis, in, relapse, refractory, hl, patients, so, it, could, be, a, potential, therapeutic, target, in, hl, sfor, sthis, purpose, several, drugs, may, have, a, role, specific, cox, s2, inhibitors, such, as, celecoxib, or, other, anti, inflammatory, drugs, such, as, lenalidomide, may, further, inhibit, lipopolysaccharide, mediated, induction, of, cox, s2, moreover, lenalidomide, and, cox, s2, inhibitors, celecoxib, have, been, tested, in, solid, tumors, swith, encouraging, results, we, present, a, scase, of, a, young, female, diagnosed, swith, a, heavily, pretreated, hl, nodular, sclerosis, subtype, who, after, failing, six, treatment, lines, only, achieved, clinical, and, radiological, cr, after, six, cycles, of, lenalidomide, celecoxib, that, resulted, in, an, event, free, survival, of, s22, months, we, explain, the, rationale, of, susing, sthis, chemotherapy, regimen, and, our, patient, follow, up)
-}
 
+  lazy val index = MapIndex(cache = (
+      seqTokens.zip(sentence)
+      ++ pathologiesTestTokens.zip(pathologiesTest)
+      ++ nonPathologiesTestTokens.zip(nonPathologiesTest)
+      ++ pathologiesTokens.zip(pathologies)
+      ++ nonPathologiesTokens.zip(nonPathologies)
+    ).toMap)
+
+
+}

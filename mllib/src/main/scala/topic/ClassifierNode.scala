@@ -135,23 +135,42 @@ case class ClassifierNode (
     this.models(forClass).score(vector)
   }
 
-  def fit(spark:SparkSession) = {
+  def fit(spark:SparkSession, excludedNodes:Seq[Node]) = {
     l.msg("start  classifier fitting models")
     this.models.clear
+    val thisPoints = this.points.filter(_ != null)
+    val thisClasses = (c:Int) => 
+      (for(i<-It.range(0, this.points.size)) 
+        yield(this.rel(c).get(i) match {
+          case Some(from) if this.inRel(c)((i, from)) => c
+          case _ => -1
+        })
+      ).toSeq
+       .zip(this.points)
+       .flatMap{case(c, p) => if(p == null) None else Some(c)}
+    def getPoints(nodes:Seq[Node], positive:Boolean, negative:Boolean):Iterator[(MLVector, Boolean)] =  
+      if(nodes.isEmpty) Iterator[(MLVector, Boolean)]()
+      else (
+        nodes
+          .iterator.flatMap{case n:ClassifierNode => Some(n) case _ => None}
+          .flatMap(n => 
+            n.inRel.values.iterator
+              .flatMap(points => points.iterator
+                .flatMap{case ((i, from), inRel) => 
+                  if(inRel && positive) Some(n.points(i), true) 
+                  else if (!inRel && negative) Some(n.points(i), false)
+                  else None
+           })) ++ getPoints(nodes.flatMap(n => n.children.flatMap{case c:ClassifierNode => Some(c) case _ => None}), positive, negative)
+      )
+
+    val otherPointsOut = getPoints(excludedNodes, true, false).map{case (v, inRel) => (v)}.toSeq
+    val otherChildrenPoints = getPoints(this.children, true, true).toSeq
     for(c <- this.outClasses) {
       this.models(c) = 
         WrappedClassifier(
           forClass = c
-          , points = this.points.filter(_ != null)
-          , pClasses = 
-            (for(i<-It.range(0, this.points.size)) 
-              yield(this.rel(c).get(i) match {
-                case Some(from) if this.inRel(c)((i, from)) => c
-                case _ => -1
-              })
-            ).toSeq
-             .zip(this.points)
-             .flatMap{case(c, p) => if(p == null) None else Some(c)}
+          , points = thisPoints ++ otherPointsOut ++ otherChildrenPoints.map(_._1) 
+          , pClasses = thisClasses(c) ++ otherPointsOut.map(_ => -1) ++ otherChildrenPoints.map{case (v, inRel) => if(inRel) c else -1}
           , spark = spark) 
     }
     l.msg("clasifier fit")

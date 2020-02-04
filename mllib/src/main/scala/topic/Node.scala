@@ -106,13 +106,13 @@ trait Node{
       case _ => 0.0
     }
   }
-  def fitClassifiers(spark:SparkSession)  {
+  def fitClassifiers(spark:SparkSession, excludedNodes:Seq[Node] = Seq[Node]())  {
     this match {
       case n:AnalogyNode => n.fit(spark)
-      case n:ClassifierNode => n.fit(spark)
+      case n:ClassifierNode => n.fit(spark, excludedNodes)
       case _ => 0
     }
-    this.children.foreach(n => n.fitClassifiers(spark))
+    this.children.zipWithIndex.foreach{case (n, i) => n.fitClassifiers(spark, excludedNodes ++ this.children.zipWithIndex.flatMap{case(n , j) => if(i == j) None else Some(n)})}
   }
   def nodesIterator:Iterator[Node] = {
     It(this) ++ (for{i <- It.range(0, this.children.size)} yield this.children(i).nodesIterator).reduceOption(_ ++ _).getOrElse(It[Node]())

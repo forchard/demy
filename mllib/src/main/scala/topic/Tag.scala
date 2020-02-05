@@ -223,8 +223,6 @@ case class ClassifierTagSource(
      , strClassPath = classPath.map(p => (p._1.toString, p._2))
    )
   def addFilter(toAdd:Set[Int]) = {
-    println("addFilter ClassifierTagSource:")
-    println(toAdd)
     this.oFilterValue =  Some(this.filterValue ++ toAdd)
     this
   }
@@ -268,8 +266,6 @@ case class AnalogyTagSource(
      , strClassPath = classPath.map(p => (p._1.toString, p._2))
    )
   def addFilter(toAdd:Set[Int]) = {
-    println("addFilter AnalogyTagSource:")
-    println(toAdd)
     this.oFilterValue =  Some(this.filterValue ++ toAdd)
     this
   }
@@ -320,8 +316,6 @@ case class ClusterTagSource (
      , strClassPath = classPath.map(p => (p._1.toString, p._2))
    )
   def addFilter(toAdd:Set[Int]) = {
-    println("addFilter ClusteringTagSource:")
-    println(toAdd)
     this.oFilterValue =  Some(this.filterValue ++ toAdd)
     this
   }

@@ -72,30 +72,28 @@ trait Node{
   def walk(facts:HashMap[Int, HashMap[Int, Int]], scores:HashMap[Int, Double], vectors:Seq[MLVector], tokens:Seq[String], parent:Option[Node], cGenerator:Iterator[Int], fit:Boolean) {
     this.params.hits = this.params.hits + 1
     transform(facts, scores, vectors, tokens, parent, cGenerator, fit)
-    //val bestChild =
-    for(i <- It.range(0, this.children.size)) {
-      if(this.children(i).params.filterMode == FilterMode.noFilter
-        || this.children(i).params.filterMode == FilterMode.allIn
-           &&  this.children(i).inClasses.iterator
-                .filter(inChild => if(inChild >= 0) !facts.contains(inChild) else facts.contains(-inChild))
-                .size == 0
-        || this.children(i).params.filterMode == FilterMode.anyIn
-           &&  this.children(i).inClasses.iterator
-                .filter(inChild => if(inChild >= 0) facts.contains(inChild) else !facts.contains(-inChild))
-                .filter(inChild => facts.contains(inChild))
-                .size > 0
-        || this.children(i).params.filterMode == FilterMode.bestScore
-           &&  (this.children.iterator.zipWithIndex
-                .map{case (child, j) =>
-                  (child.params.filterValue.iterator.map(cInClass => scores.get(cInClass).getOrElse(0.0)).sum / child.inClasses.size, j)}
-                .reduce((p1, p2) => (p1, p2) match {case((score1,  _), (score2, _)) => if(score1 > score2) p1 else p2 }) match {
-                  case (bestScore, bestJ) =>
-                    i == bestJ
-                })
+    val order = Seq.range(0, this.children.size)
+      .sortWith((a, b) => 
+        if(this.children(a).params.algo == this.children(b).params.algo) 
+          a < b 
+        else if(this.children(a).params.algo == ClassAlgorithm.clustering) 
+          false
+        else 
+          true
       )
-        this.children(i).walk(facts, scores, vectors, tokens, Some(this), cGenerator, fit)
-      else
-        this.children(i).params.filterValue.foreach{c => {facts.remove(c);scores.remove(c)}} //this is to avoid setting classes on phrases that are not going to children.
+
+    for(o <- It.range(0, this.children.size)) {
+      val i = order(o)
+      val factClasses = facts.keySet.filter(k => facts(k).size > 0)
+      val posIn = this.children(i).params.filterValue.toSet.filter(_ >=0)
+      val negIn = this.children(i).params.filterValue.toSet.filter(_ < 0).map(-_)
+      if(this.children(i).params.filterMode == FilterMode.noFilter
+        || (this.children(i).params.filterMode == FilterMode.allIn && factClasses.intersect(negIn).isEmpty && posIn.subsetOf(factClasses))
+        || (this.children(i).params.filterMode == FilterMode.anyIn && factClasses.intersect(negIn).isEmpty && !factClasses.intersect(posIn).isEmpty)
+        || (this.children(i).params.filterMode == FilterMode.bestScore && {throw new Exception("best Score not supported anymore")})
+      ){
+        this.children(i).walk(facts, scores, vectors, tokens, Some(this), cGenerator, fit) 
+      }
     }
   }
 

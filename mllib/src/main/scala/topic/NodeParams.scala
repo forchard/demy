@@ -49,7 +49,7 @@ case class NodeParams(
     n
   }
   def cloneWith(classMapping:Option[Map[Int, Int]], unFit:Boolean = true) = {
-    if(!classMapping.isEmpty && !(this.strLinks.keySet.map(_.toInt) ++ this.strLinks.values.flatMap(v => v).toSet ++ this.filterValue.toSet).subsetOf(classMapping.get.keySet))
+    if(!classMapping.isEmpty && !(this.strLinks.keySet.map(_.toInt) ++ this.strLinks.values.flatMap(v => v).toSet ++ this.filterValue.filter(_ >=0).toSet).subsetOf(classMapping.get.keySet))
         None
     else {
       Some(NodeParams(
@@ -63,13 +63,13 @@ case class NodeParams(
             case None => strLinks
         }
         , strClassPath =  classMapping match {
-            case Some(classMap) => this.strClassPath.map{case (inClass, parentSet) => (classMap(inClass.toInt).toString, parentSet ++ this.filterValue.map(c => classMap(c))) }
+            case Some(classMap) => this.strClassPath.map{case (inClass, parentSet) => (classMap(inClass.toInt).toString, parentSet ++ this.filterValue.filter(_>=0).map(c => classMap(c))) }
             case None => strClassPath
         }
         , names = this.names
         , filterMode = this.filterMode
         , filterValue = classMapping match {
-            case Some(classMap) => this.filterValue.map(c => classMap(c))
+            case Some(classMap) => this.filterValue.map(c => classMap.get(c).getOrElse(c)) 
             case None => filterValue.clone
         }
         , maxTopWords = this.maxTopWords

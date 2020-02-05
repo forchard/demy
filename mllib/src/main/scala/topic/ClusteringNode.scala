@@ -406,7 +406,9 @@ case class ClusteringNode (
       val initHits = hitDiff /  It.range(0, this.children.size).filter(i => this.children(i).params.hits == 0).size
       It.range(0, this.children.size).filter(i => this.children(i).params.hits == 0).foreach(i => this.children(i).params.hits = initHits)
     }
-    if(this.children.size < this.classCenters.values.toSet.size) this.children.clear
+    if(this.children.size < this.classCenters.values.toSet.size) {
+      this.children.clear
+    }
     //println(s"My hits = ${this.params.hits} ==> New hits ${this.children.map(c => c.params.hits).sum}")
   }
 } 

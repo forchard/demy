@@ -17,7 +17,7 @@ case class ClassifierNode (
   , children: ArrayBuffer[Node] = ArrayBuffer[Node]()
 ) extends Node {
   val models = HashMap[Int, WrappedClassifier]()
-
+  val windowSize = this.params.windowSize.getOrElse(2)
   def encodeExtras(encoder:EncodedNode) {
     encoder.serialized += (("models", serialize(models.map(p => (p._1, p._2.model))))) 
   }
@@ -34,6 +34,7 @@ case class ClassifierNode (
     , outTags = Some(this.params.strLinks.values.flatMap(e => e).toSet)
     , oFilterMode = Some(this.params.filterMode)
     , oFilterValue = Some(this.params.filterValue.toSet)
+    , windowSize = Some(this.windowSize)
   )
   
   def transform(facts:HashMap[Int, HashMap[Int, Int]]
@@ -99,7 +100,7 @@ case class ClassifierNode (
                 bestSum = Some(vSum)
               }
               (i, score)
-            }.takeWhile{case (i, score) => i < iPos + 2 || i < bestTo + 2}
+            }.takeWhile{case (i, score) => i < iPos + windowSize || i < bestTo + windowSize}
             .size
             sum = bestSum
         } else { //contracting the left side window
@@ -136,7 +137,7 @@ case class ClassifierNode (
   }
 
   def fit(spark:SparkSession, excludedNodes:Seq[Node]) = {
-    l.msg("start  classifier fitting models")
+    l.msg(s"start  classifier fitting models for windowSize ${this.windowSize}")
     this.models.clear
     val thisPoints = this.points.filter(_ != null)
     val thisClasses = (c:Int) => 
@@ -164,7 +165,7 @@ case class ClassifierNode (
       )
 
     val otherPointsOut = getPoints(excludedNodes, true, false).map{case (v, inRel) => (v)}.toSeq
-    val otherChildrenPoints = getPoints(this.children, true, true).toSeq
+    val otherChildrenPoints = Iterator[(MLVector, Boolean)]() //getPoints(this.children, true, true).toSeq
     for(c <- this.outClasses) {
       this.models(c) = 
         WrappedClassifier(

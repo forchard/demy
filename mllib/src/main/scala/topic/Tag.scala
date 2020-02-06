@@ -199,6 +199,7 @@ case class ClassifierTagSource(
   , var outTags: Option[Set[Int]]
   , var oFilterMode:Option[FilterMode]=None
   , var oFilterValue:Option[Set[Int]]=None
+  , var windowSize:Option[Int]=None
 ) extends TagSource {
   assert(!TagOperation.fullOperations(this.operation) || (!inTag.isEmpty && !name.isEmpty && !outTags.isEmpty))
   def filterMode = this.oFilterMode.getOrElse(FilterMode.anyIn)
@@ -221,6 +222,7 @@ case class ClassifierTagSource(
      , hits = 0.0
      , children = ArrayBuffer(children:_*)
      , strClassPath = classPath.map(p => (p._1.toString, p._2))
+     , windowSize = windowSize
    )
   def addFilter(toAdd:Set[Int]) = {
     this.oFilterValue =  Some(this.filterValue ++ toAdd)

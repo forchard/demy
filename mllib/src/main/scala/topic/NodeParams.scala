@@ -30,6 +30,7 @@ case class NodeParams(
   , var filterMode:FilterMode = FilterMode.noFilter
   , filterValue:ArrayBuffer[Int] = ArrayBuffer[Int]()
   , maxTopWords:Option[Int]=None
+  , windowSize:Option[Int]=None
   , classCenters:Option[Map[String, Int]]=None
   , var cError: Option[Array[Double]]=None
   , childSplitSize: Option[Int] = None
@@ -73,6 +74,7 @@ case class NodeParams(
             case None => filterValue.clone
         }
         , maxTopWords = this.maxTopWords
+        , windowSize = this.windowSize
         , classCenters = classMapping match {
             case Some(classMap) => this.classCenters.map(cCenters => cCenters.map{ case(outClass, center) => (classMap(outClass.toInt).toString, center)})
             case None => classCenters

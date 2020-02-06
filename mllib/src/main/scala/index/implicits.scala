@@ -43,7 +43,7 @@ object implicits {
       
       //Building index if does not exists ou if it is not to be reused
       if(!exists || !reuseExistingIndex) {
-        ds.index(
+        right.index(
           indexPath = indexPath
           , fields = rightSelect
           , text = text

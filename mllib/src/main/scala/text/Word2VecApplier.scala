@@ -100,6 +100,7 @@ class Word2VecApplier(override val uid: String) extends Transformer with HasExec
       val vectorsDF = vectorsDS
         .filter(p => p match {case (token, vector) => !stop.value.contains(token)})
         .toDF("__token__", vectorColName)
+
       val ret = 
         (get(repartitionCount) match { 
           case Some(numRep) => dataset.repartition(numRep) 

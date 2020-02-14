@@ -6,7 +6,7 @@ import org.apache.spark.ml.classification.{LinearSVC, LinearSVCModel}
 import java.lang.reflect.Method
 import scala.{Iterator => It}
 
-case class WrappedClassifier(model:LinearSVCModel) { 
+case class WrappedClassifier(model:LinearSVCModel) {
   val rawPredictMethod = {
     val m = model.getClass.getDeclaredMethod("predictRaw", classOf[MLVector])
     m.setAccessible(true)
@@ -21,7 +21,7 @@ case class WrappedClassifier(model:LinearSVCModel) {
   def score(vector:MLVector) = {
     val scores = this.rawPredictMethod.invoke(this.model, vector).asInstanceOf[MLVector]
     val (yes, no) = (scores(1), scores(0))
-    
+
     if(no>=0 && yes>=0) yes/(no + yes)
     else if(no>=0 && yes<=0) 0.5 - Math.atan(no-yes)/Math.PI
     else if(no<=0 && yes>=0) 0.5 + Math.atan(yes-no)/Math.PI
@@ -29,15 +29,18 @@ case class WrappedClassifier(model:LinearSVCModel) {
   }
   def predict(vector:MLVector) = {
     this.predictMethod.invoke(this.model, vector).asInstanceOf[Double]
-  } 
+  }
+  def getMetrics() = {
+
+  }
 }
 
 object WrappedClassifier {
   def apply(forClass:Int, points:Seq[MLVector], pClasses:Seq[Int], spark:SparkSession):WrappedClassifier = {
     import spark.implicits._
     var (count0, count1) = (0, 0)
-    val training = 
-      (for(i <- It.range(0, points.size)) 
+    val training =
+      (for(i <- It.range(0, points.size))
         yield {
           (points(i)
             , if(pClasses(i)==forClass) {

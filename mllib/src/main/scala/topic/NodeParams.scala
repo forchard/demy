@@ -36,6 +36,7 @@ case class NodeParams(
   , childSplitSize: Option[Int] = None
   , children: ArrayBuffer[Int] = ArrayBuffer[Int]()
   , var hits:Double = 0
+  , var metrics:Map[String, Double] = Map[String, Double]()
 ) {
   def toNode(others:ArrayBuffer[NodeParams]= ArrayBuffer[NodeParams](), vectorIndex:Option[VectorIndex]= None):Node = {
    val n =
@@ -70,7 +71,7 @@ case class NodeParams(
         , names = this.names
         , filterMode = this.filterMode
         , filterValue = classMapping match {
-            case Some(classMap) => this.filterValue.map(c => classMap.get(c).getOrElse(c)) 
+            case Some(classMap) => this.filterValue.map(c => classMap.get(c).getOrElse(c))
             case None => filterValue.clone
         }
         , maxTopWords = this.maxTopWords
@@ -82,6 +83,7 @@ case class NodeParams(
         , childSplitSize = this.childSplitSize
         , children = if(unFit) ArrayBuffer[Int]() else this.children.clone
         , hits = if(unFit) 0.0 else  this.hits
+        , metrics = if(unFit) Map[String, Double]() else this.metrics
       ))
     }
   }
@@ -106,7 +108,7 @@ object NodeParams {
     val text = from.getContentAsString
     mapper.readValue[ArrayBuffer[NodeParams]](text)
  }
-  
+
 }
 case class ClassAlgorithm(value:String)
 object ClassAlgorithm {
@@ -121,4 +123,3 @@ object FilterMode {
   val anyIn = FilterMode("anyIn")
   val bestScore = FilterMode("bestScore")
 }
-

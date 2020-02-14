@@ -9,6 +9,7 @@ import demy.util.{log => l}
 import demy.mllib.linalg.implicits._
 import demy.mllib.index.{CachedIndex}
 import demy.storage.{FSNode, WriteMode}
+import demy.mllib.evaluation.BinaryMetrics
 import org.apache.spark.ml.linalg.{Vector => MLVector, Vectors}
 import org.apache.spark.sql.{SparkSession}
 import org.apache.commons.io.IOUtils
@@ -16,8 +17,12 @@ import scala.collection.mutable.{ArrayBuffer, HashSet, HashMap}
 import scala.{Iterator => It}
 import java.io.{ByteArrayOutputStream, ObjectOutputStream}
 import java.io.{ObjectInputStream,ByteArrayInputStream}
+import java.sql.Timestamp
 
 
+/**
+links : says which class is transformed to which , type Map[Int, Set[Int]]
+*/
 trait Node{
   val params:NodeParams
   val points:ArrayBuffer[MLVector]
@@ -60,7 +65,7 @@ trait Node{
   def prettyPrintExtras(level:Int = 0, buffer:ArrayBuffer[String]=ArrayBuffer[String](), stopLevel:Int = -1):ArrayBuffer[String]
   def encodeExtras(encoder:EncodedNode)
   def mergeWith(that:Node, cGenerator:Iterator[Int], fit:Boolean):this.type
-  
+
   def transform(facts:HashMap[Int, HashMap[Int, Int]]
     , scores:HashMap[Int, Double]
     , vectors:Seq[MLVector]
@@ -68,17 +73,17 @@ trait Node{
     , parent:Option[Node]
     , cGeneratror:Iterator[Int]
     , fit:Boolean)
-  
+
   def walk(facts:HashMap[Int, HashMap[Int, Int]], scores:HashMap[Int, Double], vectors:Seq[MLVector], tokens:Seq[String], parent:Option[Node], cGenerator:Iterator[Int], fit:Boolean) {
     this.params.hits = this.params.hits + 1
     transform(facts, scores, vectors, tokens, parent, cGenerator, fit)
     val order = Seq.range(0, this.children.size)
-      .sortWith((a, b) => 
-        if(this.children(a).params.algo == this.children(b).params.algo) 
-          a < b 
-        else if(this.children(a).params.algo == ClassAlgorithm.clustering) 
+      .sortWith((a, b) =>
+        if(this.children(a).params.algo == this.children(b).params.algo)
+          a < b
+        else if(this.children(a).params.algo == ClassAlgorithm.clustering)
           false
-        else 
+        else
           true
       )
 
@@ -92,7 +97,7 @@ trait Node{
         || (this.children(i).params.filterMode == FilterMode.anyIn && factClasses.intersect(negIn).isEmpty && !factClasses.intersect(posIn).isEmpty)
         || (this.children(i).params.filterMode == FilterMode.bestScore && {throw new Exception("best Score not supported anymore")})
       ){
-        this.children(i).walk(facts, scores, vectors, tokens, Some(this), cGenerator, fit) 
+        this.children(i).walk(facts, scores, vectors, tokens, Some(this), cGenerator, fit)
       }
     }
   }
@@ -108,10 +113,22 @@ trait Node{
     this match {
       case n:AnalogyNode => n.fit(spark)
       case n:ClassifierNode => n.fit(spark, excludedNodes)
-      case _ => 0
+      case _ =>
     }
     this.children.zipWithIndex.foreach{case (n, i) => n.fitClassifiers(spark, excludedNodes ++ this.children.zipWithIndex.flatMap{case(n , j) => if(i == j) None else Some(n)})}
   }
+  def evaluateClassifiers(spark:SparkSession, annotations:Seq[AnnotationSource], index:Option[VectorIndex],excludedNodes:Seq[Node] = Seq[Node]()) : ArrayBuffer[PerformanceReport] = { // excludeNodes added automatically
+    var metrics:ArrayBuffer[PerformanceReport] = ArrayBuffer.empty[PerformanceReport]
+    this match {
+      case n:ClassifierNode => {metrics ++= n.evaluateMetrics(index, annotations, spark, excludedNodes)}
+      case _ =>
+    }
+    metrics ++= this.children.zipWithIndex.flatMap{
+      case (n, i) => n.evaluateClassifiers(spark, annotations, index, excludedNodes ++ this.children.zipWithIndex.flatMap{case(n , j) => if(i == j) None else Some(n)})
+    }
+    return metrics
+  }
+
   def nodesIterator:Iterator[Node] = {
     It(this) ++ (for{i <- It.range(0, this.children.size)} yield this.children(i).nodesIterator).reduceOption(_ ++ _).getOrElse(It[Node]())
   }

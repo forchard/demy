@@ -20,9 +20,21 @@ import java.io.{ObjectInputStream,ByteArrayInputStream}
 import java.sql.Timestamp
 
 
-/**
-links : says which class is transformed to which , type Map[Int, Set[Int]]
-*/
+/** Abstract class Node
+
+ * @param params @tparam NodeParams parameters specific to the Node
+ * @param points @tparam ArrayBuffer[MLVector] Word vectors
+ * @param children @tparam ArrayBuffer[Node] Node children to this Node
+ * @param links @tparam Map[Int, Set[Int]] Shows which class is transformed to which other class
+ * @param classPath @tparam Map[Int, Set[Int]]
+ * @param sequences
+ * @param outClasses @tparam Set[Int] Out classes for this node
+ * @param rel
+ * @param inRel
+ * @param inClasses
+ * @param linkPairs
+ * @param inMap 
+ */
 trait Node{
   val params:NodeParams
   val points:ArrayBuffer[MLVector]

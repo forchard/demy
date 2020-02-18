@@ -255,14 +255,20 @@ case class ClassifierNode (
                                   s"recall${if(this.outClasses.size > 1) s"_$c" else ""}" ->  metrics.recall.getOrElse(0.0),
                                   s"f1${if(this.outClasses.size > 1) s"_$c" else ""}" ->  metrics.f1Score.getOrElse(0.0),
                                   s"AUC${if(this.outClasses.size > 1) s"_$c" else ""}" ->  metrics.areaUnderROC.getOrElse(0.0),
+                                  s"accuracy${if(this.outClasses.size > 1) s"_$c" else ""}" ->  metrics.accuracy.getOrElse(0.0),
+                                  s"pValue${if(this.outClasses.size > 1) s"_$c" else ""}" ->  metrics.pValue.getOrElse(0.0),
                                   s"threshold${if(this.outClasses.size > 1) s"_$c" else ""}" -> metrics.threshold.getOrElse(0.0)
                                 )
-        // TODO: check how to evaluate on multiclass case, return macro, micro, weighted measures ?
+        this.params.rocCurve ++ Map(s"rocCurve${if(this.outClasses.size > 1) s"_$c" else ""}" -> metrics.rocCurve)
+
         output += PerformanceReport(metrics.threshold
                                   , metrics.precision
                                   , metrics.recall
                                   , metrics.f1Score
                                   , metrics.areaUnderROC
+                                  , metrics.rocCurve
+                                  , metrics.accuracy
+                                  , metrics.pValue
                                   , this.params.name
                                   , this.params.tagId
                                   , c
@@ -311,6 +317,9 @@ case class PerformanceReport(
   , recall:Option[Double]=None
   , f1Score:Option[Double]=None
   , areaUnderROC:Option[Double]=None
+  , rocCurve:Array[(Double, Double)]=Array[(Double, Double)]()
+  , accuracy:Option[Double]=None
+  , pValue:Option[Double]=None
   , nodeName:String
   , tagId: Option[Int]
   , classId: Int

@@ -8,6 +8,7 @@ import org.apache.spark.ml.param.{Param, ParamMap}
 import org.apache.spark.ml.param.shared._
 import org.apache.spark.ml.attribute.AttributeGroup
 import org.apache.spark.ml.linalg.{Vector => MLVector, Vectors}
+import org.apache.spark.ml.stat.ChiSquareTest
 import org.apache.spark.mllib.evaluation.BinaryClassificationMetrics
 import org.apache.spark.sql.{Dataset, DataFrame}
 import org.apache.spark.sql.types._
@@ -73,7 +74,7 @@ class BinaryOptimalEvaluator(override val uid: String) extends Estimator[BinaryO
     val optimizeAs = getOrDefault(optimize)
     val optimalThreshold =
       if(optimizeAs.startsWith("precision:")) {
-        l.msg("optimizing precission")
+        l.msg("optimizing precision")
         val precLimit = optimizeAs.replace("precision:", "").toDouble
         precs
           .zip(recs)
@@ -117,8 +118,7 @@ class BinaryOptimalEvaluator(override val uid: String) extends Estimator[BinaryO
       }
       else {
         l.msg("optimizing f1")
-        val tt = f1s.reduce((p1, p2) => if(p1._2 > p2._2) p1 else p2)._1
-        tt
+        f1s.reduce((p1, p2) => if(p1._2 > p2._2) p1 else p2)._1
       }
 
     val basePrecision = Some(
@@ -165,7 +165,7 @@ class BinaryOptimalEvaluator(override val uid: String) extends Estimator[BinaryO
           case _ => None
         }
     val areaUnderROC = Some(binMetrics.areaUnderROC())
-    val rocCourve = binMetrics.roc().collect
+    val rocCurve = binMetrics.roc().collect
 
     val (tp, tn, fp, fn) =
       toEvaluate
@@ -182,9 +182,23 @@ class BinaryOptimalEvaluator(override val uid: String) extends Estimator[BinaryO
         })
 
 
+//    println("tp: "+tp+", tn: "+tn+", fp: "+fp+", fn: "+fn)
+    val accuracy = (tp+tn) / (tp+tn+fp+fn)
+
+    val df = dataset.sparkSession.createDataFrame(toEvaluate
+                                    .map(p => p match { case (score, label) =>
+                                      if (score >= optimalThreshold) (Vectors.dense(1.0), label) else (Vectors.dense(0.0), label)
+                                  }))
+                    .toDF("prediction","true")
+//    println(df.show())
+    val chi2 = ChiSquareTest.test(df, "prediction", "true").head
+    val pValue = chi2.getAs[MLVector](0).toArray
+
+
     val metrics = BinaryMetrics(threshold=Some(optimalThreshold), tp = Some(tp), tn=Some(tn), fp=Some(fp), fn=Some(fn)
                           , basePrecision=basePrecision, precision=precision, baseRecall=baseRecall, recall=recall, baseF1Score=baseF1Score
-                          , f1Score=f1Score, areaUnderROC=areaUnderROC, rocCourve=rocCourve)
+                          , f1Score=f1Score, areaUnderROC=areaUnderROC, rocCurve=rocCurve
+                          , accuracy = Some(accuracy), pValue = Some(pValue(0)))
 
     copyValues(new BinaryOptimalEvaluatorModel(uid, metrics).setParent(this))
   }

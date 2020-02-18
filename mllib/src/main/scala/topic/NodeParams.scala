@@ -17,7 +17,27 @@ import scala.{Iterator => It}
 import java.io.{ByteArrayOutputStream, ObjectOutputStream}
 import java.io.{ObjectInputStream,ByteArrayInputStream}
 
-
+/** Parameters for node
+ *
+ * @param name @tparam String Node name
+ * @param tagId @tparam Option[Int] Node tag id
+ * @param color @tparam Option[String] Node color
+ * @param annotations @tparam ArrayBuffer[Annotation] Node annotations
+ * @param algo @tparam ClassAlgorithm Node classifier algorithm
+ * @param strLinks @tparam Map[String, Set[Int]] Maps inclasses to outclasses
+ * @param strClassPath @tparam Map[String, Set[Int]]
+ * @param names @tparam Map[String, Int]
+ * @param filterMode @tparam FilterMode Defines the mode how sentences are processed in this node
+ * @param filterValue @tparam ArrayBuffer[Int] Defines what sentences go through this Node
+ * @param maxTopWords
+ * @param windowSize
+ * @param classCenters
+ * @param cError
+ * @param childSplitSize
+ * @param children
+ * @param hits
+ * @param metrics
+ */
 case class NodeParams(
   name:String
   , tagId:Option[Int] = None
@@ -37,6 +57,7 @@ case class NodeParams(
   , children: ArrayBuffer[Int] = ArrayBuffer[Int]()
   , var hits:Double = 0
   , var metrics:Map[String, Double] = Map[String, Double]()
+  , var rocCurve:Map[String, Array[(Double,Double)]] = Map[String, Array[(Double,Double)]]()
 ) {
   def toNode(others:ArrayBuffer[NodeParams]= ArrayBuffer[NodeParams](), vectorIndex:Option[VectorIndex]= None):Node = {
    val n =

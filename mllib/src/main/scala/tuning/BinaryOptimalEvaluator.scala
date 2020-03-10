@@ -6,8 +6,9 @@ import org.apache.spark.ml.{Transformer, Estimator}
 import org.apache.spark.ml.util.Identifiable
 import org.apache.spark.ml.param.{Param, ParamMap}
 import org.apache.spark.ml.param.shared._
-import org.apache.spark.ml.attribute.AttributeGroup 
+import org.apache.spark.ml.attribute.AttributeGroup
 import org.apache.spark.ml.linalg.{Vector => MLVector, Vectors}
+import org.apache.spark.ml.stat.ChiSquareTest
 import org.apache.spark.mllib.evaluation.BinaryClassificationMetrics
 import org.apache.spark.sql.{Dataset, DataFrame}
 import org.apache.spark.sql.types._
@@ -40,29 +41,29 @@ class BinaryOptimalEvaluator(override val uid: String) extends Estimator[BinaryO
       case IntegerType =>  udf((label:Int)=> Vectors.dense(label.toDouble))
       case DoubleType =>  udf((label:Double)=> Vectors.dense(label))
       case FloatType =>  udf((label:Double)=> Vectors.dense(label))
-      case _ => udf((label:MLVector) => label) 
+      case _ => udf((label:MLVector) => label)
     }).apply(col(getOrDefault(labelCol)).as(getOrDefault(labelCol)))
 
     val scoreType = dataset.select(getOrDefault(scoreCol)).schema.fields(0).dataType
     val scoreExp = (scoreType match {
       case DoubleType =>  udf((score:Double)=> Vectors.dense(score))
       case FloatType =>  udf((score:Double)=> Vectors.dense(score))
-      case _ => udf((score:MLVector) => score) 
+      case _ => udf((score:MLVector) => score)
     }).apply(col(getOrDefault(scoreCol)).as(getOrDefault(scoreCol)))
     val toEvaluate = dataset.select(scoreExp, labelExp).as[(MLVector,MLVector)]
                             .flatMap(p => p match {case (scores, labels) => scores.toArray.zip(labels.toArray)})
                             .rdd.persist(StorageLevel.MEMORY_AND_DISK)
 
     val binMetrics = get(bins) match {
-      case Some(f) => new BinaryClassificationMetrics(toEvaluate, f) 
+      case Some(f) => new BinaryClassificationMetrics(toEvaluate, f)
       case _ => new BinaryClassificationMetrics(toEvaluate)
     }
-    
-    val midThreshold = 
+
+    val midThreshold =
       binMetrics
         .thresholds
-        .reduce((t1, t2) => if(t1 < 0.5 && t2 < 0.5) {if(t1>t2) t1 else t2} 
-          else if (t1 < 0.5 && t2 >=0.5) t2  
+        .reduce((t1, t2) => if(t1 < 0.5 && t2 < 0.5) {if(t1>t2) t1 else t2}
+          else if (t1 < 0.5 && t2 >=0.5) t2
           else if (t1 >= 0.5 && t2 < 0.5) t1
           else /*t1>=0.5 && t2>=0.5*/ {if(t1<t2) t1 else t2}
         )
@@ -71,17 +72,17 @@ class BinaryOptimalEvaluator(override val uid: String) extends Estimator[BinaryO
     val precs = binMetrics.precisionByThreshold()
     val recs = binMetrics.recallByThreshold()
     val optimizeAs = getOrDefault(optimize)
-    val optimalThreshold = 
+    val optimalThreshold =
       if(optimizeAs.startsWith("precision:")) {
-        l.msg("optimizing precission")
+        l.msg("optimizing precision")
         val precLimit = optimizeAs.replace("precision:", "").toDouble
         precs
           .zip(recs)
-          .reduce((p1, p2) => (p1, p2) match { 
-            case (((thres1, prec1),(_, rec1)), ((thres2, prec2), (_, rec2))) => 
+          .reduce((p1, p2) => (p1, p2) match {
+            case (((thres1, prec1),(_, rec1)), ((thres2, prec2), (_, rec2))) =>
               if(prec1 >= precLimit && prec2 >= precLimit) {
-                if(rec1 > rec2) ((thres1, prec1), (thres1, rec1)) 
-                else ((thres2, prec2), (thres2, rec2)) 
+                if(rec1 > rec2) ((thres1, prec1), (thres1, rec1))
+                else ((thres2, prec2), (thres2, rec2))
               }
               else if(prec1 >= precLimit) ((thres1, prec1), (thres1, rec1))
               else if(prec2 >= precLimit) ((thres2, prec2), (thres2, rec2))
@@ -94,8 +95,8 @@ class BinaryOptimalEvaluator(override val uid: String) extends Estimator[BinaryO
         val recLimit = optimizeAs.replace("recall:", "").toDouble
         precs
           .zip(recs)
-          .reduce((p1, p2) => (p1, p2) match { 
-            case (((thres1, prec1),(_, rec1)), ((thres2, prec2), (_, rec2))) => 
+          .reduce((p1, p2) => (p1, p2) match {
+            case (((thres1, prec1),(_, rec1)), ((thres2, prec2), (_, rec2))) =>
              if(rec1 >= recLimit && rec2 >= recLimit) {if(prec1 > prec2) ((thres1, prec1), (thres1, rec1)) else ((thres2, prec2), (thres2, rec2)) }
              else if(rec1 >= recLimit) ((thres1, prec1), (thres1, rec1))
              else if(rec2 >= recLimit) ((thres2, prec2), (thres2, rec2))
@@ -109,7 +110,7 @@ class BinaryOptimalEvaluator(override val uid: String) extends Estimator[BinaryO
         precs
           .zip(recs)
           .reduce((p1, p2) => (p1, p2) match {
-            case (((thres1, prec1),(_, rec1)), ((thres2, prec2), (_, rec2))) => 
+            case (((thres1, prec1),(_, rec1)), ((thres2, prec2), (_, rec2))) =>
              if(Math.abs(prec1/rec1-ratioLimit) <= Math.abs(prec2/rec2-ratioLimit)) ((thres1, prec1), (thres1, rec1))
              else ((thres2, prec2), (thres2, rec2))
            })
@@ -119,19 +120,19 @@ class BinaryOptimalEvaluator(override val uid: String) extends Estimator[BinaryO
         l.msg("optimizing f1")
         f1s.reduce((p1, p2) => if(p1._2 > p2._2) p1 else p2)._1
       }
-    
+
     val basePrecision = Some(
       precs
         .filter(p => p._1 == midThreshold)
         .map(p => p._2)
         .first
       )
-    val precision = 
+    val precision =
       precs
         .filter(p => p._1 == optimalThreshold)
         .map(p => p._2)
         .take(1) match {
-          case Array(v) => Some(v) 
+          case Array(v) => Some(v)
           case _ => None
         }
     val baseRecall = Some(
@@ -140,12 +141,12 @@ class BinaryOptimalEvaluator(override val uid: String) extends Estimator[BinaryO
         .map(p => p._2)
         .first
       )
-    val recall = 
+    val recall =
       recs
         .filter(p => p._1 == optimalThreshold)
         .map(p => p._2)
         .take(1) match {
-          case Array(v) => Some(v) 
+          case Array(v) => Some(v)
           case _ => None
         }
     val baseF1Score = Some(
@@ -155,20 +156,20 @@ class BinaryOptimalEvaluator(override val uid: String) extends Estimator[BinaryO
         .first
       )
 
-    val f1Score = 
+    val f1Score =
       f1s
         .filter(p => p._1 == optimalThreshold)
         .map(p => p._2)
         .take(1) match {
-          case Array(v) => Some(v) 
+          case Array(v) => Some(v)
           case _ => None
         }
     val areaUnderROC = Some(binMetrics.areaUnderROC())
-    val rocCourve = binMetrics.roc().collect
+    val rocCurve = binMetrics.roc().collect
 
-    val (tp, tn, fp, fn) = 
+    val (tp, tn, fp, fn) =
       toEvaluate
-        .map(p => p match { case (score, label) => 
+        .map(p => p match { case (score, label) =>
           ( if(label==1 && score >= optimalThreshold) 1 else 0
              ,if(label==0 && score < optimalThreshold) 1 else 0
              ,if(label==0 && score >= optimalThreshold) 1 else 0
@@ -176,19 +177,33 @@ class BinaryOptimalEvaluator(override val uid: String) extends Estimator[BinaryO
           )
         })
         .reduce((p1, p2) => (p1, p2) match {
-          case ((tp1, tn1, fp1, fn1),(tp2, tn2, fp2, fn2)) => 
+          case ((tp1, tn1, fp1, fn1),(tp2, tn2, fp2, fn2)) =>
             (tp1 + tp2, tn1 + tn2, fp1 + fp2, fn1 + fn2)
         })
-    
+
+
+//    println("tp: "+tp+", tn: "+tn+", fp: "+fp+", fn: "+fn)
+    val accuracy = (tp+tn) / (tp+tn+fp+fn)
+
+    val df = dataset.sparkSession.createDataFrame(toEvaluate
+                                    .map(p => p match { case (score, label) =>
+                                      if (score >= optimalThreshold) (Vectors.dense(1.0), label) else (Vectors.dense(0.0), label)
+                                  }))
+                    .toDF("prediction","true")
+//    println(df.show())
+    val chi2 = ChiSquareTest.test(df, "prediction", "true").head
+    val pValue = chi2.getAs[MLVector](0).toArray
+
 
     val metrics = BinaryMetrics(threshold=Some(optimalThreshold), tp = Some(tp), tn=Some(tn), fp=Some(fp), fn=Some(fn)
                           , basePrecision=basePrecision, precision=precision, baseRecall=baseRecall, recall=recall, baseF1Score=baseF1Score
-                          , f1Score=f1Score, areaUnderROC=areaUnderROC, rocCourve=rocCourve)
-  
+                          , f1Score=f1Score, areaUnderROC=areaUnderROC, rocCurve=rocCurve
+                          , accuracy = Some(accuracy), pValue = Some(pValue(0)))
+
     copyValues(new BinaryOptimalEvaluatorModel(uid, metrics).setParent(this))
   }
   override def transformSchema(schema: StructType): StructType = validateAndTransformSchema(schema)
-  def copy(extra: ParamMap): this.type = {defaultCopy(extra)}    
+  def copy(extra: ParamMap): this.type = {defaultCopy(extra)}
   def this() = this(Identifiable.randomUID("BinaryEvaluator"))
 };class BinaryOptimalEvaluatorModel(override val uid: String, val metrics:BinaryMetrics) extends org.apache.spark.ml.Model[BinaryOptimalEvaluatorModel] with BinaryOptimalEvaluatorBase with HasBinaryMetrics{
     override def transform(dataset: Dataset[_]): DataFrame = {
@@ -197,7 +212,7 @@ class BinaryOptimalEvaluator(override val uid: String) extends Estimator[BinaryO
         }).apply(col(getOrDefault(scoreCol)), lit(metrics.threshold.get)))
     }
     override def transformSchema(schema: StructType): StructType = schema
-    def copy(extra: ParamMap): this.type = {defaultCopy(extra)}    
+    def copy(extra: ParamMap): this.type = {defaultCopy(extra)}
     def this() = this(Identifiable.randomUID("BinaryOptimalEvaluatorModel"), null)
 };object BinaryOptimalEvaluatorModel {
 }

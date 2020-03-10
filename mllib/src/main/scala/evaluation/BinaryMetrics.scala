@@ -12,9 +12,10 @@ case class BinaryMetrics(
   , basePrecision:Option[Double]=None, precision:Option[Double]=None
   , baseRecall:Option[Double]=None, recall:Option[Double]=None
   , baseF1Score:Option[Double], f1Score:Option[Double]=None
-  , areaUnderROC:Option[Double]=None, rocCourve:Array[(Double, Double)]=Array[(Double, Double)]()
+  , areaUnderROC:Option[Double]=None, rocCurve:Array[(Double, Double)]=Array[(Double, Double)]()
+  , accuracy:Option[Double]=None, pValue:Option[Double]=None
 ) {
-  lazy val report = 
+  lazy val report =
     s"""
     threshold: ${threshold}
     tp: ${tp}
@@ -28,6 +29,8 @@ case class BinaryMetrics(
     baseF1: ${baseF1Score}
     F1: ${f1Score}
     areaUnderROC: ${areaUnderROC}
+    accuracy: ${accuracy}
+    pValue: ${pValue}
   """
 }
 trait HasBinaryMetrics {

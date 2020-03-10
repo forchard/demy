@@ -7,18 +7,17 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.commons.lang.RandomStringUtils
 import org.apache.commons.io.IOUtils
 
-import java.io.{InputStream, ByteArrayInputStream}
+import java.io.{InputStream, ByteArrayInputStream, OutputStream, OutputStreamWriter}
 import java.util.ArrayDeque
 import java.nio.file.{Files, Paths, Path => LPath}
-import java.nio.file.StandardCopyOption
+import java.nio.file.{StandardCopyOption,StandardOpenOption }
 import java.nio.charset.StandardCharsets
 import scala.collection.JavaConverters._
-
 case class WriteMode(name:String) {
 } 
 object WriteMode {
   object overwrite extends WriteMode("overwrite")
-  object ignoreIfExists extends WriteMode("ognoreIfExists")
+  object ignoreIfExists extends WriteMode("ignoreIfExists")
   object failIfExists extends WriteMode("failIfExists")
 }
 
@@ -40,7 +39,7 @@ trait FSNode {
   def getContent = storage.getContent(this)
   def getContentAsString = storage.getContentAsString(this)
   def getContentAsJson = storage.getContentAsJson(this)
-  def list = storage.list(this)
+  def list(recursive:Boolean = false) = storage.list(this, recursive)
   def move(to:FSNode, writeMode:WriteMode) = {this.storage.move(this, to, writeMode)}
   def setContent(content:InputStream, writeMode:WriteMode) = {this.storage.setContent(this, content, writeMode);this}
   def setContent(content:InputStream) = {this.storage.setContent(this, content, WriteMode.failIfExists);this}
@@ -50,6 +49,8 @@ trait FSNode {
     storage.getFileModificationTime(
       path = if(this.path!=null) Some(this.path) else throw new Exception("getModificationTime requires a non empty hash")
       , attrPattern=Map[String, String]())
+  def getWriter(writeMode:WriteMode) = storage.getWriter(this, writeMode)
+  def getTextWriter(writerMode:WriteMode, charsetName:String) = this.storage.getTextWriter(this, writerMode, charsetName)
 }
 
 case class LocalNode(path:String, storage:LocalStorage, sparkCanRead:Boolean, attrs:Map[String, String]= Map[String, String]()) extends FSNode{
@@ -102,14 +103,14 @@ trait Storage {
   }
   def getContent(node:FSNode):InputStream
   def getContentAsString(node:FSNode) = {
-    val s = new java.util.Scanner(this.getContent(node)).useDelimiter("\\A") 
+    val s = new java.util.Scanner(this.getContent(node), "UTF-8").useDelimiter("\\A") 
     if(s.hasNext())  s.next()
     else "";
   }
   def getContentAsJson(node:FSNode) = scala.util.parsing.json.JSON.parseFull(getContentAsString(node))
   
   def setContent(node:FSNode, data:InputStream, writeMode:WriteMode = WriteMode.failIfExists)
-  def list(node:FSNode):Seq[FSNode]
+  def list(node:FSNode, recursive:Boolean):Seq[FSNode]
   def last(path:Option[String], attrPattern:Map[String, String]):Option[FSNode]
   def getNode(path:String, attrs:Map[String, String]=Map[String, String]()):FSNode
   val tmpFiles:ArrayDeque[FSNode]= new ArrayDeque[FSNode]()
@@ -176,6 +177,8 @@ trait Storage {
       } 
     }
   }
+  def getWriter(node:FSNode, writeMode:WriteMode):OutputStream
+  def getTextWriter(node:FSNode, writerMode:WriteMode, charsetName:String) = new OutputStreamWriter(this.getWriter(node, writerMode), charsetName)
 
 }
 
@@ -240,7 +243,7 @@ case class LocalStorage(override val sparkCanRead:Boolean=false, override val tm
                             case WriteMode.ignoreIfExists => if(!this.exists(node)) Files.copy(data, lNode.jPath)
                             case WriteMode.failIfExists => Files.copy(data, lNode.jPath)  
                           } 
-                      case _ => throw new Exception(s"HDFS Storage cannot manage ${node.getClass.getName} nodes")
+                      case _ => throw new Exception(s"Local Storage cannot manage ${node.getClass.getName} nodes")
        }
   def last(path:Option[String], attrPattern:Map[String, String] = Map[String, String]())  = {
     val it = this.getNode(path = path.getOrElse("/")) match { 
@@ -264,14 +267,23 @@ case class LocalStorage(override val sparkCanRead:Boolean=false, override val tm
     }
     lastFile
   }
-  def list(node:FSNode)  = 
+  def list(node:FSNode, recursive:Boolean = false)  = 
      node match { 
        case lNode:LocalNode => 
-         (if(Files.isDirectory(lNode.jPath)) 
-              Files.list(lNode.jPath).iterator().asScala
+         Some(if(Files.isDirectory(lNode.jPath)) 
+              Files.list(lNode.jPath)
+                .iterator()
+                .asScala
+                .map(cPath => LocalNode(path = cPath.toAbsolutePath().toString(), storage=lNode.storage, sparkCanRead = this.sparkCanRead))
+                .toSeq
           else 
-            Seq(lNode.jPath)
-         ).toSeq.map{ cPath => LocalNode(path = cPath.toAbsolutePath().toString(), storage=lNode.storage, sparkCanRead = this.sparkCanRead)}
+            Seq(LocalNode(path = lNode.jPath.toAbsolutePath().toString(), storage=lNode.storage, sparkCanRead = this.sparkCanRead))
+         )
+         .map(children => 
+           if(!recursive) children
+           else children ++ children.filter(_.isDirectory).flatMap(c => this.list(c, recursive))
+         )
+         .get
        case _ => throw new Exception(s"Local Storage cannot manage ${node.getClass.getName} nodes")
     }
   def getNode(path:String, attrs:Map[String, String]=Map[String, String]()):FSNode
@@ -302,6 +314,15 @@ case class LocalStorage(override val sparkCanRead:Boolean=false, override val tm
             
         }
     }
+  def getWriter(node:FSNode, writeMode:WriteMode)= node match { 
+    case lNode:LocalNode => 
+      writeMode match {
+        case WriteMode.overwrite => Files.newOutputStream(lNode.jPath, if(this.exists(node)) StandardOpenOption.TRUNCATE_EXISTING else StandardOpenOption.CREATE)
+        case WriteMode.ignoreIfExists => if(!this.exists(node)) Files.newOutputStream(lNode.jPath) else null
+        case WriteMode.failIfExists => Files.newOutputStream(lNode.jPath)  
+      } 
+     case _ => throw new Exception(s"Local Storage cannot manage ${node.getClass.getName} nodes")
+  }
 }
 
 case class EpiFileStorage(vooUrl:String, user:String, pwd:String) extends Storage {
@@ -346,7 +367,7 @@ case class EpiFileStorage(vooUrl:String, user:String, pwd:String) extends Storag
                       }
                       case _ => throw new Exception(s"HDFS Storage cannot manage ${node.getClass.getName} nodes")
        }
-  def list(node:FSNode)  = throw new Exception("Not implemented")
+  def list(node:FSNode, recursive:Boolean)  = throw new Exception("Not implemented")
   def last(path:Option[String], attrPattern:Map[String, String] = Map[String, String]()) = {
      val commentPattern = attrPattern.get("comment")
      val namePattern = attrPattern.get("name")
@@ -360,6 +381,7 @@ case class EpiFileStorage(vooUrl:String, user:String, pwd:String) extends Storag
        = EpiFileNode(path = path, storage = this, attrs=attrs)
   def ensurePathExists(path:String) = throw new Exception("Not implemented")
   def getFileModificationTime(path:Option[String], attrPattern:Map[String, String]) = last(path = path, attrPattern = attrPattern) match {case Some(n) => Some(n.attrs("date").toLong) case _ => None }
+  def getWriter(node:FSNode, writeMode:WriteMode) = throw new Exception("Not implemented")
 }
 case class HDFSStorage(hadoopConf:Configuration, override val tmpPrefix:String="demy_") extends Storage {
   override val protocol:String="hdfs"
@@ -432,9 +454,19 @@ case class HDFSStorage(hadoopConf:Configuration, override val tmpPrefix:String="
     }
     lastFile
   }
-  def list(node:FSNode)  =
-        node match { case hNode:HDFSNode => fs.listStatus(hNode.hPath).map(st => this.getNode(path = st.getPath.toString)).toSeq
-                      case _ => throw new Exception(s"HDFS Storage cannot manage ${node.getClass.getName} nodes")
+  def list(node:FSNode, recursive:Boolean = false)  =
+        node match { 
+          case hNode:HDFSNode => 
+            fs.listStatus(hNode.hPath)
+              .map(st => this.getNode(path = st.getPath.toString))
+              .toSeq
+              .flatMap{ node => 
+                if(node.isDirectory && recursive)
+                  this.list(node, recursive)
+                else
+                  Seq(node)
+              }
+          case _ => throw new Exception(s"HDFS Storage cannot manage ${node.getClass.getName} nodes")
        }
   def getNode(path:String, attrs:Map[String, String]=Map[String, String]()):FSNode
        = HDFSNode(path = path, storage = this, attrs=attrs)
@@ -470,5 +502,18 @@ case class HDFSStorage(hadoopConf:Configuration, override val tmpPrefix:String="
     }
     lastModified
   }
+  def getWriter(node:FSNode, writeMode:WriteMode)
+       = node match { 
+         case hNode:HDFSNode => {
+           val writer = writeMode match {
+             case WriteMode.overwrite => Some(fs.create(hNode.hPath, true))
+             case WriteMode.ignoreIfExists => if(!this.exists(node)) Some(fs.create(hNode.hPath)) else None
+             case WriteMode.failIfExists => Some(fs.create(hNode.hPath))
+           }
+           if(node.attrs.contains("replication")) fs.setReplication(hNode.hPath,node.attrs("replication").toShort)
+           writer.getOrElse(null)
+          }
+          case _ => throw new Exception(s"HDFS Storage cannot manage ${node.getClass.getName} nodes")
+       }
  
 }

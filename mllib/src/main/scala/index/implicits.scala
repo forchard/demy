@@ -148,7 +148,7 @@ object implicits {
       val sparkStorage = Storage.getSparkStorage
       val indexNode = sparkStorage.getNode(path = indexPath)
       val indexFiles =  
-        indexNode.list.toArray
+        indexNode.list().toArray
         .map{node => 
             SparkLuceneReader(indexPartition=node.path
               , reuseSnapShot = true

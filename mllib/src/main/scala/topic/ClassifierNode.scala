@@ -246,9 +246,8 @@ case class ClassifierNode (
       val negClasses = getDescendantClasses(excludedNodes).toSet // get all classes for brothers
       val currentAnnotationsPositive = allAnnotations.filter(a => posClasses(a.tag) && a.inRel)
       val currentAnnotationsNegative = allAnnotations.filter(a => (this.outClasses(a.tag) && !a.inRel) || (negClasses(a.tag)  && a.inRel)  )
-      val trainPos = r.shuffle(currentAnnotationsPositive).take((currentAnnotationsPositive.length*0.8).toInt).toSet
+      val trainPos = if (currentAnnotationsPositive.length == 1) currentAnnotationsPositive.toSet else r.shuffle(currentAnnotationsPositive).take((currentAnnotationsPositive.length*0.8).toInt).toSet
       val trainNeg = r.shuffle(currentAnnotationsNegative).take((currentAnnotationsNegative.length*0.8).toInt).toSet
-
       val train = r.shuffle(trainPos ++ trainNeg)
       val test = (r.shuffle(currentAnnotationsPositive.toSet -- trainPos) ++ (currentAnnotationsNegative.toSet -- trainNeg)).toList
       val newParams = this.params.cloneWith(None, true) match {
@@ -273,21 +272,21 @@ case class ClassifierNode (
       val trainPoints = trainNode.points.filter( _!= null)
       for(c <- this.outClasses) {
         // maybe hardcode 6 tweets to test
-        //   println("")
-        //   println("This Node: "+this.params.name)
-        //   println("posClasses:")
-        //   println(posClasses)
-        //   println("currentAnnotationsPositive:")
-        //   currentAnnotationsPositive.foreach(a => if(a.tokens.size < 5) println(a.tokens+"; tag: "+a.tag+"; inRel:"+a.inRel) else println(a.tokens.take(8)+"; tag: "+a.tag+"; inRel:"+a.inRel))
-        //   println("currentAnnotationsNegative:")
-        //   currentAnnotationsNegative.foreach(a => if(a.tokens.size < 5) println(a.tokens+"; tag: "+a.tag+"; inRel:"+a.inRel) else println(a.tokens.take(8)+"; tag: "+a.tag+"; inRel:"+a.inRel))
-        //   println("")
-        //   println("train positive samples:")
-        //   trainPos.foreach(a => if(a.tokens.size < 5) println(a.tokens) else println(a.tokens.take(8)))
-        //   println()
-        //   println("train negative samples:")
-        //   trainNeg.foreach(a => if(a.tokens.size < 5) println(a.tokens) else println(a.tokens.take(8)))
-        //   println()
+          // println("")
+          // println("This Node: "+this.params.name)
+          // println("posClasses:")
+          // println(posClasses)
+          // println("currentAnnotationsPositive:")
+          // currentAnnotationsPositive.foreach(a => if(a.tokens.size < 5) println(a.tokens+"; tag: "+a.tag+"; inRel:"+a.inRel) else println(a.tokens.take(8)+"; tag: "+a.tag+"; inRel:"+a.inRel))
+          // println("currentAnnotationsNegative:")
+          // currentAnnotationsNegative.foreach(a => if(a.tokens.size < 5) println(a.tokens+"; tag: "+a.tag+"; inRel:"+a.inRel) else println(a.tokens.take(8)+"; tag: "+a.tag+"; inRel:"+a.inRel))
+          // println("")
+          // println("train positive samples:")
+          // trainPos.foreach(a => if(a.tokens.size < 5) println(a.tokens) else println(a.tokens.take(8)))
+          // println()
+          // println("train negative samples:")
+          // trainNeg.foreach(a => if(a.tokens.size < 5) println(a.tokens) else println(a.tokens.take(8)))
+          // println()
         //
         // def findVectorForSentence(sentence:String) = {
         //   val sentence_vec = index match {

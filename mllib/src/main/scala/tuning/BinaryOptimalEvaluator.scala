@@ -181,9 +181,12 @@ class BinaryOptimalEvaluator(override val uid: String) extends Estimator[BinaryO
             (tp1 + tp2, tn1 + tn2, fp1 + fp2, fn1 + fn2)
         })
 
-
-//    println("tp: "+tp+", tn: "+tn+", fp: "+fp+", fn: "+fn)
-    val accuracy = (tp+tn) / (tp+tn+fp+fn)
+    println("tp: "+tp+", tn: "+tn+", fp: "+fp+", fn: "+fn)
+    val accuracy = (tp.toDouble+tn.toDouble) / (tp.toDouble+tn.toDouble+fp.toDouble+fn.toDouble)
+    val precT = tp.toDouble / (tp.toDouble+fp.toDouble)
+    val recallT = tp.toDouble / (tp.toDouble+fn.toDouble)
+    val f1scT = 2*precT*recallT/(precT+recallT)
+    println("acc: "+accuracy+", prec: "+precision+", recall: "+recall+", f1score: "+f1Score)
 
     val df = dataset.sparkSession.createDataFrame(toEvaluate
                                     .map(p => p match { case (score, label) =>
@@ -193,6 +196,8 @@ class BinaryOptimalEvaluator(override val uid: String) extends Estimator[BinaryO
 //    println(df.show())
     val chi2 = ChiSquareTest.test(df, "prediction", "true").head
     val pValue = chi2.getAs[MLVector](0).toArray
+    val degreesOfFreedom = chi2.getSeq[Int](1).mkString("[", ",", "]")
+    val statistics = chi2.getAs[MLVector](2).toArray
 
 
     val metrics = BinaryMetrics(threshold=Some(optimalThreshold), tp = Some(tp), tn=Some(tn), fp=Some(fp), fn=Some(fn)

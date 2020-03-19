@@ -27,13 +27,13 @@ import java.sql.Timestamp
  * @param children @tparam ArrayBuffer[Node] Node children to this Node
  * @param links @tparam Map[Int, Set[Int]] Shows which class is transformed to which other class
  * @param classPath @tparam Map[Int, Set[Int]]
- * @param sequences
+ * @param sequences Returns for each annotation tokens and from (Seq[String])
  * @param outClasses @tparam Set[Int] Out classes for this node
- * @param rel
- * @param inRel
+ * @param rel Hashmap (class, HashMap(index, from)) // index = index of vectors and class is the associated class
+ * @param inRel same as rel, but boolean yes or no if annotation is pos or neg
  * @param inClasses
  * @param linkPairs
- * @param inMap 
+ * @param inMap
  */
 trait Node{
   val params:NodeParams

@@ -5,7 +5,7 @@ import demy.mllib.linalg.implicits._
 import demy.util.{log => l}
 import demy.mllib.tuning.BinaryOptimalEvaluator
 import demy.mllib.evaluation.BinaryMetrics
-import org.apache.spark.ml.linalg.{Vector => MLVector}
+import org.apache.spark.ml.linalg.{Vector => MLVector, Vectors}
 import org.apache.spark.sql.{SparkSession}
 import scala.collection.mutable.{ArrayBuffer, HashSet, HashMap}
 import org.apache.spark.ml.classification.{LinearSVC, LinearSVCModel}
@@ -18,6 +18,7 @@ import scala.util.Random
  * @param points The word vectors for the annotations (Training set)
  * @param params @tparam NodeParams The parameters of the node
  * @param children @tparam ArrayBuffer[Node] Array of children nodes for this Classifier node
+ * @param models @tparam HashMap[Int, WrappedClassifier] Map of classes to their Classifiers
  */
 case class ClassifierNode (
   points:ArrayBuffer[MLVector] = ArrayBuffer[MLVector]() // fastText vector
@@ -155,6 +156,45 @@ case class ClassifierNode (
     this.models(forClass).score(vector)
   }
 
+  def getPoints(nodes:Seq[Node], positive:Boolean, negative:Boolean):Iterator[(MLVector, Boolean)] =
+    if(nodes.isEmpty) Iterator[(MLVector, Boolean)]()
+    else (
+      nodes
+        .iterator.flatMap{case n:ClassifierNode => Some(n)
+                          case _ => None}
+        .flatMap(n => {
+          n.inRel.values.iterator
+            .flatMap(points => points.iterator
+              .flatMap{case ((i, from), inRel) => {
+                if(inRel && positive && n.windowSize == this.windowSize) Some(n.points(i), true)
+                else if (!inRel && negative && n.windowSize == this.windowSize) Some(n.points(i), false)
+                else None
+              }
+         })
+       }
+     ) ++ getPoints(nodes.flatMap(n => {
+                  n.children.flatMap{case c:ClassifierNode => Some(c)
+                                     case _ => None}
+                                  }), positive, negative)
+    )
+
+    def getDescendantClasses(nodes:Seq[Node]):Iterator[Int] = (
+      if(nodes.isEmpty) Iterator[Int]()
+      else (
+        nodes
+          .iterator.flatMap{case n:ClassifierNode => Some(n)
+                            case _ => None}
+          .flatMap(n => {
+                  if(n.windowSize == this.windowSize) n.outClasses.iterator
+                  else Iterator[Int]()
+                }
+           ) ++ getDescendantClasses(nodes.flatMap(n => {
+                    n.children.flatMap{case c:ClassifierNode => Some(c)
+                                       case _ => None}
+                                    }))
+      ))
+
+
   /** Returns fitted Classifier Node
    *
    * @param spark @tparam SparkSession
@@ -162,6 +202,7 @@ case class ClassifierNode (
    * @return Fitted Classifier Node
   */
   def fit(spark:SparkSession, excludedNodes:Seq[Node]) = {
+//  def fit(spark:SparkSession, excludedNodes:Seq[Node]) = {
     l.msg(s"Start classifier fitting models for windowSize ${this.windowSize}")
     this.models.clear
     val thisPoints = this.points.filter(_ != null)
@@ -174,26 +215,12 @@ case class ClassifierNode (
       ).toSeq
        .zip(this.points)
        .flatMap{case(c, p) => if(p == null) None else Some(c)}
-    def getPoints(nodes:Seq[Node], positive:Boolean, negative:Boolean):Iterator[(MLVector, Boolean)] =
-      if(nodes.isEmpty) Iterator[(MLVector, Boolean)]()
-      else (
-        nodes
-          .iterator.flatMap{case n:ClassifierNode => Some(n) case _ => None}
-          .flatMap(n =>
-            n.inRel.values.iterator
-              .flatMap(points => points.iterator
-                .flatMap{case ((i, from), inRel) =>
-                  if(inRel && positive) Some(n.points(i), true)
-                  else if (!inRel && negative) Some(n.points(i), false)
-                  else None
-           })) ++ getPoints(nodes.flatMap(n => n.children.flatMap{case c:ClassifierNode => Some(c) case _ => None}), positive, negative)
-      )
 
     val otherPointsOut = getPoints(excludedNodes, true, false).map{case (v, inRel) => (v)}.toSeq
-    val otherChildrenPoints = Iterator[(MLVector, Boolean)]() //getPoints(this.children, true, true).toSeq
+    val otherChildrenPoints = getPoints(this.children, true, false).toSeq
+
     for(c <- this.outClasses) {
-      this.models(c) =
-        WrappedClassifier(
+      this.models(c) = WrappedClassifier(
           forClass = c
           , points = thisPoints ++ otherPointsOut ++ otherChildrenPoints.map(_._1)
           , pClasses = thisClasses(c) ++ otherPointsOut.map(_ => -1) ++ otherChildrenPoints.map{case (v, inRel) => if(inRel) c else -1}
@@ -210,20 +237,114 @@ case class ClassifierNode (
    * @param spark @tparam SparkSession
    * @return Tuple (metrics, node name, node tag id, classes, current time stamp, postive annotations, negative annotations)
   */
+
+
   def evaluateMetrics(index:Option[VectorIndex], allAnnotations:Seq[AnnotationSource], spark:SparkSession, excludedNodes:Seq[Node] = Seq[Node]()) : ArrayBuffer[PerformanceReport] = {
       import spark.implicits._
       val r = new Random(0)
-      val currentAnnotations = allAnnotations.filter(a => this.outClasses(a.tag))
-      val trainSet = r.shuffle(currentAnnotations).take((currentAnnotations.length*0.8).toInt).toSet
-      val test = (currentAnnotations.toSet -- trainSet).toList
-      val train = trainSet.toList
+      val posClasses = getDescendantClasses(Seq(this)).toSet // get all classes for current and children node
+      val negClasses = getDescendantClasses(excludedNodes).toSet // get all classes for brothers
+      val currentAnnotationsPositive = allAnnotations.filter(a => posClasses(a.tag) && a.inRel)
+      val currentAnnotationsNegative = allAnnotations.filter(a => (this.outClasses(a.tag) && !a.inRel) || (negClasses(a.tag)  && a.inRel)  )
+      val trainPos = if (currentAnnotationsPositive.length == 1) currentAnnotationsPositive.toSet else r.shuffle(currentAnnotationsPositive).take((currentAnnotationsPositive.length*0.8).toInt).toSet
+      val trainNeg = r.shuffle(currentAnnotationsNegative).take((currentAnnotationsNegative.length*0.8).toInt).toSet
+      val train = r.shuffle(trainPos ++ trainNeg)
+      val test = (r.shuffle(currentAnnotationsPositive.toSet -- trainPos) ++ (currentAnnotationsNegative.toSet -- trainNeg)).toList
       val newParams = this.params.cloneWith(None, true) match {
         case Some(value) => value
         case None => throw new Exception("ERROR: cloneWith current classifier node returned None in function evaluateMetrics")
       }
       newParams.annotations ++= train.map(_.toAnnotation)
       val trainNode = newParams.toNode(vectorIndex = index).asInstanceOf[ClassifierNode]
-      trainNode.fit(spark, excludedNodes)
+
+      val trainClasses = (c:Int) =>
+        (for(i<-It.range(0, trainNode.points.size))
+          yield(
+            trainNode.rel(c).get(i) match {
+                case Some(from) => if (trainNode.inRel(c)((i, from))) c else -1
+                case _ if posClasses.exists( pc => !trainNode.rel.get(pc).isEmpty && !trainNode.rel(pc).get(i).isEmpty) => c // translate original positiv classes to current class
+                case _ => -1
+           })
+        ).toSeq
+         .zip(trainNode.points)
+         .flatMap{case(c, p) => if(p == null) None else Some(c)}
+
+      val trainPoints = trainNode.points.filter( _!= null)
+      for(c <- this.outClasses) {
+        // maybe hardcode 6 tweets to test
+          // println("")
+          // println("This Node: "+this.params.name)
+          // println("posClasses:")
+          // println(posClasses)
+          // println("currentAnnotationsPositive:")
+          // currentAnnotationsPositive.foreach(a => if(a.tokens.size < 5) println(a.tokens+"; tag: "+a.tag+"; inRel:"+a.inRel) else println(a.tokens.take(8)+"; tag: "+a.tag+"; inRel:"+a.inRel))
+          // println("currentAnnotationsNegative:")
+          // currentAnnotationsNegative.foreach(a => if(a.tokens.size < 5) println(a.tokens+"; tag: "+a.tag+"; inRel:"+a.inRel) else println(a.tokens.take(8)+"; tag: "+a.tag+"; inRel:"+a.inRel))
+          // println("")
+          // println("train positive samples:")
+          // trainPos.foreach(a => if(a.tokens.size < 5) println(a.tokens) else println(a.tokens.take(8)))
+          // println()
+          // println("train negative samples:")
+          // trainNeg.foreach(a => if(a.tokens.size < 5) println(a.tokens) else println(a.tokens.take(8)))
+          // println()
+        //
+        // def findVectorForSentence(sentence:String) = {
+        //   val sentence_vec = index match {
+        //      case Some(ix) => ix(sentence.split("(?!^)\\b").toSeq.distinct) match {
+        //                         case map => sentence.split("(?!^)\\b").toSeq.flatMap(token => map.get(token.toString)).reduceOption(_.sum(_)).getOrElse(null)}
+        //      case None => throw new Exception("Provided vectorIndex is None!")}
+        //
+        //   trainPoints.zipWithIndex.filter{ case (vec, i) => vec.cosineSimilarity(sentence_vec) > 0.995}
+        // }
+        //
+        // val pos_node_vec = findVectorForSentence("coma, diabetic, glucose")
+        // val neg_node_vec = findVectorForSentence("hell, I, next")
+        // val pos_node_child_vec = findVectorForSentence("@WheresMyStork The ONLY good thing about being diabetic is you get to skip the glucose test. But I probably would h… https://t.co/Pag0i3NXim")
+        // val neg_node_child_vec = findVectorForSentence("diabetic, glucose, obese")
+        // val pos_node_brother_vec = findVectorForSentence("the, it, really")
+        // val neg_node_brother_vec = findVectorForSentence("insulin, diabetic, borderline")
+        //
+        // if (this.params.name == "Glucose") {
+        //   println("This Node: "+this.params.name)
+        //   println("size train points: "+trainPoints.size)
+        //   println("Number of annotations in trainNode:"+trainNode.params.annotations.size)
+        //   println("size class("+c+"): "+trainClasses(c).size)
+        //
+        //   if (pos_node_vec.size == 1) println("Pos sample has class: "+trainClasses(c)(pos_node_vec(0)._2)+" , expected: c")
+        //   else if (pos_node_vec.size > 1) println("Pos sample has several matches: "+pos_node_vec.map{ case (vec,i) => trainClasses(c)(i)}.mkString(", ")+" , expected: c")
+        //   else println("Pos sample has no class"+" , expected: c")
+        //   if (neg_node_vec.size == 1) println("Neg sample has class: "+trainClasses(c)(neg_node_vec(0)._2)+" , expected: -1")
+        //   else if (neg_node_vec.size > 1) println("Neg sample has several matches: "+neg_node_vec.map{ case (vec,i) => trainClasses(c)(i)}.mkString(", ")+" , expected: -1")
+        //   else println("Neg sample has no class"+" , expected: -1")
+        //   if (pos_node_child_vec.size == 1) println("Pos sample child has class: "+trainClasses(c)(pos_node_child_vec(0)._2)+" , expected: c")
+        //   else if (pos_node_child_vec.size > 1) println("Pos sample child has several matches: "+pos_node_child_vec.map{ case (vec,i) => trainClasses(c)(i)}.mkString(", ")+" , expected: c")
+        //   else println("Pos sample child has no class"+" , expected: c")
+        //   if (neg_node_child_vec.size == 1) println("Neg sample child has class: "+trainClasses(c)(neg_node_child_vec(0)._2)+" , expected: no class")
+        //   else if (neg_node_child_vec.size > 1) println("Neg sample child has several matches: "+neg_node_child_vec.map{ case (vec,i) => trainClasses(c)(i)}.mkString(", ")+" , expected: no class")
+        //   else println("Neg sample child has no class"+" , expected: no class")
+        //   if (pos_node_brother_vec.size == 1 ) println("Pos sample brother has class: "+trainClasses(c)(pos_node_brother_vec(0)._2)+" , expected: -1")
+        //   else if (pos_node_brother_vec.size > 1) println("Pos sample brother has several matches: "+pos_node_brother_vec.map{ case (vec,i) => trainClasses(c)(i)}.mkString(", ")+" , expected: -1")
+        //   else println("Pos sample brother has no class"+" , expected: -1")
+        //   if (neg_node_brother_vec.size == 1 ) println("Neg sample brother has class: "+trainClasses(c)(neg_node_brother_vec(0)._2)+" , expected: no class")
+        //   else if (neg_node_brother_vec.size > 1) println("Neg sample brother has several matches: "+neg_node_brother_vec.map{ case (vec,i) => trainClasses(c)(i)}.mkString(", ")+" , expected: no class")
+        //   else println("Pos sample brother has no class"+" , expected: no class")
+        //
+        //   for(i<-It.range(0, trainNode.points.size)) {
+        //     println("trainNode.rel(c).get(i) :"+trainNode.rel(c).get(i) )
+        //     val cc = trainNode.rel(c).get(i) match {
+        //           case Some(from) => if (trainNode.inRel(c)((i, from))) {println("  "+trainNode.params.annotations(i).tokens.take(3).mkString(", ")+"  _0_  has class: "+c); c} else {println(trainNode.params.annotations(i).tokens.take(3).mkString(", ")+"  _1_  has class: -1"); -1}
+        //           case _ if posClasses.exists( pc => !trainNode.rel.get(pc).isEmpty && !trainNode.rel(pc).get(i).isEmpty) => {println("  "+trainNode.params.annotations(i).tokens.take(3).mkString(", ")+"  _2_  has class: "+c); c} // translate original positiv classes to current class
+        //           case _ => {println("  "+trainNode.params.annotations(i).tokens.take(3).mkString(", ")+"  _3_  has class: -1"); -1}  }
+        //   }
+        // }
+
+        trainNode.models(c) = WrappedClassifier(
+            forClass = c
+            , points = trainPoints
+            , pClasses = trainClasses(c)
+            , spark = spark)
+
+      }
       var output:ArrayBuffer[PerformanceReport] = ArrayBuffer.empty[PerformanceReport]
       for(c <- this.outClasses) {
         val testDF = test.map { a =>
@@ -257,7 +378,9 @@ case class ClassifierNode (
                                   s"AUC${if(this.outClasses.size > 1) s"_$c" else ""}" ->  metrics.areaUnderROC.getOrElse(0.0),
                                   s"accuracy${if(this.outClasses.size > 1) s"_$c" else ""}" ->  metrics.accuracy.getOrElse(0.0),
                                   s"pValue${if(this.outClasses.size > 1) s"_$c" else ""}" ->  metrics.pValue.getOrElse(0.0),
-                                  s"threshold${if(this.outClasses.size > 1) s"_$c" else ""}" -> metrics.threshold.getOrElse(0.0)
+                                  s"threshold${if(this.outClasses.size > 1) s"_$c" else ""}" -> metrics.threshold.getOrElse(0.0),
+                                  s"positiveAnnotations${if(this.outClasses.size > 1) s"_$c" else ""}" -> (train++test.filter(a => a.inRel == true)).size.toDouble,
+                                  s"negativeAnnotations${if(this.outClasses.size > 1) s"_$c" else ""}" -> (train++test.filter(a => a.inRel == false)).size.toDouble
                                 )
         this.params.rocCurve ++ Map(s"rocCurve${if(this.outClasses.size > 1) s"_$c" else ""}" -> metrics.rocCurve)
 

@@ -245,11 +245,37 @@ case class ClassifierNode (
       val posClasses = getDescendantClasses(Seq(this)).toSet // get all classes for current and children node
       val negClasses = getDescendantClasses(excludedNodes).toSet // get all classes for brothers
       val currentAnnotationsPositive = allAnnotations.filter(a => posClasses(a.tag) && a.inRel)
-      val currentAnnotationsNegative = allAnnotations.filter(a => (this.outClasses(a.tag) && !a.inRel) || (negClasses(a.tag)  && a.inRel)  )
-      val trainPos = if (currentAnnotationsPositive.length == 1) currentAnnotationsPositive.toSet else r.shuffle(currentAnnotationsPositive).take((currentAnnotationsPositive.length*0.8).toInt).toSet
+      val currentAnnotationsNegative = allAnnotations.filter(a => (this.outClasses(a.tag) && !a.inRel) || (negClasses(a.tag)  && a.inRel)).map(a => a.setInRel(false))
+      val trainPos = if (currentAnnotationsPositive.length == 1) currentAnnotationsPositive.toSet
+                     else {
+                       // make sure that at least one positive training annotation from the current class (!) is in trainPos, otherwise the current class is not found in trainNode.rel
+                       val annotCurrentClass = currentAnnotationsPositive.filter(a => a.tag == this.outClasses.toList(0))(0) // take an annotation of the current Tag and make sure it is in the training data
+                       val currentAnnotationsPositiveWithoutOne = currentAnnotationsPositive.filter(a => a != annotCurrentClass)
+                       r.shuffle(currentAnnotationsPositiveWithoutOne).take((currentAnnotationsPositiveWithoutOne.length*0.8).toInt).toSet ++ Set(annotCurrentClass)
+                     }
       val trainNeg = r.shuffle(currentAnnotationsNegative).take((currentAnnotationsNegative.length*0.8).toInt).toSet
       val train = r.shuffle(trainPos ++ trainNeg)
       val test = (r.shuffle(currentAnnotationsPositive.toSet -- trainPos) ++ (currentAnnotationsNegative.toSet -- trainNeg)).toList
+      // println("")
+      // println("This Node: "+this.params.name)
+      // println("Class: "+this.outClasses)
+      // println("Excluded nodes:"+excludedNodes.size)
+      // println("posClasses:")
+      // println(posClasses)
+      // println("negClasses:")
+      // println(negClasses)
+      // println("currentAnnotationsPositive:"+currentAnnotationsPositive.size)
+      // currentAnnotationsPositive.foreach(a => if(a.tokens.size < 5) println("tag: "+a.tag+"; inRel:"+a.inRel+";;"+a.tokens) else println("tag: "+a.tag+"; inRel:"+a.inRel+";;"+a.tokens.take(8)))
+      // println("currentAnnotationsNegative:"+currentAnnotationsNegative.size)
+      // //currentAnnotationsNegative.foreach(a => if(a.tokens.size < 5) println(a.tokens+"; tag: "+a.tag+"; inRel:"+a.inRel) else println(a.tokens.take(8)+"; tag: "+a.tag+"; inRel:"+a.inRel))
+      // println("train positive samples:"+trainPos.size)
+      // //trainPos.foreach(a => if(a.tokens.size < 5) println(a.tokens) else println(a.tokens.take(8)))
+      // println("train negative samples:"+trainNeg.size)
+      // //trainNeg.foreach(a => if(a.tokens.size < 5) println(a.tokens) else println(a.tokens.take(8)))
+      // println()
+      // println("test positive samples:"+(currentAnnotationsPositive.toSet -- trainPos).size)
+      // println("test negative samples:"+(currentAnnotationsNegative.toSet -- trainNeg).size)
+      //println((currentAnnotationsNegative.toSet -- trainNeg).toList.map(a => a.setInRel(false)).size)
       val newParams = this.params.cloneWith(None, true) match {
         case Some(value) => value
         case None => throw new Exception("ERROR: cloneWith current classifier node returned None in function evaluateMetrics")
@@ -282,7 +308,10 @@ case class ClassifierNode (
           // currentAnnotationsNegative.foreach(a => if(a.tokens.size < 5) println(a.tokens+"; tag: "+a.tag+"; inRel:"+a.inRel) else println(a.tokens.take(8)+"; tag: "+a.tag+"; inRel:"+a.inRel))
           // println("")
           // println("train positive samples:")
-          // trainPos.foreach(a => if(a.tokens.size < 5) println(a.tokens) else println(a.tokens.take(8)))
+          // trainPos.foreach(a => if(a.tokens.size < 5) println(a.tag+":"+a.tokens) else println(a.tag+":"+a.tokens.take(8)))
+          // println("test positive:")
+          // (currentAnnotationsPositive.toSet -- trainPos).toList.foreach(a => if(a.tokens.size < 5) println(a.tag+":"+a.tokens) else println(a.tag+":"+a.tokens.take(8)))
+
           // println()
           // println("train negative samples:")
           // trainNeg.foreach(a => if(a.tokens.size < 5) println(a.tokens) else println(a.tokens.take(8)))
@@ -329,14 +358,6 @@ case class ClassifierNode (
         //   else if (neg_node_brother_vec.size > 1) println("Neg sample brother has several matches: "+neg_node_brother_vec.map{ case (vec,i) => trainClasses(c)(i)}.mkString(", ")+" , expected: no class")
         //   else println("Pos sample brother has no class"+" , expected: no class")
         //
-        //   for(i<-It.range(0, trainNode.points.size)) {
-        //     println("trainNode.rel(c).get(i) :"+trainNode.rel(c).get(i) )
-        //     val cc = trainNode.rel(c).get(i) match {
-        //           case Some(from) => if (trainNode.inRel(c)((i, from))) {println("  "+trainNode.params.annotations(i).tokens.take(3).mkString(", ")+"  _0_  has class: "+c); c} else {println(trainNode.params.annotations(i).tokens.take(3).mkString(", ")+"  _1_  has class: -1"); -1}
-        //           case _ if posClasses.exists( pc => !trainNode.rel.get(pc).isEmpty && !trainNode.rel(pc).get(i).isEmpty) => {println("  "+trainNode.params.annotations(i).tokens.take(3).mkString(", ")+"  _2_  has class: "+c); c} // translate original positiv classes to current class
-        //           case _ => {println("  "+trainNode.params.annotations(i).tokens.take(3).mkString(", ")+"  _3_  has class: -1"); -1}  }
-        //   }
-        // }
 
         trainNode.models(c) = WrappedClassifier(
             forClass = c
@@ -346,9 +367,14 @@ case class ClassifierNode (
 
       }
       var output:ArrayBuffer[PerformanceReport] = ArrayBuffer.empty[PerformanceReport]
+      // println("test pos:"+test.filter(a => a.inRel == true).size)
+      // println("test neg:"+test.filter(a => a.inRel == false).size)
+      // println("NODE: "+this.params.name)
       for(c <- this.outClasses) {
         val testDF = test.map { a =>
           val tokens = a.tokens
+          //if(a.tokens.size < 5) println(a.inRel+": "+a.tokens) else println(a.inRel+": "+a.tokens.take(9))
+
           val vectors:Seq[MLVector] = index match {
             case Some(wordVectorIndex) => wordVectorIndex(tokens) match {
               case vectorsMap => tokens.map( (token:String) => vectorsMap.get(token).getOrElse(null))
@@ -368,7 +394,7 @@ case class ClassifierNode (
         }.toDS()
          .withColumnRenamed("_1", "label")
          .withColumnRenamed("_2", "score")
-
+        //println("testDF:"+testDF.show(20))
         val evaluator = new BinaryOptimalEvaluator().fit(testDF)
         val metrics = evaluator.metrics
         this.params.metrics =
@@ -383,7 +409,12 @@ case class ClassifierNode (
                                   s"negativeAnnotations${if(this.outClasses.size > 1) s"_$c" else ""}" -> (train++test.filter(a => a.inRel == false)).size.toDouble
                                 )
         this.params.rocCurve ++ Map(s"rocCurve${if(this.outClasses.size > 1) s"_$c" else ""}" -> metrics.rocCurve)
-
+        println("This Node: "+this.params.name)
+        println("Positive training samples:"+(train.filter(a => a.inRel == true)).size)
+        println("Negative training samples:"+(train.filter(a => a.inRel == false)).size)
+        println("Positive test samples:"+(test.filter(a => a.inRel == true)).size)
+        println("Negative test samples:"+(test.filter(a => a.inRel == false)).size)
+        println()
         output += PerformanceReport(metrics.threshold
                                   , metrics.precision
                                   , metrics.recall

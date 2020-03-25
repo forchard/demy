@@ -2,7 +2,7 @@ package demy.mllib.topic
 import org.apache.spark.sql.{Dataset , SparkSession}
 import org.apache.spark.sql.functions.{col}
 import scala.collection.mutable.{HashMap}
-import java.sql.Timestamp 
+import java.sql.Timestamp
 
 case class AnnotationOperation(op:String)
 object AnnotationOperation {
@@ -17,14 +17,14 @@ case class Annotation(
   , inRel:Boolean
   , score:Double
 ) {
-  def toAnnotationSource(tagMap:Map[Int, String])= 
+  def toAnnotationSource(tagMap:Map[Int, String])=
     AnnotationSource(
       tokens = tokens
       , tag = tag
       , tagName = tagMap(tag)
       , from = from
       , inRel = inRel
-      , score = score  
+      , score = score
       , sourceId = None
       , allTokens = None
       , tokensIndexes = None
@@ -49,14 +49,14 @@ case class AnnotationSource(
   , timestamp:Timestamp
   , operation:Option[AnnotationOperation]
 ) {
-  def resetTimestamp = 
+  def resetTimestamp =
     AnnotationSource(
       tokens = tokens
       , tag = tag
       , tagName = tagName
       , from = from
       , inRel = inRel
-      , score = score  
+      , score = score
       , sourceId = sourceId
       , allTokens = allTokens
       , tokensIndexes = tokensIndexes
@@ -65,10 +65,25 @@ case class AnnotationSource(
       , operation = operation
     )
 
+  def setInRel(v:Boolean) = AnnotationSource(
+    tokens = tokens
+    , tag = tag
+    , tagName = tagName
+    , from = from
+    , inRel = v
+    , score = score
+    , sourceId = sourceId
+    , allTokens = allTokens
+    , tokensIndexes = tokensIndexes
+    , fromIndexes = fromIndexes
+    , timestamp = timestamp
+    , operation = operation
+  )
+
   def getOperation = this.operation.getOrElse(AnnotationOperation.create)
   def toAnnotation = Annotation(tokens = tokens, tag = tag, from = from, inRel = inRel, score = score)
   def key = (Seq(tag) ++ tokens ++ from.getOrElse(Seq[String]())).mkString(" ")
-  def mergeWith(that:AnnotationSource) = { 
+  def mergeWith(that:AnnotationSource) = {
     val (newer, older) = if(this.timestamp.after(that.timestamp)) (this, that) else (that, this)
     AnnotationSource(
       tokens = newer.tokens
@@ -76,7 +91,7 @@ case class AnnotationSource(
       , tagName = newer.tagName
       , from = newer.from
       , inRel = newer.inRel
-      , score = newer.score  
+      , score = newer.score
       , sourceId = newer.sourceId.orElse(older.sourceId)
       , allTokens = newer.allTokens.orElse(older.allTokens)
       , tokensIndexes = newer.tokensIndexes.orElse(older.tokensIndexes)
@@ -85,16 +100,16 @@ case class AnnotationSource(
       , operation = if(older.getOperation == AnnotationOperation.delete && newer.getOperation != AnnotationOperation.create) older.operation else newer.operation
     )
   }
-} 
+}
 object AnnotationSource {
   def mergeAnnotations(ds:Dataset[AnnotationSource]) = {
     import ds.sparkSession.implicits._
     ds.map(a => (a.key, a.timestamp, a))
       .repartition(col("_1"))
       .sortWithinPartitions(col("_2"))
-      .mapPartitions{iter => 
+      .mapPartitions{iter =>
         val ret = HashMap[String, AnnotationSource]()
-        iter.foreach{case (id, ts, a1) => 
+        iter.foreach{case (id, ts, a1) =>
           ret(id) = ret.get(id) match {
             case Some(a2) => a1.mergeWith(a2)
             case None => a1
@@ -104,4 +119,3 @@ object AnnotationSource {
       }
   }
 }
-

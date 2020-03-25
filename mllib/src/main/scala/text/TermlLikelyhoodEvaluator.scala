@@ -23,7 +23,7 @@ import org.apache.spark.ml.util.Identifiable
 import org.apache.spark.ml.{Transformer, Estimator, PipelineStage}
 
 /*class TermlLikelyhoodEvaluator {
-  /**
+  
    * Model Training:
    *   Vector Dictionary: vectors:DataFrame, WordColumnName:String, VectorColumnName:String
    *   EntitiesTrainingSetSize:Int
@@ -34,7 +34,7 @@ import org.apache.spark.ml.{Transformer, Estimator, PipelineStage}
    * Applying Model
    *   TextsToQualify: Dataframe, TermColumName:String
    *   >> DataFrame ++ LikelyhoodColumn()
-   */
+   
 }*/
 
 
@@ -403,7 +403,9 @@ trait TermLikelyhoodEvaluatorBase extends Params with HasProbabilityCol with Has
 
 
 
-};class TermLikelyhoodEvaluatorModel(override val uid: String, trainedModel:LinearSVCModel, A:Double, B:Double) extends org.apache.spark.ml.Model[TermLikelyhoodEvaluatorModel] with TermLikelyhoodEvaluatorBase with HasRawPredictionCol with HasProbabilityCol {
+}
+
+class TermLikelyhoodEvaluatorModel(override val uid: String, trainedModel:LinearSVCModel, A:Double, B:Double) extends org.apache.spark.ml.Model[TermLikelyhoodEvaluatorModel] with TermLikelyhoodEvaluatorBase with HasRawPredictionCol with HasProbabilityCol {
 
     def this(trainedModel:LinearSVCModel, A:Double, B:Double) = this(Identifiable.randomUID("TermLikelyhoodEvaluatorModel"), trainedModel, A, B)
     val temp = trainedModel

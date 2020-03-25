@@ -12,10 +12,11 @@ case class SparkLuceneWriterInfo(writer:IndexWriter, index:NIOFSDirectory, desti
   lazy val sourceNode = {
     destination.storage.localStorage.getNode(path = index.getDirectory().toString)
   } 
-  def indexRow(row:Row, textFieldPosition:Int, popularityPosition:Option[Int]=None, notStoredPositions:Set[Int]=Set[Int](), tokenisation:Boolean=true) {
+  def indexRow(row:Row, textFieldPosition:Int, popularityPosition:Option[Int]=None, notStoredPositions:Set[Int]=Set[Int](), tokenisation:Boolean=true, caseInsensitive:Boolean=true) {
       val doc = new Document();
-      if(tokenisation)  doc.add(new TextField("_text_",row.getAs[String](textFieldPosition), Field.Store.NO))
-      else doc.add(new StringField("_text_",row.getAs[String](textFieldPosition), Field.Store.NO))
+      if(tokenisation)  doc.add(new TextField("_text_",row.getAs[String](textFieldPosition) match {case null => null case s if caseInsensitive  =>  s.toLowerCase case s => s}, Field.Store.NO))
+      else doc.add(new StringField("_text_",row.getAs[String](textFieldPosition) match {case null => null case s if caseInsensitive  =>  s.toLowerCase case s => s}, Field.Store.NO))
+      
       val schema = row.schema.fields.zipWithIndex.foreach(p => p match {case (field, i) => 
         if(!notStoredPositions.contains(i) && !row.isNullAt(i)) field.dataType match {
            case dt:StringType =>   doc.add(new StringField(field.name, row.getAs[String](i), Field.Store.YES))
@@ -50,7 +51,7 @@ case class SparkLuceneWriterInfo(writer:IndexWriter, index:NIOFSDirectory, desti
     def push(deleteSource:Boolean = false) = {
         val src_str = index.getDirectory().toString
         val source = this.sourceNode 
-        log.msg(s"going to close $index")
+        //log.msg(s"going to close $index")
         this.writer.commit
         this.writer.close()
         this.index.close()
@@ -60,7 +61,7 @@ case class SparkLuceneWriterInfo(writer:IndexWriter, index:NIOFSDirectory, desti
           if(source.exists) 
             source.delete(recurse = true)
         } else {
-          log.msg("no need to push")
+          //log.msg("no need to push")
         }
 
     }

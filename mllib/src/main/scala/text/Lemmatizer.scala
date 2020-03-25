@@ -48,7 +48,7 @@ class Lemmatiser(override val uid: String) extends Transformer {
             , indexPartitions = 1
             , maxRowsInMemory=getOrDefault(rowChunkSize)
             , indexScanParallelism= getOrDefault(indexParallelismLevel)
-            , tokenizeText = false)
+            , tokenizeRegex = None)
           .withColumn(get(outputCol).get, udf((words:Seq[String], lexyqueMatchRow:Seq[Row], simplify:Boolean, stem:Boolean) => {
             val lexyqueMatchs = lexyqueMatchRow.map(r => (r.getAs[String](0), r.getAs[Seq[String]](1), r.getAs[Seq[String]](2), r.getAs[Seq[Seq[Double]]](3) match {case v => if(v==null) Seq[Seq[Double]]() else v}, r.getAs[Seq[Seq[Double]]](4) match {case v => if(v==null) Seq[Seq[Double]]() else v}, r.getAs[Seq[Seq[Double]]](5) match {case v => if(v==null) Seq[Seq[Double]]() else v}))
             val toSteam = Seq("er"->"", "ereux"->"", "se"->"s", "me"->"m", "ne"->"n", "aux"->"", "re"->"r", "ge"->"g", "e"-> "", "te"-> "t", "ion"->""

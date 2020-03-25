@@ -14,7 +14,7 @@ import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
 import java.io.{ObjectInputStream,ByteArrayInputStream}
 import scala.collection.JavaConverters._
 import demy.storage.{Storage, LocalNode}
-import demy.util.log
+import demy.util.{log => l}
 
 case class Ngram(terms:Array[String], startIndex:Int, endIndex:Int, termWeights:Seq[Double])
 object Ngram {
@@ -36,7 +36,7 @@ trait IndexStrategy {
   def set(searcher:IndexSearcher, indexDirectory:LocalNode,reader:DirectoryReader) : IndexStrategy
 
   /**
-   * Method that will call evaluateNgram to find documents match within a text. This is the entry point for heuristics that will find occurrences on terms subsets
+   * Method that will call weightevaluateNgram to find documents match within a text. This is the entry point for heuristics that will find occurrences on terms subsets
    */
   def searchDoc(terms:Array[String], maxHits:Int, maxLevDistance:Int=2, filter:Row = Row.empty , usePopularity:Boolean, minScore:Double=0.0,
             boostAcronyms:Boolean=false, termWeights:Option[Seq[Double]]=None, caseInsensitive:Boolean = true, tokenize:Boolean = true) = {
@@ -63,7 +63,7 @@ trait IndexStrategy {
     val fuzzyb = new BooleanQuery.Builder()
     if(maxLevDistance>0) {
         //terms.foreach(s => {
-        terms.zip(ngram.termWeights).foreach( values => values match { case (s, weight) => {
+        terms.zip(ngram.termWeights).foreach{ case (s, weight) => {
             var allLetterUppercase =
               if (s.length == 2) Range(0, s.length).forall(ind => s(ind).isUpper)
               else false
@@ -78,30 +78,33 @@ trait IndexStrategy {
             }
         }
         case _ => throw new Exception("Should not occur to fall into here; Number of term weights should match number of terms")
-      })
+      }
     }
     else {
-        //terms.foreach(s => {
-        terms.zip(ngram.termWeights).foreach( values => values match { case (s, weight) => {
+        terms.zip(ngram.termWeights).foreach{ case (s, weight) => {
+            if(weight > 0 && s.length > 3 ) {
+              var allLetterUppercase =
+                if (s.length == 2) Range(0, s.length).forall(ind => s(ind).isUpper)
+                else false 
 
-            var allLetterUppercase =
-              if (s.length == 2) Range(0, s.length).forall(ind => s(ind).isUpper)
-              else false 
-
-            // if term is only in Uppercase -> double term: "TX" -> "TXTX" (ensures that term is not neglected due to too less letters)
-            if (allLetterUppercase) {
-                val bst = new BoostQuery(new TermQuery(new Term("_text_", s+s)), 4.00F)  // Boosting factor of 4.0 for exact match
-                fuzzyb.add(bst, Occur.SHOULD)
-            } else {
-                val bst = new BoostQuery(new TermQuery(new Term("_text_",  if(caseInsensitive) s.toLowerCase else s)), 4.00F*weight.toFloat) // boosting factor of 4.0 for exact match
-                fuzzyb.add(bst, Occur.SHOULD)
+              // if term is only in Uppercase -> double term: "TX" -> "TXTX" (ensures that term is not neglected due to too less letters)
+              if (allLetterUppercase) {
+                  val bst = new BoostQuery(new TermQuery(new Term("_text_", s+s)), 4.00F)  // Boosting factor of 4.0 for exact match
+                  fuzzyb.add(bst, Occur.SHOULD)
+              } else if(weight < 0.8) {
+                  val bst = new BoostQuery(new TermQuery(new Term("_text_",  if(caseInsensitive) s.toLowerCase else s)), weight.toFloat) // boosting factor of 4.0 for exact match
+                  fuzzyb.add(bst, Occur.SHOULD)
+              } else {
+                  fuzzyb.add(new TermQuery(new Term("_text_",  if(caseInsensitive) s.toLowerCase else s)), Occur.SHOULD)
+              }
             }
           }
-          case _ => throw new Exception("Should not occur to fall into here; Number of term weights should match number of terms")
-        })
+          case _ => throw new Exception("Should not occur to fall into here; Number of term weights shoul  d match number of terms")
+        }
     }
 
     qb.add(fuzzyb.build, Occur.MUST)
+    
     if(filter.schema != null) {
        filter.schema.fields.zipWithIndex.foreach(p => p match { case (field, i) =>
           if(!filter.isNullAt(i)) field.dataType match {
@@ -114,95 +117,94 @@ trait IndexStrategy {
           case dt => throw new Exception(s"Spark type {$dt.typeName} cannot be used as a filter since it has not been indexed")
        }})
     }
-    val q = if(usePopularity) {
-               val pop = new FunctionQuery(new DoubleFieldSource("_pop_"));
-               new org.apache.lucene.queries.CustomScoreQuery(qb.build, pop);
-            } else qb.build
+
+    val q = 
+      if(usePopularity) org.apache.lucene.queries.function.FunctionScoreQuery.boostByValue(qb.build, org.apache.lucene.search.DoubleValuesSource.fromDoubleField("_pop_"))
+      else qb.build
 
 
+    val startTime = System.nanoTime
     val docs = this.searcher.search(q, maxHits);
+    val endTime = System.nanoTime
+    //if( ngram.termWeights!= null && ngram.termWeights.size>0)
+    //    println(s"SEARCH ${(endTime - startTime)/1e6d} msecs for ${ngram.terms.size} terms ispeed: ${((endTime - startTime)/1e6d)/(ngram.terms.size)} ${ngram.terms.mkString(",")}")
+    
     val hits = docs.scoreDocs;
     //hits
-    hits.map(hit => SearchMatch(docId=hit.doc, score=hit.score,
-//                                ngram=Ngram(terms=terms, startIndex=0, endIndex=terms.length)))
-                                ngram=ngram/*Ngram(terms=terms, startIndex=ngram.startIndex, endIndex=ngram.endIndex)*/))
 
+    //println(s"HITS ARE: ${hits.size}")
+    hits.map(hit => SearchMatch(docId=hit.doc, score=hit.score,ngram=ngram))
 
-/*    if (hits.size > 0) {
-        val best = hits.reduce( (hit1, hit2) => { if (hit1.score > hit2.score) hit1 else hit2} )
-        Some(SearchMatch(docId=best.doc, score=best.score, ngram=ngram))
-    }
-    else
-        None
-    }*/
   }
 
   /**
    *  Method fthat will use searchDoc and transform the results into SparkRows
    */
 
-  def search(query:String, maxHits:Int, filter:Row = Row.empty, outFields:Seq[StructField]=Seq[StructField](),
+  def search(tokens:Array[String], maxHits:Int, filter:Row = Row.empty, outFields:Seq[StructField]=Seq[StructField](),
              maxLevDistance:Int=2 , minScore:Double=0.0, boostAcronyms:Boolean=false, showTags:Boolean=false, usePopularity:Boolean, termWeights:Option[Seq[Double]]=None,
-             tokenize:Boolean = true, caseInsensitive:Boolean = true):Array[GenericRowWithSchema] = {
-
-    val terms = if(query == null) Array[String]()
-                else if(!tokenize) Array(query)
-                else query.replaceAll("[^\\p{L}]+", ",").split(",").filter(s => s.length>0)
-    
-    
-
-    // return (doc, score) Array[ScoreDoc]
-    val hits = searchDoc(terms = terms, maxHits=maxHits, filter=filter, maxLevDistance=maxLevDistance,
-                         minScore=minScore, boostAcronyms = boostAcronyms, usePopularity = usePopularity, termWeights=termWeights,
-                         caseInsensitive = caseInsensitive, tokenize = tokenize
-                         )
+             caseInsensitive:Boolean = true):Array[GenericRowWithSchema] = {
 
     val outSchema = StructType(outFields.toList :+ StructField("_score_", FloatType)
                                                 :+ StructField("_tags_", ArrayType(StringType))
                                                 :+ StructField("_startIndex_", IntegerType)
                                                 :+ StructField("_endIndex_", IntegerType))
                                               //  :+ StructField("_pos_", ArrayType(IntegerType, IntegerType)) ) // add fields
-
-    if (query != null) {
-      hits.flatMap(hit => {
-        if(hit.score < minScore) None
-        else {
-          val doc = this.searcher.doc(hit.docId)
-          Some(new GenericRowWithSchema(
-            values = outFields.toArray.map(field => {
-              val lucField = doc.getField(field.name)
-              if(field.name == null || lucField == null) null
-              else
-                field.dataType match {
-              case dt:StringType => lucField.stringValue
-              case dt:IntegerType => lucField.numericValue().intValue()
-              case dt:BooleanType => lucField.binaryValue().bytes(0) == 1.toByte
-              case dt:LongType =>  lucField.numericValue().longValue()
-              case dt:FloatType => lucField.numericValue().floatValue()
-              case dt:DoubleType => lucField.numericValue().doubleValue()
-              case dt => {
-                var obj:Any = null
-                val serData= lucField.binaryValue().bytes;
-                if (serData!=null) {
-                   val in=new ObjectInputStream(new ByteArrayInputStream(serData))
-                   obj = in.readObject()
-                   in.close()
+    //if(tokens != null) println(s"$termWeights, ${tokens.mkString(",")}")
+    if (tokens != null && tokens.size >0 ) {
+      searchDoc(
+        terms = tokens, maxHits=maxHits, filter=filter, maxLevDistance=maxLevDistance
+          ,minScore=minScore, boostAcronyms = boostAcronyms, usePopularity = usePopularity, termWeights=termWeights
+          ,caseInsensitive = caseInsensitive
+        )
+        .flatMap(hit => {
+          if(hit.score < minScore) None
+          else {
+            val doc = this.searcher.doc(hit.docId)
+            Some(new GenericRowWithSchema(
+              values = outFields.toArray.map(field => {
+                val lucField = doc.getField(field.name)
+                if(field.name == null || lucField == null) null
+                else
+                  field.dataType match {
+                case dt:StringType => lucField.stringValue
+                case dt:IntegerType => lucField.numericValue().intValue()
+                case dt:BooleanType => lucField.binaryValue().bytes(0) == 1.toByte
+                case dt:LongType =>  lucField.numericValue().longValue()
+                case dt:FloatType => lucField.numericValue().floatValue()
+                case dt:DoubleType => lucField.numericValue().doubleValue()
+                case dt => {
+                  var obj:Any = null
+                  val serData= lucField.binaryValue().bytes;
+                  if (serData!=null) {
+                     val in=new ObjectInputStream(new ByteArrayInputStream(serData))
+                     obj = in.readObject()
+                     in.close()
+                  }
+                  obj
                 }
-                obj
-              }
-            }}) ++ Array(hit.score, hit.ngram.terms, hit.ngram.startIndex, hit.ngram.endIndex)// add fields
-            ,schema = outSchema))
-        }
-      })
-    } else Array[GenericRowWithSchema]()
+              }}) ++ Array(hit.score, hit.ngram.terms, hit.ngram.startIndex, hit.ngram.endIndex)// add fields
+              ,schema = outSchema))
+          }
+        })
+    } 
+      else Array[GenericRowWithSchema]()
   }
 
 
   def close(deleteSnapShot:Boolean = false) {
-    this.reader.close
-    this.reader.directory().close
-    if(deleteSnapShot && this.indexDirectory.exists) {
-      this.indexDirectory.deleteIfTemporary(recurse = true)
+    SparkLuceneReader.readLock.synchronized {
+      SparkLuceneReader.readerCount(this.indexDirectory.path) = SparkLuceneReader.readerCount(this.indexDirectory.path) - 1
+      if(SparkLuceneReader.readerCount(this.indexDirectory.path) == 0) {
+         SparkLuceneReader.readerCounti.remove(this.indexDirectory.path)
+         SparkLuceneReader.readers.remove(this.indexDirectory.path)
+         this.reader.close
+         this.reader.directory().close
+         if(deleteSnapShot && this.indexDirectory.exists) {
+           this.indexDirectory.deleteIfTemporary(recurse = true)
+         }
+      }
+    
     }
   }
 

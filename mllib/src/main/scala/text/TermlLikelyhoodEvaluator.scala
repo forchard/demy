@@ -135,7 +135,7 @@ trait TermLikelyhoodEvaluatorBase extends Params with HasProbabilityCol with Has
                             , indexPartitions = 1
                             , maxRowsInMemory=1024
                             , indexScanParallelism = 2
-                            , tokenizeText=true
+                            , tokenizeRegex=Some("[^\\p{L}]+")
                             , minScore = getOrDefault(lucene_minScore)
                             //, boostAcronyms=true
                             , strategy=getOrDefault(lucene_strategy)

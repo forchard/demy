@@ -6,7 +6,7 @@ import org.apache.lucene.store.NIOFSDirectory
 import org.apache.lucene.index.{IndexWriter,IndexWriterConfig}
 import org.apache.lucene.analysis.Analyzer
 import org.apache.lucene.analysis.custom.CustomAnalyzer
-import org.apache.lucene.analysis.standard.StandardFilterFactory
+//import org.apache.lucene.analysis.standard.StandardFilterFactory
 import org.apache.lucene.analysis.standard.StandardTokenizerFactory 
 import org.apache.lucene.analysis.core.StopFilterFactory 
 import org.apache.lucene.analysis.TokenStream
@@ -35,7 +35,7 @@ case class SparkLuceneWriter(indexDestination:String, reuseSnapShot:Boolean=fals
       } else {
         CustomAnalyzer.builder()
                       .withTokenizer(classOf[StandardTokenizerFactory])
-                      .addTokenFilter(classOf[StandardFilterFactory])
+                      //.addTokenFilter(classOf[StandardFilterFactory])
                       .addTokenFilter(classOf[AcronymFilterFactory])
                       .addTokenFilter(classOf[StopFilterFactory])
                       .build();

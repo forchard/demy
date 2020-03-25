@@ -117,7 +117,7 @@ class Word2VecApplier(override val uid: String) extends Transformer with HasExec
             , indexPartitions = 1
             , maxRowsInMemory=getOrDefault(maxRowsInMemory)
             , indexScanParallelism= getOrDefault(indexScanParallelism)
-            , tokenizeText = false)
+            , tokenizeRegex = None)
           .withColumn(vectorColName, 
             (if(getOrDefault(sumWords))
               udf((results:Seq[Row], words:Seq[String])=>{

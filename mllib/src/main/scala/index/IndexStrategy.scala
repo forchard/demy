@@ -196,7 +196,7 @@ trait IndexStrategy {
     SparkLuceneReader.readLock.synchronized {
       SparkLuceneReader.readerCount(this.indexDirectory.path) = SparkLuceneReader.readerCount(this.indexDirectory.path) - 1
       if(SparkLuceneReader.readerCount(this.indexDirectory.path) == 0) {
-         SparkLuceneReader.readerCounti.remove(this.indexDirectory.path)
+         SparkLuceneReader.readerCount.remove(this.indexDirectory.path)
          SparkLuceneReader.readers.remove(this.indexDirectory.path)
          this.reader.close
          this.reader.directory().close

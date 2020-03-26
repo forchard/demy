@@ -216,10 +216,12 @@ case class LocalStorage(override val sparkCanRead:Boolean=false, override val tm
   def delete(node:FSNode, recurse:Boolean = false) 
        = node match { case lNode:LocalNode => {
          if(Files.isDirectory(lNode.jPath) && recurse ) {
-           Files.list(lNode.jPath).iterator().asScala.foreach{ cPath =>
+           val list = Files.list(lNode.jPath)
+           list.iterator().asScala.foreach{ cPath =>
             lNode.storage.delete(node = LocalNode(path = cPath.toAbsolutePath().toString(), storage=lNode.storage, sparkCanRead = this.sparkCanRead)
                                   , recurse = recurse)
            }
+           list.close()
          }
          if(lNode.exists) Files.delete(lNode.jPath)
        } case _ => throw new Exception(s"Local Storage cannot manage ${node.getClass.getName} nodes")}
@@ -248,8 +250,12 @@ case class LocalStorage(override val sparkCanRead:Boolean=false, override val tm
   def last(path:Option[String], attrPattern:Map[String, String] = Map[String, String]())  = {
     val it = this.getNode(path = path.getOrElse("/")) match { 
        case lNode => 
-         if(Files.isDirectory(Paths.get(lNode.path))) 
-              Files.list(Paths.get(lNode.path)).iterator().asScala
+         if(Files.isDirectory(Paths.get(lNode.path))) {
+              val list = Files.list(Paths.get(lNode.path))
+              val ret = list.iterator().asScala.toArray
+              list.close()
+              ret.iterator
+          }
           else 
             Seq(Paths.get(lNode.path)).iterator
     }
@@ -270,12 +276,15 @@ case class LocalStorage(override val sparkCanRead:Boolean=false, override val tm
   def list(node:FSNode, recursive:Boolean = false)  = 
      node match { 
        case lNode:LocalNode => 
-         Some(if(Files.isDirectory(lNode.jPath)) 
-              Files.list(lNode.jPath)
-                .iterator()
-                .asScala
+         Some(if(Files.isDirectory(lNode.jPath)) { 
+              val list = Files.list(lNode.jPath)
+              val ret = list
+                .toArray.map(_.asInstanceOf[LPath])
                 .map(cPath => LocalNode(path = cPath.toAbsolutePath().toString(), storage=lNode.storage, sparkCanRead = this.sparkCanRead))
                 .toSeq
+              list.close()
+              ret
+          }
           else 
             Seq(LocalNode(path = lNode.jPath.toAbsolutePath().toString(), storage=lNode.storage, sparkCanRead = this.sparkCanRead))
          )
@@ -294,8 +303,9 @@ case class LocalStorage(override val sparkCanRead:Boolean=false, override val tm
        case lNode => 
          if(!Files.exists(Paths.get(lNode.path)))
            None
-         else if(Files.isDirectory(Paths.get(lNode.path))) 
-           Files.list(Paths.get(lNode.path)).iterator().asScala
+         else if(Files.isDirectory(Paths.get(lNode.path))) { 
+           val list = Files.list(Paths.get(lNode.path))
+           val ret = list.iterator().asScala.toArray
              .map(cPath => getFileModificationTime(path = Some(cPath.toString), attrPattern = attrPattern))
              .foldLeft(None.asInstanceOf[Option[Long]]){(current, iter) => (current, iter) match {
                case (Some(i), Some(j)) => if(i > j) Some(i) else Some(j)
@@ -303,6 +313,9 @@ case class LocalStorage(override val sparkCanRead:Boolean=false, override val tm
                case (None, Some(j)) => Some(j)
                case _ => None
              }}
+           list.close()
+           ret
+         }
          else { 
            val filePath = Paths.get(lNode.path)
            val fileName = filePath.getFileName.toString

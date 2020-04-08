@@ -72,19 +72,18 @@ zeppelin_https_cert_auth_enabled: "false"
 zeppelin_https_port: "8443"
 zeppelin_https_bundle_cert: "/space/etc/ssl/wildcard.voozanoo.net.bundle.crt"
 zeppelin_https_private_key: "/space/etc/ssl/wildcard.voozanoo.net.key"
-zeppelin_keystore_pass: "{{lookup('passwordstore', 'bgdt-zeppelin-kstore')}}"
+zeppelin_keystore_pass: "{{lookup('passwordstore', 'infra/bgdt-zeppelin-kstore')}}"
 zeppelin_driver_memory_mb: "1024"
 zeppelin_driver_cores: "1"
 zeppelin_executor_memory_mb: "2000"
 zeppelin_executor_cores: "3"
 zeppelin_anonymous_enabled: false
 zeppelin_shiro_config:
-- [users,"fod=","fod={{lookup('passwordstore', 'zeppelin-pass-fod')}},admin"]
-- [users,"stage=","stage={{lookup('passwordstore', 'zeppelin-pass-stage')}},contributor"]
-- [users,"jp=","jp={{lookup('passwordstore', 'zeppelin-pass-jp')}},contributor"]
-- [users,"thomas=","thomas={{lookup('passwordstore', 'zeppelin-pass-thomas')}},contributor"]
-- [users,"pascal=","pascal={{lookup('passwordstore', 'zeppelin-pass-pascal')}},contributor"]
-- [users,"adrian=","adrian={{lookup('passwordstore', 'zeppelin-pass-adrian')}},admin"]
+- [users,"fod=","fod={{lookup('passwordstore', 'infra/bgdt-zeppelin-pass-fod')}},admin"]
+- [users,"stage=","stage={{lookup('passwordstore', 'infra/bgdt-zeppelin-pass-stage')}},contributor"]
+- [users,"thomas=","thomas={{lookup('passwordstore', 'infra/bgdt-zeppelin-pass-thomas')}},contributor"]
+- [users,"pascal=","pascal={{lookup('passwordstore', 'infra/bgdt-zeppelin-pass-pascal')}},contributor"]
+- [users,"adrian=","adrian={{lookup('passwordstore', 'infra/bgdt-zeppelin-pass-adrian')}},admin"]
 - [main,"shiro.loginUrl =", "shiro.loginUrl = /api/login"]
 - [main,"securityManager.sessionManager.globalSessionTimeout =", "securityManager.sessionManager.globalSessionTimeout = {{ 1000 * 3600 * 24 }}"]
 - [main,"securityManager.sessionManager =", "securityManager.sessionManager = $sessionManager"]

@@ -4,7 +4,7 @@
   set_fact:
     nodemanagers_list: "{% for i in groups['nodemanagers'] %}{{ i.split('.')[0]+'-'+hadoop_cluster_name+'\n' }}{%endfor%}" 
 - name: produce yarn excluded hosts
-  tags: [configure_yarn, upgrade]
+  tags: [configure_yarn, upgrade, scale]
   set_fact:
     nodemanagers_excluded_list: "{% for i in groups['nodemanagers_excluded'] %}{{ i.split('.')[0]+'-'+hadoop_cluster_name+'\n' }}{%endfor%}" 
 - name: allowed/excluded hosts present
@@ -26,7 +26,7 @@
     block: "{{ nodemanagers_list }}"
     marker: "#{mark} list of hosts managed by ansible"
 - name: excluded hosts file
-  tags: [configure_yarn, upgrade]
+  tags: [configure_yarn, upgrade, scale]
   blockinfile:
     path: "{{ yarn_hosts_exclude }}"
     block: "{{ nodemanagers_excluded_list }}"

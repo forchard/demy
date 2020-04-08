@@ -1,5 +1,5 @@
 ---
-- name: restarting hadoop services
+- name: hadoop services started
   hosts: nodes
   gather_facts: false
   become: true
@@ -7,64 +7,64 @@
   - name: data node service exists 
     stat: path=/lib/systemd/system/hdfs-datanode.service
     register: datanode_status
-  - name: restart datanode
+  - name: start datanode
     service: 
       name: hdfs-datanode
-      state: restarted
+      state: started
     when: datanode_status.stat.exists
   - name: name node service exists 
     stat: path=/lib/systemd/system/hdfs-namenode.service
     register: namenode_status
-  - name: restart namenode
+  - name: start namenode
     service: 
       name: hdfs-namenode
-      state: restarted
+      state: started
     when: namenode_status.stat.exists
   - name: resource manager service exists 
     stat: path=/lib/systemd/system/yarn-resourcemanager.service
     register: yrm_status
-  - name: restart yarn resource manager
+  - name: start yarn resource manager
     service: 
       name: yarn-resourcemanager
-      state: restarted
+      state: started
     when: yrm_status.stat.exists
   - name: yarn proxy server service exists 
     stat: path=/lib/systemd/system/yarn-proxyserver.service
     register: yps_status
-  - name: restart yarn proxyserver
+  - name: start yarn proxyserver
     service: 
       name: yarn-proxyserver
-      state: restarted
+      state: started
     when: yps_status.stat.exists
   - name: yarn node manager service exists 
     stat: path=/lib/systemd/system/yarn-nodemanager.service
     register: ynm_status
-  - name: restart node manager
+  - name: start node manager
     service: 
       name: yarn-nodemanager
-      state: restarted
+      state: started
     when: ynm_status.stat.exists
   - name: mariadb service exists 
     stat: path=/lib/systemd/system/mariadb.service
     register: mdb_status
-  - name: restart maria db
+  - name: start maria db
     service: 
       name: mariadb
-      state: restarted
+      state: started
     when: mdb_status.stat.exists
   - name: airflow-scheduler service exists 
     stat: path=/lib/systemd/system/airflow-scheduler.service
     register: ae_status
-  - name: restart airflow scheduler
+  - name: start airflow scheduler
     service: 
       name: airflow-scheduler
-      state: restarted
+      state: started
     when: ae_status.stat.exists
   - name: airflow-webserver service exists 
     stat: path=/lib/systemd/system/airflow-webserver.service
     register: aw_status
-  - name: restart airflow scheduler
+  - name: start airflow scheduler
     service: 
       name: airflow-webserver
-      state: restarted
+      state: started
     when: aw_status.stat.exists

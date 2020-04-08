@@ -7,14 +7,14 @@ object log {
         val sdfDate = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");//dd/MM/yyyy
         val now = new java.util.Date();
         val strDate = sdfDate.format(now);
-        println(strDate+"[INFO]---->"+message);
+        System.err.println(strDate+"[INFO]---->"+message);
     }
     def warning(message:Any) {
         if(showWarnings) {
           val sdfDate = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");//dd/MM/yyyy
           val now = new java.util.Date();
           val strDate = sdfDate.format(now);
-          println(strDate+"[WARNING]->"+message);
+          System.err.println(strDate+"[WARNING]->"+message);
         }
     }
     def debug(message:Any) {
@@ -22,13 +22,13 @@ object log {
           val sdfDate = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");//dd/MM/yyyy
           val now = new java.util.Date();
           val strDate = sdfDate.format(now);
-          println(strDate+"[DEBUG]--->"+message);
+          System.err.println(strDate+"[DEBUG]--->"+message);
         }
     }
     def error(message:Any) {
       val sdfDate = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");//dd/MM/yyyy
       val now = new java.util.Date();
       val strDate = sdfDate.format(now);
-      println(strDate+"[ERROR]--->"+message);
+      System.err.println(strDate+"[ERROR]--->"+message);
     }
 }

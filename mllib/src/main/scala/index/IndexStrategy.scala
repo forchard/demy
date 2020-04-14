@@ -57,13 +57,16 @@ trait IndexStrategy {
    * Method for evaluating a particular Ngram, all terms are expected to be evaluated
    */
   def evaluateNGram(ngram:Ngram, maxHits:Int, maxLevDistance:Int=2, filter:Row = Row.empty, usePopularity:Boolean
-                     , minScore:Double=0.0 ,boostAcronyms:Boolean=false, caseInsensitive:Boolean = true): Array[SearchMatch] = {
+                     , minScore:Double=0.0 ,boostAcronyms:Boolean=false, caseInsensitive:Boolean = true
+                     , minTokenLikehood:Double = 0.4
+    ): Array[SearchMatch] = {
     val terms = ngram.terms
     val qb = new BooleanQuery.Builder() //  combines multiple TermQuery instances into a BooleanQuery with multiple BooleanClauses, where each clause contains a sub-query and operator
     val fuzzyb = new BooleanQuery.Builder()
     if(maxLevDistance>0) {
         //terms.foreach(s => {
         terms.zip(ngram.termWeights).foreach{ case (s, weight) => {
+          if(weight > minTokenLikehood) {
             var allLetterUppercase =
               if (s.length == 2) Range(0, s.length).forall(ind => s(ind).isUpper)
               else false
@@ -76,14 +79,15 @@ trait IndexStrategy {
                 fuzzyb.add(new FuzzyQuery(new Term("_text_", if(caseInsensitive) s.toLowerCase else s), 1, maxLevDistance), Occur.SHOULD)
                 fuzzyb.add(new BoostQuery(new TermQuery(new Term("_text_",  if(caseInsensitive) s.toLowerCase else s)), 4.00F*weight.toFloat), Occur.SHOULD)
             }
+          }
         }
         case _ => throw new Exception("Should not occur to fall into here; Number of term weights should match number of terms")
       }
     }
     else {
         terms.zip(ngram.termWeights).foreach{ case (s, weight) => {
-            if(weight > 0 && s.length > 3 ) {
-              var allLetterUppercase =
+            if(weight > minTokenLikehood) {
+              var allLetterUppercase = 
                 if (s.length == 2) Range(0, s.length).forall(ind => s(ind).isUpper)
                 else false 
 

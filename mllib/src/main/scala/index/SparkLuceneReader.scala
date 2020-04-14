@@ -2,9 +2,8 @@ package demy.mllib.index;
 
 import org.apache.lucene.analysis.standard.StandardAnalyzer
 import org.apache.lucene.store.NIOFSDirectory
-import org.apache.lucene.index.{DirectoryReader}
-import org.apache.lucene.search.{IndexSearcher}
-import org.apache.lucene.index.{IndexWriter, IndexWriterConfig}
+import org.apache.lucene.index.{DirectoryReader, IndexWriter, IndexWriterConfig}
+import org.apache.lucene.search.{IndexSearcher, LRUQueryCache, UsageTrackingQueryCachingPolicy}
 import java.nio.file.{Paths}
 import org.apache.spark.sql.SparkSession
 import demy.storage.{Storage, LocalNode}
@@ -65,7 +64,17 @@ case class SparkLuceneReader(indexPartition:String, reuseSnapShot:Boolean = fals
         val reader = DirectoryReader.open(index)
         val searcher = new IndexSearcher(reader);
         //StandardStrategy(searcher = searcher, indexDirectory=indexNode.asInstanceOf[LocalNode], reader = reader, usePopularity = usePopularity);
-
+        val useCache = true
+        if(useCache) {
+          val maxNumberOfCachedQueries = 10000;
+          val maxRamBytesUsed = 500 * 1024L * 1024L; // 50MB
+          // these cache and policy instances can be shared across several queries and readers
+          // it is fine to eg. store them into static variables
+          val queryCache = new LRUQueryCache(maxNumberOfCachedQueries, maxRamBytesUsed);
+          val defaultCachingPolicy = new UsageTrackingQueryCachingPolicy();
+          searcher.setQueryCache(queryCache);
+          searcher.setQueryCachingPolicy(defaultCachingPolicy);
+        }
         val mirror = universe.runtimeMirror(getClass.getClassLoader);
         val classInstance = Class.forName(indexStrategy);
         val classSymbol = mirror.classSymbol(classInstance);

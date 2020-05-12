@@ -343,7 +343,7 @@ object implicits {
                              })
                          )
                        else (tokens,  termWeightsArray(i)(j))
-                          
+                     //l.msg(s"searching for ${searchTokens.mkString(",")}") 
                      val res:Array[GenericRowWithSchema] =  rInfo.search(
                        tokens = searchTokens, maxHits=1, filter = Row.empty, outFields=rightRequestFields,
                          maxLevDistance=maxLevDistance, minScore=minScore, boostAcronyms=boostAcronyms,

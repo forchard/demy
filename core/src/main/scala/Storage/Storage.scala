@@ -156,7 +156,7 @@ trait Storage {
     }
   }
   def getFileModificationTime(path:Option[String], attrPattern:Map[String, String] = Map[String, String]()):Option[Long]
-  def isUnchanged(path:Option[String], attrPattern:Map[String, String] = Map[String, String](), checkPath:Option[String], checkAttr:Map[String, String] = Map[String, String]()) = {
+  def isUnchanged(path:Option[String], attrPattern:Map[String, String] = Map[String, String](), checkPath:Option[String], checkAttr:Map[String, String] = Map[String, String](), updateStamp:Boolean = true) = {
     //Getting stored Timestamp
     val timestampNode =  this.getNode(checkPath.getOrElse(null), checkAttr)
     val storedTimestamp = if(timestampNode.exists) Some(timestampNode.getContentAsString.toLong) else None
@@ -168,11 +168,11 @@ trait Storage {
     (storedTimestamp, currentTimestamp) match {
       case (_, None) => throw new Exception("Cannot find file to get modification time")
       case (None, Some(current)) => {
-        this.getNode(checkPath.getOrElse(null), checkAttr).setContent(current.toString, WriteMode.overwrite)
+        if(updateStamp) this.getNode(checkPath.get, checkAttr).setContent(current.toString, WriteMode.overwrite)
         false
       }
       case (Some(stored), Some(current)) => {
-        if(stored != current) this.getNode(checkPath.getOrElse(null), checkAttr).setContent(current.toString, WriteMode.overwrite)
+        if(stored != current && updateStamp) this.getNode(checkPath.getOrElse(null), checkAttr).setContent(current.toString, WriteMode.overwrite)
         stored == current
       } 
     }

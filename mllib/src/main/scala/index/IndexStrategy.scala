@@ -2,7 +2,6 @@ package demy.mllib.index;
 
 import org.apache.lucene.search.{IndexSearcher, TermQuery, BooleanQuery, FuzzyQuery, BoostQuery}
 import org.apache.lucene.search.BooleanClause.Occur
-import org.apache.lucene.store.NIOFSDirectory
 import org.apache.lucene.index.{DirectoryReader, Term}
 import org.apache.lucene.queries.function.FunctionQuery
 import org.apache.lucene.queries.function.valuesource.DoubleFieldSource

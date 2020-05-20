@@ -2,7 +2,7 @@ package demy.mllib.index;
 
 import org.apache.lucene.analysis.standard.StandardAnalyzer
 import java.nio.file.{Files, Paths, Path}
-import org.apache.lucene.store.NIOFSDirectory
+import org.apache.lucene.store.{NIOFSDirectory, FSDirectory, MMapDirectory}
 import org.apache.lucene.index.{IndexWriter,IndexWriterConfig}
 import org.apache.lucene.analysis.Analyzer
 import org.apache.lucene.analysis.custom.CustomAnalyzer
@@ -41,7 +41,11 @@ case class SparkLuceneWriter(indexDestination:String, reuseSnapShot:Boolean=fals
                       .build();
     }
     val indexDir = Files.createDirectories(Paths.get(s"${indexNode.path}"))
-    val index = new NIOFSDirectory(indexDir);
+    val index =
+         if(System.getProperty("os.name").toLowerCase.contains("windows"))
+           new MMapDirectory(indexDir, org.apache.lucene.store.NoLockFactory.INSTANCE)
+         else  
+           new NIOFSDirectory(indexDir, org.apache.lucene.store.NoLockFactory.INSTANCE)
     val config = new IndexWriterConfig(analyzer);
     config.setOpenMode(IndexWriterConfig.OpenMode.CREATE)
     val writer = new IndexWriter(index, config);

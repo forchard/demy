@@ -1,7 +1,7 @@
 package demy.mllib.index;
 
 import org.apache.lucene.analysis.standard.StandardAnalyzer
-import org.apache.lucene.store.NIOFSDirectory
+import org.apache.lucene.store.{NIOFSDirectory, FSDirectory, MMapDirectory}
 import org.apache.lucene.index.{DirectoryReader, IndexWriter, IndexWriterConfig}
 import org.apache.lucene.search.{IndexSearcher, LRUQueryCache, UsageTrackingQueryCachingPolicy}
 import java.nio.file.{Paths}
@@ -60,7 +60,11 @@ case class SparkLuceneReader(indexPartition:String, reuseSnapShot:Boolean = fals
             }
           //}
         }
-        val index = new NIOFSDirectory(Paths.get(this.indexNode.path), org.apache.lucene.store.NoLockFactory.INSTANCE)
+        val index = 
+         if(System.getProperty("os.name").toLowerCase.contains("windows"))
+           new MMapDirectory(Paths.get(this.indexNode.path), org.apache.lucene.store.NoLockFactory.INSTANCE)
+         else  
+           new NIOFSDirectory(Paths.get(this.indexNode.path), org.apache.lucene.store.NoLockFactory.INSTANCE)
         val reader = DirectoryReader.open(index)
         val searcher = new IndexSearcher(reader);
         //StandardStrategy(searcher = searcher, indexDirectory=indexNode.asInstanceOf[LocalNode], reader = reader, usePopularity = usePopularity);
@@ -99,7 +103,7 @@ case class SparkLuceneReader(indexPartition:String, reuseSnapShot:Boolean = fals
       val writer = new IndexWriter(thisInfo.reader.directory(),config)
       writer.addIndexes(thatInfo.reader.directory())
       val newDestPath = (this.indexPartition.split("/") match {case s => s.slice(0, s.size-1)}).mkString("/")+"/"+that.indexNode.path.split("/").head
-      val winfo = SparkLuceneWriterInfo(writer = writer, index = thisInfo.reader.directory().asInstanceOf[NIOFSDirectory], destination = this.indexNode.storage.getNode(path = newDestPath))
+      val winfo = SparkLuceneWriterInfo(writer = writer, index = thisInfo.reader.directory().asInstanceOf[FSDirectory], destination = this.indexNode.storage.getNode(path = newDestPath))
       winfo.push(deleteSource = false)
       thatInfo.close(true)
       that.sparkStorage.getNode(path = that.indexPartition).delete(recurse = true)

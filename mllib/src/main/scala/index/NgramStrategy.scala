@@ -23,14 +23,12 @@ case class NgramStrategy(searcher:IndexSearcher, indexDirectory:LocalNode, reade
   def setProperty(name:String,value:String) = {
     name match {
       case "nNgrams" => NgramStrategy(searcher = searcher, indexDirectory = indexDirectory,  reader = reader, nNgrams=value.toInt)
-//      case "usePopularity" => NgramStrategy(searcher = searcher, indexDirectory = indexDirectory,reader = reader, usePopularity = value.toBoolean)
       case _ => throw new Exception(s"Not supported property ${name} on NgramReadStrategy")
     }
   }
-  def set(searcher:IndexSearcher, indexDirectory:LocalNode,reader:DirectoryReader)
-        =  NgramStrategy(searcher = searcher, indexDirectory = indexDirectory,reader = reader)
+  def set(searcher:IndexSearcher, indexDirectory:LocalNode,reader:DirectoryReader) =  NgramStrategy(searcher = searcher, indexDirectory = indexDirectory,reader = reader)
 
-    // get expanded Ngram in left or right direction of the provided term
+  // get expanded Ngram in left or right direction of the provided term
   def getNgram(currentNgram:Ngram, terms:Array[String], termWeights:Option[Seq[Double]], nNgrams:Int, direction:String="left"): Option[Ngram] = {
 
       val nTerms = terms.length
@@ -41,9 +39,10 @@ case class NgramStrategy(searcher:IndexSearcher, indexDirectory:LocalNode, reade
           if ( (currentNgram.startIndex > 0) & (currentNgram.endIndex < nTerms) ) {
             val newStartIndex = currentNgram.startIndex-1
             val newEndIndex = currentNgram.endIndex
-            termWeights match {case Some(weights) => Some(Ngram(terms=terms.slice(newStartIndex, newEndIndex), startIndex=newStartIndex, endIndex=newEndIndex, termWeights=weights.slice(newStartIndex, newEndIndex)))
-                               case None => Some(Ngram(terms=terms.slice(newStartIndex, newEndIndex), startIndex=newStartIndex, endIndex=newEndIndex))
-                              }
+            termWeights match {
+              case Some(weights) => Some(Ngram(terms=terms.slice(newStartIndex, newEndIndex), startIndex=newStartIndex, endIndex=newEndIndex, termWeights=weights.slice(newStartIndex, newEndIndex)))
+              case None => Some(Ngram(terms=terms.slice(newStartIndex, newEndIndex), startIndex=newStartIndex, endIndex=newEndIndex))
+            }
           }
           // left border
           else if (currentNgram.startIndex == 0)  None
@@ -51,9 +50,10 @@ case class NgramStrategy(searcher:IndexSearcher, indexDirectory:LocalNode, reade
           else if (currentNgram.endIndex == nTerms) {
             val newStartIndex = currentNgram.startIndex-1
             val newEndIndex = currentNgram.endIndex
-            termWeights match {case Some(weights) => Some(Ngram(terms=terms.slice(newStartIndex, newEndIndex), startIndex=newStartIndex, endIndex=newEndIndex, termWeights=weights.slice(newStartIndex, newEndIndex)))
-                               case None => Some(Ngram(terms=terms.slice(newStartIndex, newEndIndex), startIndex=newStartIndex, endIndex=newEndIndex))
-                              }
+            termWeights match {
+              case Some(weights) => Some(Ngram(terms=terms.slice(newStartIndex, newEndIndex), startIndex=newStartIndex, endIndex=newEndIndex, termWeights=weights.slice(newStartIndex, newEndIndex)))
+              case None => Some(Ngram(terms=terms.slice(newStartIndex, newEndIndex), startIndex=newStartIndex, endIndex=newEndIndex))
+            }
           }
 
           else None
@@ -64,18 +64,20 @@ case class NgramStrategy(searcher:IndexSearcher, indexDirectory:LocalNode, reade
           if ( (currentNgram.startIndex > 0) & (currentNgram.endIndex < nTerms) ) {
             val newStartIndex = currentNgram.startIndex
             val newEndIndex = currentNgram.endIndex+1
-            termWeights match {case Some(weights) => Some(Ngram(terms=terms.slice(newStartIndex, newEndIndex), startIndex=newStartIndex, endIndex=newEndIndex, termWeights=weights.slice(newStartIndex, newEndIndex)))
-                               case None => Some(Ngram(terms=terms.slice(newStartIndex, newEndIndex), startIndex=newStartIndex, endIndex=newEndIndex))
-                              }
+            termWeights match {
+              case Some(weights) => Some(Ngram(terms=terms.slice(newStartIndex, newEndIndex), startIndex=newStartIndex, endIndex=newEndIndex, termWeights=weights.slice(newStartIndex, newEndIndex)))
+              case None => Some(Ngram(terms=terms.slice(newStartIndex, newEndIndex), startIndex=newStartIndex, endIndex=newEndIndex))
+            }
           }
 
           // left border
           else if (currentNgram.startIndex == 0) {
             val newStartIndex = 0
             val newEndIndex = nNgrams+1
-            termWeights match {case Some(weights) => Some(Ngram(terms=terms.slice(newStartIndex, newEndIndex), startIndex=newStartIndex, endIndex=newEndIndex, termWeights=weights.slice(newStartIndex, newEndIndex)))
-                               case None => Some(Ngram(terms=terms.slice(newStartIndex, newEndIndex), startIndex=newStartIndex, endIndex=newEndIndex))
-                              }
+            termWeights match {
+              case Some(weights) => Some(Ngram(terms=terms.slice(newStartIndex, newEndIndex), startIndex=newStartIndex, endIndex=newEndIndex, termWeights=weights.slice(newStartIndex, newEndIndex)))
+              case None => Some(Ngram(terms=terms.slice(newStartIndex, newEndIndex), startIndex=newStartIndex, endIndex=newEndIndex))
+            }
           }
 
           // right border
@@ -86,6 +88,24 @@ case class NgramStrategy(searcher:IndexSearcher, indexDirectory:LocalNode, reade
           println("ERROR: Wrong direction provided in func getNgram(). Possible choices: [left, right]")
           None
       }
+  }
+  def evaluateNGram(ngram:Ngram, maxHits:Int, maxLevDistance:Int=2, filter:Row = Row.empty, usePopularity:Boolean
+                     , minScore:Double=0.0 ,boostAcronyms:Boolean=false, caseInsensitive:Boolean = true
+                     , minTokenLikehood:Double = 0.6
+    ): Array[SearchMatch] = {
+      evaluate(
+        terms = ngram.terms
+        , likelihood = ngram.termWeights
+        , from = 0
+        , to = ngram.terms.size
+        , maxHits = maxHits
+        , maxLevDistance = maxLevDistance
+        , filter = filter
+        , usePopularity = usePopularity
+        , minScore = minScore
+        , boostAcronyms = boostAcronyms
+        , caseInsensitive = caseInsensitive
+      ).map{case SearchMatch(docId, score, ng) => SearchMatch(docId, score, ngram)}
   }
 
   // search in expanded Ngrams until max score is found
@@ -173,42 +193,98 @@ case class NgramStrategy(searcher:IndexSearcher, indexDirectory:LocalNode, reade
     maxScoreLocalNgram
   }
 
-override def searchDoc(terms:Array[String], maxHits:Int, maxLevDistance:Int=2, filter:Row = Row.empty , usePopularity:Boolean, minScore:Double=0.0, boostAcronyms:Boolean=false, termWeights:Option[Seq[Double]]=None, caseInsensitive:Boolean = true, tokenize:Boolean = true ) = {
-
+override def searchDoc(
+  terms:Array[String]
+  , maxHits:Int
+  , maxLevDistance:Int=2
+  , filter:Row = Row.empty 
+  , usePopularity:Boolean
+  , minScore:Double=0.0
+  , boostAcronyms:Boolean=false
+  , termWeights:Option[Seq[Double]]=None
+  , caseInsensitive:Boolean = true
+  , tokenize:Boolean = true 
+  ) = {
       val nTerms = terms.length
+      if( (terms.length > nNgrams) && (nNgrams != -1) ) {
+        // calculate score for each ngram and take the N with the highest score
+        val maxScoreLocal = terms
+          .zipWithIndex
+          .sliding(nNgrams)
+          .map{arrayOfStrings => 
+            termWeights match { 
+              case Some(termWeights) => 
+                Ngram(arrayOfStrings.map{case (term, index) => term}
+                  , arrayOfStrings(0)._2
+                  , arrayOfStrings(0)._2+nNgrams
+                  , termWeights.slice(arrayOfStrings(0)._2, arrayOfStrings(0)._2+nNgrams)
+                )
+              case None => 
+                Ngram(arrayOfStrings.map{case (term, index) => term}
+                  , arrayOfStrings(0)._2
+                  , arrayOfStrings(0)._2+nNgrams
+                )
+            }
+          }
+          .map(ngram => 
+            evaluateNGram(
+              ngram=ngram
+              , maxHits=maxHits
+              , maxLevDistance=maxLevDistance
+              , filter=filter
+              , usePopularity = usePopularity
+              , minScore=minScore, caseInsensitive
+          ))
+          .filter(m => m.size > 0)
+          .toSeq
+          .topN(maxHits, (searchMatch1, searchMatch2) => 
+            (searchMatch1.size > 0 && (searchMatch2.size == 0 || searchMatch1.head.score < searchMatch2.head.score) ) 
+          )
+          .toArray
 
-      if ( (terms.length > nNgrams) && (nNgrams != -1) ) {
-
-          // calculate score for each ngram and take the N with the highest score
-          val maxScoreLocal = terms.zipWithIndex.sliding(nNgrams)
-                                                //.map{arrayOfStrings => Ngram(arrayOfStrings.map{case (term, index) => term}, arrayOfStrings(0)._2, arrayOfStrings(0)._2+nNgrams) }
-                                                .map{arrayOfStrings => termWeights match { case Some(termWeights) => Ngram(arrayOfStrings.map{case (term, index) => term}, arrayOfStrings(0)._2, arrayOfStrings(0)._2+nNgrams, termWeights.slice(arrayOfStrings(0)._2, arrayOfStrings(0)._2+nNgrams))
-                                                                                           case None => Ngram(arrayOfStrings.map{case (term, index) => term}, arrayOfStrings(0)._2, arrayOfStrings(0)._2+nNgrams)
-                                                                                          }
-                                                    }
-                                                .map(ngram => evaluateNGram(ngram=ngram, maxHits=maxHits, maxLevDistance=maxLevDistance, filter=filter, usePopularity = usePopularity, minScore=minScore, caseInsensitive))
-                                                .filter(m => m.size > 0)
-                                                .toSeq
-                                                .topN(maxHits, (searchMatch1, searchMatch2) => (searchMatch1.size > 0 && (searchMatch2.size == 0 || searchMatch1.head.score < searchMatch2.head.score) ) )
-                                                .toArray
-
-
-          // For each Ngram with the highest score, check if score can be improved by expanded Ngram
-          maxScoreLocal.flatMap( maxHit =>  searchNgramExpanded(maxScoreLocal = maxHit, terms = terms, termWeights=termWeights, nNgrams=  nNgrams, nTerms = nTerms, maxHits = maxHits
-                                                                                , maxLevDistance= maxLevDistance, filter= filter , usePopularity= usePopularity, minScore = minScore
-                                                                                , boostAcronyms= boostAcronyms)
-                                        )
-                                       .toSeq
-                                       .topN(maxHits, (searchMatch1, searchMatch2) => (searchMatch1.score < searchMatch2.score) )
-                                       .toArray
-
+        // For each Ngram with the highest score, check if score can be improved by expanded Ngram
+        maxScoreLocal
+          .flatMap(maxHit =>  
+            searchNgramExpanded(
+              maxScoreLocal = maxHit
+              , terms = terms
+              , termWeights=termWeights
+              , nNgrams = nNgrams
+              , nTerms = nTerms
+              , maxHits = maxHits
+              , maxLevDistance= maxLevDistance
+              , filter= filter
+              , usePopularity= usePopularity
+              , minScore = minScore
+              , boostAcronyms= boostAcronyms
+            )
+          )
+          .toSeq
+          .topN(maxHits, (searchMatch1, searchMatch2) => (searchMatch1.score < searchMatch2.score) )
+          .toArray
       } else {
-        termWeights match { case Some(termWeights) => evaluateNGram(ngram = Ngram(terms, 0, terms.size, termWeights), maxHits=maxHits, maxLevDistance=maxLevDistance, filter=filter, usePopularity = usePopularity, minScore = minScore, caseInsensitive)
-                            case None => evaluateNGram(ngram = Ngram(terms, 0, terms.size), maxHits=maxHits, maxLevDistance=maxLevDistance, filter=filter, usePopularity = usePopularity, minScore = minScore, caseInsensitive)
-
-
+        termWeights match { 
+          case Some(termWeights) => 
+            evaluateNGram(
+              ngram = Ngram(terms, 0, terms.size, termWeights)
+              , maxHits=maxHits
+              , maxLevDistance=maxLevDistance
+              , filter=filter
+              , usePopularity = usePopularity
+              , minScore = minScore
+              , caseInsensitive
+            )
+          case None => 
+            evaluateNGram(
+              ngram = Ngram(terms, 0, terms.size)
+              , maxHits=maxHits
+              , maxLevDistance=maxLevDistance
+              , filter=filter
+              , usePopularity = usePopularity
+              , minScore = minScore
+              , caseInsensitive
+            )
         }
-        //evaluateNGram(ngram = Ngram(terms, 0, terms.size), maxHits=maxHits, maxLevDistance=maxLevDistance, filter=filter, usePopularity = usePopularity, minScore = minScore)
       }
   }
 

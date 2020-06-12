@@ -17,8 +17,7 @@ import demy.util.{log => l}
 
 case class Ngram(terms:Array[String], startIndex:Int, endIndex:Int, termWeights:Seq[Double])
 object Ngram {
-  def apply(terms:Array[String], startIndex:Int, endIndex:Int):Ngram = Ngram(terms=terms, startIndex=startIndex,
-                                                                       endIndex=endIndex, termWeights= terms.map(_ => 1.0))
+  def apply(terms:Array[String], startIndex:Int, endIndex:Int):Ngram = Ngram(terms=terms, startIndex=startIndex,endIndex=endIndex, termWeights= terms.map(_ => 1.0))
   def apply(terms:Array[String]):Ngram = Ngram(terms=terms, startIndex=0,endIndex=terms.size, termWeights= terms.map(_ => 1.0))
   def apply(terms:Array[String], termWeights:Seq[Double]):Ngram = Ngram(terms=terms, startIndex=0,endIndex=terms.size, termWeights= terms.map(_ => 1.0))
   //def print() {println("Terms: "+terms.mkString(",")+" startIndex: "+startIndex+" endIndex: "+endIndex+"\nWeights:"+termWeights.mkString(","))}
@@ -37,11 +36,23 @@ trait IndexStrategy {
   /**
    * Method that will call weightevaluateNgram to find documents match within a text. This is the entry point for heuristics that will find occurrences on terms subsets
    */
-  def searchDoc(terms:Array[String], maxHits:Int, maxLevDistance:Int=2, filter:Row = Row.empty , usePopularity:Boolean, minScore:Double=0.0,
-            boostAcronyms:Boolean=false, termWeights:Option[Seq[Double]]=None, caseInsensitive:Boolean = true, tokenize:Boolean = true) = {
-      evaluateNGram(
-        ngram = if (termWeights.isEmpty) Ngram(terms = terms, startIndex = 0, endIndex = terms.size)
-                else Ngram(terms = terms, startIndex = 0, endIndex = terms.size, termWeights=termWeights.get)
+  def searchDoc(
+    terms:Array[String]
+    , maxHits:Int
+    , maxLevDistance:Int=2
+    , filter:Row = Row.empty
+    , usePopularity:Boolean
+    , minScore:Double=0.0
+    , boostAcronyms:Boolean=false
+    , termWeights:Option[Seq[Double]]=None
+    , caseInsensitive:Boolean = true
+    , tokenize:Boolean = true
+    ) = {
+      evaluate(
+        terms = terms
+        , likelihood = termWeights.getOrElse(Array.fill(terms.size)(1.0)) 
+        , from = 0
+        , to = terms.size
         , maxHits=maxHits
         , maxLevDistance=maxLevDistance
         , filter=filter
@@ -55,58 +66,32 @@ trait IndexStrategy {
   /***
    * Method for evaluating a particular Ngram, all terms are expected to be evaluated
    */
-  def evaluateNGram(ngram:Ngram, maxHits:Int, maxLevDistance:Int=2, filter:Row = Row.empty, usePopularity:Boolean
+  def evaluate(terms:Array[String], likelihood:Seq[Double], from:Int, to:Int, maxHits:Int, maxLevDistance:Int=2, filter:Row = Row.empty, usePopularity:Boolean
                      , minScore:Double=0.0 ,boostAcronyms:Boolean=false, caseInsensitive:Boolean = true
                      , minTokenLikehood:Double = 0.4
     ): Array[SearchMatch] = {
-    val terms = ngram.terms
     val qb = new BooleanQuery.Builder() //  combines multiple TermQuery instances into a BooleanQuery with multiple BooleanClauses, where each clause contains a sub-query and operator
-    val fuzzyb = new BooleanQuery.Builder()
-    if(maxLevDistance>0) {
-        //terms.foreach(s => {
-        terms.zip(ngram.termWeights).foreach{ case (s, weight) => {
-          if(weight > minTokenLikehood) {
-            var allLetterUppercase =
-              if (s.length == 2) Range(0, s.length).forall(ind => s(ind).isUpper)
-              else false
+    val b = new BooleanQuery.Builder()
+    for(i <- Iterator.range(from, to)) { 
+      val s= terms(i)
+      val weight = likelihood(i)
 
-            // if term is only in Uppercase -> double term: "TX" -> "TXTX" (ensures that term is not neglected due to too less letters)
-            if (allLetterUppercase) {
-                fuzzyb.add(new BoostQuery(new TermQuery(new Term("_text_", s+s)), 15.00F), Occur.SHOULD) // High boosting factor to find doubles
-                fuzzyb.add(new BoostQuery(new TermQuery(new Term("_text_", if(caseInsensitive) s.toLowerCase else s)), 4.00F*weight.toFloat), Occur.SHOULD)
-            } else {
-                fuzzyb.add(new FuzzyQuery(new Term("_text_", if(caseInsensitive) s.toLowerCase else s), 1, maxLevDistance), Occur.SHOULD)
-                fuzzyb.add(new BoostQuery(new TermQuery(new Term("_text_",  if(caseInsensitive) s.toLowerCase else s)), 4.00F*weight.toFloat), Occur.SHOULD)
-            }
-          }
-        }
-        case _ => throw new Exception("Should not occur to fall into here; Number of term weights should match number of terms")
+      var allLetterUppercase = s.size == 2 && Range(0, s.length).forall(ind => s(ind).isUpper)
+      if (allLetterUppercase && boostAcronyms) {
+        // if term is only in Uppercase -> double term: "TX" -> "TXTX" (ensures that term is not neglected due to too less letters)
+        b.add(new BoostQuery(new TermQuery(new Term("_text_", s+s)), if(maxLevDistance > 0) 15.00F else 4.00F), Occur.SHOULD) // High boosting factor to find doubles
+      } else if(maxLevDistance>0) {
+        // if query is fuzzy, two queries will be sent one in fuzzy and another boosting the perfect match 
+        if(s.size > 2) b.add(new BoostQuery(new FuzzyQuery(new Term("_text_", if(caseInsensitive) s.toLowerCase else s), 1, maxLevDistance), weight.toFloat), Occur.SHOULD)
+        b.add(new BoostQuery(new TermQuery(new Term("_text_",  if(caseInsensitive) s.toLowerCase else s)), 4.00F*weight.toFloat), Occur.SHOULD)
+      } else if(weight < 0.8 && weight >= minTokenLikehood ) { 
+        b.add(new BoostQuery(new TermQuery(new Term("_text_",  if(caseInsensitive) s.toLowerCase else s)), weight.toFloat), Occur.SHOULD)
+      } else if(weight >= minTokenLikehood ) { 
+        b.add(new TermQuery(new Term("_text_",  if(caseInsensitive) s.toLowerCase else s)), Occur.SHOULD)
       }
     }
-    else {
-        terms.zip(ngram.termWeights).foreach{ case (s, weight) => {
-            if(weight > minTokenLikehood) {
-              var allLetterUppercase = 
-                if (s.length == 2) Range(0, s.length).forall(ind => s(ind).isUpper)
-                else false 
 
-              // if term is only in Uppercase -> double term: "TX" -> "TXTX" (ensures that term is not neglected due to too less letters)
-              if (allLetterUppercase) {
-                  val bst = new BoostQuery(new TermQuery(new Term("_text_", s+s)), 4.00F)  // Boosting factor of 4.0 for exact match
-                  fuzzyb.add(bst, Occur.SHOULD)
-              } else if(weight < 0.8) {
-                  val bst = new BoostQuery(new TermQuery(new Term("_text_",  if(caseInsensitive) s.toLowerCase else s)), weight.toFloat) // boosting factor of 4.0 for exact match
-                  fuzzyb.add(bst, Occur.SHOULD)
-              } else {
-                  fuzzyb.add(new TermQuery(new Term("_text_",  if(caseInsensitive) s.toLowerCase else s)), Occur.SHOULD)
-              }
-            }
-          }
-          case _ => throw new Exception("Should not occur to fall into here; Number of term weights shoul  d match number of terms")
-        }
-    }
-
-    qb.add(fuzzyb.build, Occur.MUST)
+    qb.add(b.build, Occur.MUST)
     
     if(filter.schema != null) {
        filter.schema.fields.zipWithIndex.foreach(p => p match { case (field, i) =>
@@ -136,7 +121,7 @@ trait IndexStrategy {
     //hits
 
     //println(s"HITS ARE: ${hits.size}")
-    hits.map(hit => SearchMatch(docId=hit.doc, score=hit.score,ngram=ngram))
+    hits.map(hit => SearchMatch(docId=hit.doc, score=hit.score, Ngram(terms=terms.slice(from, to), startIndex = from, endIndex = to)))
 
   }
 

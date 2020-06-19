@@ -111,16 +111,16 @@ trait IndexStrategy {
       else qb.build
 
 
-    val startTime = System.nanoTime
+    //val startTime = System.nanoTime
     val docs = this.searcher.search(q, maxHits);
-    val endTime = System.nanoTime
+    //val endTime = System.nanoTime
     //if( ngram.termWeights!= null && ngram.termWeights.size>0)
     //    println(s"SEARCH ${(endTime - startTime)/1e6d} msecs for ${ngram.terms.size} terms ispeed: ${((endTime - startTime)/1e6d)/(ngram.terms.size)} ${ngram.terms.mkString(",")}")
     
     val hits = docs.scoreDocs;
     //hits
 
-    //println(s"HITS ARE: ${hits.size}")
+    //println(s"HITS ARE: ($from, $to)${terms.slice(from, to).toSeq}")
     hits.map(hit => SearchMatch(docId=hit.doc, score=hit.score, Ngram(terms=terms.slice(from, to), startIndex = from, endIndex = to)))
 
   }

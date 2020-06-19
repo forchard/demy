@@ -11,6 +11,7 @@ import demy.storage.WriteMode
 import scala.reflect._
 import scala.reflect.runtime.universe
 import scala.collection.mutable.HashMap
+import demy.util.{log => l}
 
 case class SparkLuceneReader(indexPartition:String, reuseSnapShot:Boolean = false, useSparkFiles:Boolean = false,
                              usePopularity:Boolean=false, indexStrategy:String, strategyParams:Map[String,String]) {
@@ -61,7 +62,7 @@ case class SparkLuceneReader(indexPartition:String, reuseSnapShot:Boolean = fals
           //}
         }
         val index = 
-         if(System.getProperty("os.name").toLowerCase.contains("windows"))
+         if(true || System.getProperty("os.name").toLowerCase.contains("windows"))
            new MMapDirectory(Paths.get(this.indexNode.path), org.apache.lucene.store.NoLockFactory.INSTANCE)
          else  
            new NIOFSDirectory(Paths.get(this.indexNode.path), org.apache.lucene.store.NoLockFactory.INSTANCE)
@@ -85,6 +86,7 @@ case class SparkLuceneReader(indexPartition:String, reuseSnapShot:Boolean = fals
         val classType = classSymbol.toType;
         val baseStrategy = classInstance.newInstance(/*Array(searcher, indexNode.asInstanceOf[LocalNode], reader)*/).asInstanceOf[IndexStrategy]
           .set(searcher = searcher, indexDirectory=indexNode.asInstanceOf[LocalNode], reader = reader)
+        //l.msg(s"using strategy $baseStrategy")
         val ret = strategyParams.toSeq.foldLeft(baseStrategy)((current, prop)=> current.setProperty(prop._1, prop._2))
         SparkLuceneReader.readerCount(this.indexNode.path) = 1
         SparkLuceneReader.readers(this.indexNode.path) = ret

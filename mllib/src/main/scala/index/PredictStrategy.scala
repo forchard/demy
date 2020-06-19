@@ -62,39 +62,44 @@ override def searchDoc(
         var imax = 0
         var v = 0.0
         var vmax = 0.0
+
         for(i <- Iterator.range(0, weights.size)) {
-          v = v + weights(i)
-          if(i > 3) v = v - weights(i - 3)
+          v = weights(i)
           if(v > vmax) {
             imax = i
             vmax = v  
           }
         }
         var ifrom = imax
-        var ito = imax
-        v = weights(imax)
-        //Expanding the range until for closer likelihood bigger than 0.75 the found center
-        for(i <- Iterator.range(1, 3)) {
-          if(imax - i >= 0 && weights(imax - i)> 0.75*v) {
-            ifrom = i
+        var ito = ifrom
+        v = vmax
+        if(vmax > 0.75) {
+          //Expanding the range until size 5 for closer likelihood bigger than 0.75 the found center
+          for(i <- Iterator.range(1, 3)) {
+            if(imax - i >= 0 && weights(imax - i)> 0.75*v) {
+              ifrom = imax - i
+            }
+            if(imax + i < weights.size && weights(imax + i) > 0.75*v) {
+              ito = imax + i
+            }
           }
-          if(imax + i < weights.size && weights(imax + i) > 0.75*v) {
-            ito = i
-          }
+          //println(s"HOTS ARE: ($ifrom, ${ito+1})${terms.slice(ifrom, ito+1).toSeq} -- weights: ${weights.map(l => BigDecimal(l).setScale(2, BigDecimal.RoundingMode.HALF_UP).toDouble)}")
+          evaluate(
+            terms = terms
+            , likelihood = terms.map(l => 1.0)
+            , from = ifrom
+            , to = ito + 1
+            , maxHits = maxHits
+            , maxLevDistance = maxLevDistance
+            , filter = filter
+            , usePopularity = usePopularity
+            , minScore = minScore
+            , boostAcronyms = boostAcronyms
+            , caseInsensitive = caseInsensitive
+          )
+        } else {
+          Array[SearchMatch]()  
         }
-        evaluate(
-          terms = terms
-          , likelihood = weights
-          , from = ifrom
-          , to = ito + 1
-          , maxHits = maxHits
-          , maxLevDistance = maxLevDistance
-          , filter = filter
-          , usePopularity = usePopularity
-          , minScore = minScore
-          , boostAcronyms = boostAcronyms
-          , caseInsensitive = caseInsensitive
-        )
     }
 
   }

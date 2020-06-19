@@ -105,6 +105,7 @@ case class NgramStrategy(searcher:IndexSearcher, indexDirectory:LocalNode, reade
         , minScore = minScore
         , boostAcronyms = boostAcronyms
         , caseInsensitive = caseInsensitive
+        , minTokenLikehood = minTokenLikehood
       ).map{case SearchMatch(docId, score, ng) => SearchMatch(docId, score, ngram)}
   }
 

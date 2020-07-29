@@ -78,6 +78,7 @@ trait Node{
   def encodeExtras(encoder:EncodedNode)
   def mergeWith(that:Node, cGenerator:Iterator[Int], fit:Boolean):this.type
 
+  // updates facts and scores for single node
   def transform(facts:HashMap[Int, HashMap[Int, Int]]
     , scores:HashMap[Int, Double]
     , vectors:Seq[MLVector]
@@ -86,10 +87,20 @@ trait Node{
     , cGeneratror:Iterator[Int]
     , fit:Boolean)
 
+  // "each sentences walks through tree" -> starts by walking thorug classifiers until comes to clusteringNode
+  // walk is called once for in scope,
+  // evaluate score for each children and decide which children will receive this sentence
+  // calls walk in selected children (same for classifier and clustering)
+  // runs in parallel (each thread has its own count/hits and in the end merge count/hits to root-thread (done in mergeWith))
   def walk(facts:HashMap[Int, HashMap[Int, Int]], scores:HashMap[Int, Double], vectors:Seq[MLVector], tokens:Seq[String], parent:Option[Node], cGenerator:Iterator[Int], fit:Boolean) {
-    this.params.hits = this.params.hits + 1
-    transform(facts, scores, vectors, tokens, parent, cGenerator, fit)
-    val order = Seq.range(0, this.children.size)
+//  def walk(facts:HashMap[Int, HashMap[Int, Int]], scores:HashMap[Int, Double], vectors:Seq[MLVector], tokens:Seq[String], parent:Option[Node], cGenerator:Iterator[Int], fit:Boolean, externalClasses:Map[String,String]) {
+    this.params.hits = this.params.hits + 1 // counts how often node was hit by one sentence
+//    TODO:this.params.externalClasses = increase counts here
+//    calculatePurity()
+    transform(facts, scores, vectors, tokens, parent, cGenerator, fit) // add scores, facts (=index)
+    //println("\nTokens: "+tokens.mkString(", "))
+    //println("facts: "+facts)
+    val order = Seq.range(0, this.children.size) // needs to evaluate first classifiers and in the end clustering brother
       .sortWith((a, b) =>
         if(this.children(a).params.algo == this.children(b).params.algo)
           a < b
@@ -315,7 +326,7 @@ object Node {
      , strLinks = Map("0" -> Set(1, 2))
      , filterMode = FilterMode.bestScore
      , filterValue = ArrayBuffer(0)
-     , maxTopWords = Some(5)
+     , maxTopWords = Some(5)//Some(5)
      , classCenters= Some(Map("1"->0, "2" -> 1))
      , childSplitSize = Some(50)
      , hits = 0.0

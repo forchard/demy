@@ -92,7 +92,7 @@ case class ClassifierNode (
       var bestSum:Option[MLVector] = None
 
       for{(iIn, iPos) <- idx.iterator.zipWithIndex} {
-        Some(this.score(outClass, vectors(iIn)))
+        Some(this.score(outClass, vectors(iIn))) // each vector validated on classifiers
           .map{score =>
             if(score > 0.5) setScores(It(iIn), outClass, score)
             if(score > bestIndScore) bestIndScore = score
@@ -111,7 +111,7 @@ case class ClassifierNode (
               sum = sum.map(v =>v.sum(vectors(idx(i)))).orElse(Some(vectors(idx(i))));
               (sum.get, i)
               })
-            .map{case (vSum, i) => (i, this.score(outClass, vSum), vSum)}
+            .map{case (vSum, i) => (i, this.score(outClass, vSum), vSum)} // calls classifiers
             .map{case (i, score, vSum) =>
               if(score > bestPosScore) {
                 bestPosScore = score
@@ -119,9 +119,9 @@ case class ClassifierNode (
                 bestITo = idx(i)
                 bestSum = Some(vSum)
               }
-              (i, score)
-            }.takeWhile{case (i, score) => i < iPos + windowSize || i < bestTo + windowSize}
-            .size
+              (i, score) // score of expanded window
+            }.takeWhile{case (i, score) => i < iPos + windowSize || i < bestTo + windowSize} //
+            .size // just to execute
             sum = bestSum
         } else { //contracting the left side window
           sum = sum.map(v => v.minus(vectors(idx(iPos -1))))
@@ -142,13 +142,14 @@ case class ClassifierNode (
           if(bestIndScore > bestDocScore) bestDocScore = bestIndScore
         }
       }
-      allVector
-        .map(v => this.score(outClass, v))
-        .map{allScore =>
-          if(allScore > bestDocScore && allScore > 0.5) {
-            setScores(idx.iterator, outClass, bestDocScore)
+      if (windowSize > 0)
+        allVector
+          .map(v => this.score(outClass, v))
+          .map{allScore =>
+            if(allScore > bestDocScore && allScore > 0.5) {
+              setScores(idx.iterator, outClass, bestDocScore)
+            }
           }
-        }
     }
   }
 
@@ -216,8 +217,11 @@ case class ClassifierNode (
        .zip(this.points)
        .flatMap{case(c, p) => if(p == null) None else Some(c)}
 
+
     val otherPointsOut = getPoints(excludedNodes, true, false).map{case (v, inRel) => (v)}.toSeq
     val otherChildrenPoints = getPoints(this.children, true, false).toSeq
+    println("name:"+this.params.name)
+    println("size annotations: "+this.params.annotations.size)
 
     for(c <- this.outClasses) {
       this.models(c) = WrappedClassifier(
@@ -246,16 +250,6 @@ case class ClassifierNode (
       val negClasses = getDescendantClasses(excludedNodes).toSet // get all classes for brothers
       val currentAnnotationsPositive = allAnnotations.filter(a => posClasses(a.tag) && a.inRel)
       val currentAnnotationsNegative = allAnnotations.filter(a => (this.outClasses(a.tag) && !a.inRel) || (negClasses(a.tag)  && a.inRel)).map(a => a.setInRel(false))
-      val trainPos = if (currentAnnotationsPositive.length == 1) currentAnnotationsPositive.toSet
-                     else {
-                       // make sure that at least one positive training annotation from the current class (!) is in trainPos, otherwise the current class is not found in trainNode.rel
-                       val annotCurrentClass = currentAnnotationsPositive.filter(a => a.tag == this.outClasses.toList(0))(0) // take an annotation of the current Tag and make sure it is in the training data
-                       val currentAnnotationsPositiveWithoutOne = currentAnnotationsPositive.filter(a => a != annotCurrentClass)
-                       r.shuffle(currentAnnotationsPositiveWithoutOne).take((currentAnnotationsPositiveWithoutOne.length*0.8).toInt).toSet ++ Set(annotCurrentClass)
-                     }
-      val trainNeg = r.shuffle(currentAnnotationsNegative).take((currentAnnotationsNegative.length*0.8).toInt).toSet
-      val train = r.shuffle(trainPos ++ trainNeg)
-      val test = (r.shuffle(currentAnnotationsPositive.toSet -- trainPos) ++ (currentAnnotationsNegative.toSet -- trainNeg)).toList
       // println("")
       // println("This Node: "+this.params.name)
       // println("Class: "+this.outClasses)
@@ -264,8 +258,22 @@ case class ClassifierNode (
       // println(posClasses)
       // println("negClasses:")
       // println(negClasses)
+      // println("Positive current node:"+allAnnotations.filter(a => (this.outClasses(a.tag) && a.inRel)).size)
+      // println("negative current node:"+allAnnotations.filter(a => (this.outClasses(a.tag) && !a.inRel)).size)
+      // allAnnotations.filter(a => (this.outClasses(a.tag) && !a.inRel)).foreach(a => if(a.tokens.size < 5) println("inRel:"+a.inRel+";;"+a.tokens) else println("tag: "+a.tag+"; inRel:"+a.inRel+";;"+a.tokens.take(8)))
       // println("currentAnnotationsPositive:"+currentAnnotationsPositive.size)
       // currentAnnotationsPositive.foreach(a => if(a.tokens.size < 5) println("tag: "+a.tag+"; inRel:"+a.inRel+";;"+a.tokens) else println("tag: "+a.tag+"; inRel:"+a.inRel+";;"+a.tokens.take(8)))
+      val trainPos = if (currentAnnotationsPositive.length == 1) currentAnnotationsPositive.toSet
+                     else {
+                       // make sure that at least one positive training annotation from the current class (!) is in trainPos, otherwise the current class is not found in trainNode.rel
+                       val annotCurrentClass = currentAnnotationsPositive.filter(a => a.tag == this.outClasses.toList(0))(0) // take an annotation of the current Tag and make sure it is in the training data
+                       val currentAnnotationsPositiveWithoutOne = currentAnnotationsPositive.filter(a => a != annotCurrentClass)
+                       r.shuffle(currentAnnotationsPositiveWithoutOne).take((currentAnnotationsPositiveWithoutOne.length*0.8).toInt).toSet ++ Set(annotCurrentClass)
+                     }
+      val trainNeg = r.shuffle(currentAnnotationsNegative).take((currentAnnotationsNegative.length*0.7).toInt).toSet
+      val train = r.shuffle(trainPos ++ trainNeg)
+      val test = (r.shuffle(currentAnnotationsPositive.toSet -- trainPos) ++ (currentAnnotationsNegative.toSet -- trainNeg)).toList
+
       // println("currentAnnotationsNegative:"+currentAnnotationsNegative.size)
       // //currentAnnotationsNegative.foreach(a => if(a.tokens.size < 5) println(a.tokens+"; tag: "+a.tag+"; inRel:"+a.inRel) else println(a.tokens.take(8)+"; tag: "+a.tag+"; inRel:"+a.inRel))
       // println("train positive samples:"+trainPos.size)
@@ -394,7 +402,36 @@ case class ClassifierNode (
         }.toDS()
          .withColumnRenamed("_1", "label")
          .withColumnRenamed("_2", "score")
-        //println("testDF:"+testDF.show(20))
+        println("testDF:"+testDF.show(20))
+        // scala.tools.nsc.io.File("/home/adrian/PhD/Epiconcept/tmp/log.txt").appendAll("\n")
+        // scala.tools.nsc.io.File("/home/adrian/PhD/Epiconcept/tmp/log.txt").appendAll("\nThis Node: "+this.params.name)
+        // scala.tools.nsc.io.File("/home/adrian/PhD/Epiconcept/tmp/log.txt").appendAll("\n"+testDF.show(20))
+        // scala.tools.nsc.io.File("/home/adrian/PhD/Epiconcept/tmp/log.txt").appendAll("\nPositive current node:"+allAnnotations.filter(a => (this.outClasses(a.tag) && a.inRel)).size)
+        // scala.tools.nsc.io.File("/home/adrian/PhD/Epiconcept/tmp/log.txt").appendAll("\nNegative current node:"+allAnnotations.filter(a => (this.outClasses(a.tag) && !a.inRel)).size)
+        // scala.tools.nsc.io.File("/home/adrian/PhD/Epiconcept/tmp/log.txt").appendAll("\nPositive training samples (with brother/child):"+(train.filter(a => a.inRel == true)).size)
+        // scala.tools.nsc.io.File("/home/adrian/PhD/Epiconcept/tmp/log.txt").appendAll("\nNegative training samples (with brother/child):"+(train.filter(a => a.inRel == false)).size)
+        // scala.tools.nsc.io.File("/home/adrian/PhD/Epiconcept/tmp/log.txt").appendAll("\nPositive test samples (with brother/child):"+(test.filter(a => a.inRel == true)).size)
+        // scala.tools.nsc.io.File("/home/adrian/PhD/Epiconcept/tmp/log.txt").appendAll("\nNegative test samples (with brother/child):"+(test.filter(a => a.inRel == false)).size)
+        // scala.tools.nsc.io.File("/home/adrian/PhD/Epiconcept/tmp/log.txt").appendAll("\nPositive total (with brother/child):"+((train++test).filter(a => a.inRel == true)).size)
+        // scala.tools.nsc.io.File("/home/adrian/PhD/Epiconcept/tmp/log.txt").appendAll("\nNegative total (with brother/child):"+((train++test).filter(a => a.inRel == false)).size)
+        // scala.tools.nsc.io.File("/home/adrian/PhD/Epiconcept/tmp/log.txt").appendAll("\ncurrentAnnotationsPositive:"+currentAnnotationsPositive.size)
+        // scala.tools.nsc.io.File("/home/adrian/PhD/Epiconcept/tmp/log.txt").appendAll("\ncurrentAnnotationsNegative:"+currentAnnotationsNegative.size)
+        println("\nThis Node: "+this.params.name)
+        println("Positive current node:"+allAnnotations.filter(a => (this.outClasses(a.tag) && a.inRel)).size)
+        println("negative current node:"+allAnnotations.filter(a => (this.outClasses(a.tag) && !a.inRel)).size)
+        println("Positive training samples:"+(train.filter(a => a.inRel == true)).size)
+        println("Negative training samples:"+(train.filter(a => a.inRel == false)).size)
+        println("Positive test samples:"+(test.filter(a => a.inRel == true)).size)
+        println("Negative test samples:"+(test.filter(a => a.inRel == false)).size)
+        println("Positive total samples:"+((train++test).filter(a => a.inRel == true)).size)
+        println("Positive total samples:"+((train++test).filter(a => a.inRel == false)).size)
+        println("currentAnnotationsPositive:"+currentAnnotationsPositive.size)
+        println("currentAnnotationsNegative:"+currentAnnotationsNegative.size)
+        println("(train++test).filter(a => a.inRel == true)).size:"+(train++test).filter(a => a.inRel == true).size)
+        println("(train++test).filter(a => a.inRel == true)).size.toDouble:"+(train++test).filter(a => a.inRel == false).size)
+        println()
+
+
         val evaluator = new BinaryOptimalEvaluator().fit(testDF)
         val metrics = evaluator.metrics
         this.params.metrics =
@@ -405,16 +442,15 @@ case class ClassifierNode (
                                   s"accuracy${if(this.outClasses.size > 1) s"_$c" else ""}" ->  metrics.accuracy.getOrElse(0.0),
                                   s"pValue${if(this.outClasses.size > 1) s"_$c" else ""}" ->  metrics.pValue.getOrElse(0.0),
                                   s"threshold${if(this.outClasses.size > 1) s"_$c" else ""}" -> metrics.threshold.getOrElse(0.0),
-                                  s"positiveAnnotations${if(this.outClasses.size > 1) s"_$c" else ""}" -> (train++test.filter(a => a.inRel == true)).size.toDouble,
-                                  s"negativeAnnotations${if(this.outClasses.size > 1) s"_$c" else ""}" -> (train++test.filter(a => a.inRel == false)).size.toDouble
+                                  s"positiveAnnotations${if(this.outClasses.size > 1) s"_$c" else ""}" -> ((train++test).filter(a => a.inRel == true)).size.toDouble,
+                                  s"negativeAnnotations${if(this.outClasses.size > 1) s"_$c" else ""}" -> ((train++test).filter(a => a.inRel == false)).size.toDouble,
+                                  s"tp${if(this.outClasses.size > 1) s"_$c" else ""}" -> metrics.tp.getOrElse(0).toDouble,
+                                  s"fp${if(this.outClasses.size > 1) s"_$c" else ""}" -> metrics.fp.getOrElse(0).toDouble,
+                                  s"tn${if(this.outClasses.size > 1) s"_$c" else ""}" -> metrics.tn.getOrElse(0).toDouble,
+                                  s"fn${if(this.outClasses.size > 1) s"_$c" else ""}" -> metrics.fn.getOrElse(0).toDouble
                                 )
         this.params.rocCurve ++ Map(s"rocCurve${if(this.outClasses.size > 1) s"_$c" else ""}" -> metrics.rocCurve)
-        println("This Node: "+this.params.name)
-        println("Positive training samples:"+(train.filter(a => a.inRel == true)).size)
-        println("Negative training samples:"+(train.filter(a => a.inRel == false)).size)
-        println("Positive test samples:"+(test.filter(a => a.inRel == true)).size)
-        println("Negative test samples:"+(test.filter(a => a.inRel == false)).size)
-        println()
+
         output += PerformanceReport(metrics.threshold
                                   , metrics.precision
                                   , metrics.recall
@@ -427,14 +463,21 @@ case class ClassifierNode (
                                   , this.params.tagId
                                   , c
                                   , new Timestamp(System.currentTimeMillis())
-                                  , (train++test.filter(a => a.inRel == true)).size
-                                  , (train++test.filter(a => a.inRel == false)).size)
-
+                                  , allAnnotations.filter(a => (this.outClasses(a.tag) && a.inRel)).size
+                                  , allAnnotations.filter(a => (this.outClasses(a.tag) && !a.inRel)).size
+                                  , ((train++test).filter(a => a.inRel == true)).size
+                                  , ((train++test).filter(a => a.inRel == false)).size
+                                  , metrics.tp
+                                  , metrics.fp
+                                  , metrics.tn
+                                  , metrics.fn
+                                )
       }
       output
   }
   def mergeWith(that:Node, cGenerator:Iterator[Int], fit:Boolean):this.type = {
     this.params.hits = this.params.hits + that.params.hits
+//    TODO: merge externalClassesFreq for this that
     It.range(0, this.children.size).foreach(i => this.children(i).mergeWith(that.children(i), cGenerator, fit))
     this
   }
@@ -480,4 +523,10 @@ case class PerformanceReport(
   , timestamp:Timestamp
   , positiveAnnotations: Int
   , negativeAnnotations: Int
+  , positiveAnnotationsChildBrother: Int
+  , negativeAnnotationsChildBrother: Int
+  , tp:Option[Int]=None
+  , fp:Option[Int]=None
+  , tn:Option[Int]=None
+  , fn:Option[Int]=None
 )

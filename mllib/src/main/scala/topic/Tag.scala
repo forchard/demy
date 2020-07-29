@@ -136,12 +136,12 @@ object TagSource {
     , children:ArrayBuffer[Seq[Int]]= ArrayBuffer[Seq[Int]]()
     , classPath:ArrayBuffer[Map[Int, Set[Int]]]= ArrayBuffer[Map[Int, Set[Int]]]()
   ):Seq[(TagSource, Seq[Int], Map[Int, Set[Int]])] = {
-    /*println(s"---------------------------")
-    println(s"tags: $tags")
-    println(s"nodes: $nodes")
-    println(s"leafs: $leafs")
-    println(s"children: $children")
-    println(s"classPath: $classPath")*/
+    // println(s"---------------------------")
+    // println(s"tags: $tags")
+    // println(s"nodes: $nodes")
+    // println(s"leafs: $leafs")
+    // println(s"children: $children")
+    // println(s"classPath: $classPath")
     val (newLeafs, rest) =
       tags.map{tag =>
         if(tag.filterValue.isEmpty || tag.filterValue == Set(0)) {

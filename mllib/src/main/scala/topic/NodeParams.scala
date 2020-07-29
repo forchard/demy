@@ -58,6 +58,8 @@ case class NodeParams(
   , var hits:Double = 0
   , var metrics:Map[String, Double] = Map[String, Double]()
   , var rocCurve:Map[String, Array[(Double,Double)]] = Map[String, Array[(Double,Double)]]()
+  , var externalClassesFreq:HashMap[String, HashMap[String, Int]] = HashMap[String, HashMap[String,Int]]() // Map [Gender -> map(M->12, F->20), Country -> map(france->21,allemagne->12)]
+  , var purity:HashMap[String, Double] = HashMap[String,Double]() // Map [Gender -> 0.5, Region -> 1.0]
 ) {
   def toNode(others:ArrayBuffer[NodeParams]= ArrayBuffer[NodeParams](), vectorIndex:Option[VectorIndex]= None):Node = {
    val n =

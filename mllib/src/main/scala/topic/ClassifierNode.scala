@@ -220,8 +220,8 @@ case class ClassifierNode (
 
     val otherPointsOut = getPoints(excludedNodes, true, false).map{case (v, inRel) => (v)}.toSeq
     val otherChildrenPoints = getPoints(this.children, true, false).toSeq
-    println("name:"+this.params.name)
-    println("size annotations: "+this.params.annotations.size)
+    //println("name:"+this.params.name)
+    //println("size annotations: "+this.params.annotations.size)
 
     for(c <- this.outClasses) {
       this.models(c) = WrappedClassifier(

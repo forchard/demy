@@ -182,11 +182,14 @@ class BinaryOptimalEvaluator(override val uid: String) extends Estimator[BinaryO
         })
 
     println("tp: "+tp+", tn: "+tn+", fp: "+fp+", fn: "+fn)
+    scala.tools.nsc.io.File("/home/adrian/PhD/Epiconcept/tmp/log.txt").appendAll("\ntp: "+tp+", tn: "+tn+", fp: "+fp+", fn: "+fn)
+
     val accuracy = (tp.toDouble+tn.toDouble) / (tp.toDouble+tn.toDouble+fp.toDouble+fn.toDouble)
     val precT = tp.toDouble / (tp.toDouble+fp.toDouble)
     val recallT = tp.toDouble / (tp.toDouble+fn.toDouble)
     val f1scT = 2*precT*recallT/(precT+recallT)
-    println("acc: "+accuracy+", prec: "+precision+", recall: "+recall+", f1score: "+f1Score)
+    println("acc: "+accuracy+", prec: "+precision+", recall: "+recall+", f1score: "+f1Score+", AUC:"+areaUnderROC)
+    scala.tools.nsc.io.File("/home/adrian/PhD/Epiconcept/tmp/log.txt").appendAll("\nacc: "+accuracy+", prec: "+precision+", recall: "+recall+", f1score: "+f1Score+", AUC:"+areaUnderROC)
 
     val df = dataset.sparkSession.createDataFrame(toEvaluate
                                     .map(p => p match { case (score, label) =>

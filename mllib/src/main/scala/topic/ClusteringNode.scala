@@ -23,6 +23,8 @@ case class ClusteringNode (
   val classCentersMap = classCenters.groupBy{case (cla, center) => center}.mapValues(p => p.map{case (cla, center) => cla}.toSet)
 
   val pScores = if(this.params.annotations.size == maxTopWords) Array(this.params.annotations.map(a => a.score) :_*) else Array.fill(maxTopWords)(0.0)
+  //println("initialise pscores:")
+  //println(pScores.mkString("; "))
   val numCenters = this.classCenters.values.toSet.size
   val cError = this.params.cError.getOrElse(Array.fill(numCenters)(0.0))
 
@@ -68,9 +70,15 @@ case class ClusteringNode (
       , cGenerator:Iterator[Int] // When new children are created -> generator generates new classes for the children
       , fit:Boolean) { // should model / topwords be updated with new documents ?
 
-
-    val vectorsInScopeCount =  this.links.keysIterator.map(inClass => facts.get(inClass).map(o => o.size).getOrElse(0)).sum
+    //println("\nTRANSFORM ==================")
+    val vectorsInScopeCount =  this.links.keysIterator.map(inClass => facts.get(inClass).map(o => o.size).getOrElse(0)).sum // number tokens in scope
+    //println("facts:")
+    //println(facts)
+    //println("tokens:"+tokens.mkString(";"))
+    //println("vectorsInScopeCount: "+vectorsInScopeCount)
     // calculate word2vec combinations..
+    //println("this.links: "+this.links)
+    //println("this.links.keySet: "+this.links.keySet)
     val scoresByClass =
       for(inClass <- this.links.keySet.iterator)
         yield {
@@ -87,22 +95,25 @@ case class ClusteringNode (
                     , cGenerator = cGenerator
                     , fit = fit
                   )
+                //println(s"\tinClass $inClass, scoredPoint : $scoredPoint, iVector: $iVector, tokens: ${tokens.mkString(";")}")
                 scoredPoint
               }
           )
         }
+    //println("scoresByClass: "+scoresByClass)
 
-
-    val sequenceScore = this.scoreSequence(scoredTokens = scoresByClass.map{case (inClass, scores) => (inClass, scores.flatMap(s => s))})
-
+    val sequenceScore = this.scoreSequence(scoredTokens = scoresByClass.map{case (inClass, scores) => (inClass, scores.flatMap(s => s))}) // sequence = documents
+    //println("sequenceScore: "+sequenceScore)
     sequenceScore.map{case ScoredSequence(inClass, outClass, score, scoredVectors) =>
       scores(outClass) = score
-
+      //println(s"  outClass: $outClass; scores($outClass): ${scores(outClass)}")
       for(ScoredVector(iVector, outVectorClass, outVectorScore, iPoint, iCenter) <- scoredVectors ) {
         facts.get(outClass) match {
           case Some(f) => f(iVector) = iVector
           case None => facts(outClass) = HashMap(iVector -> iVector)
         }
+        //println(s"    outClass: $outClass, outVectorClass: $outVectorClass, outVectorScore: $outVectorScore, tokens: ${Seq(tokens(iVector)).mkString("; ")}")
+        // affects this class outClass to this vector ; all tokens of this sentence have the class outClass
         this.affectPoint(
           vector = vectors(iVector)
           , tokens = Seq(tokens(iVector))
@@ -119,6 +130,7 @@ case class ClusteringNode (
   }
 
   def onInit(vector:MLVector, tokens:Seq[String], inClass:Int) = {
+    // adds one topword
     //if(this.params.hits < 10) println(s"${this.children.size} ${this.classCentersMap.size} ${this.initializing} ${this.pScores.sum} ${this.childSplitSize} ${this.points.size} < ${this.maxTopWords} ${this.params.filterValue} ${inClass}")
     if(initializing && this.points.size < this.maxTopWords) {
         this.links(inClass).iterator
@@ -150,6 +162,7 @@ case class ClusteringNode (
     else
       -1
   }
+  // average of how close (1+cos sim/2) of tokens from their topwords
   def clusterScore = if(cHits.sum == 0) 0.0 else 1.0 - It.range(0, this.cError.size).map(i => cError(i)*cHits(i)).sum / cHits.sum
   def clusterBalance = if(cHits.sum == 0) 0.0 else {
     val sum = cHits.sum
@@ -172,28 +185,35 @@ case class ClusteringNode (
     BigDecimal(v).setScale(2, BigDecimal.RoundingMode.HALF_UP).toDouble
   }
 
-  case class ScoredSequence(inClass:Int, outClass:Int, outScore:Double, scoredVectors:Iterator[ScoredVector])
+  case class ScoredSequence( // score of sentence for particular class
+    inClass:Int
+    , outClass:Int
+    , outScore:Double
+    , scoredVectors:Iterator[ScoredVector])
   def scoreSequence(scoredTokens:Iterator[(Int, Iterator[ScoredVector])]) = {
-    val pointScores = Array.fill(this.maxTopWords)(0.0)
-    val pointCounts = Array.fill(this.maxTopWords)(0)
-
-    val sequenceScore =
+    val pointScores = Array.fill(this.maxTopWords)(0.0) // claculates mean of scores of token to topwords
+    val pointCounts = Array.fill(this.maxTopWords)(0) // how many tokens will be assigned to this topword
+    //println("In function scoreSequence()")
+    //println(s"this.outClasses: $this.outClasses")
+    val sequenceScore = // returns two scoreSequence, which contain a particular class
      for((inClass, inClassScores)  <- scoredTokens)
         yield {
-
+          //println(s"    inClass: $inClass, inClassScores: $inClassScores")
           val retTokens = this.outClasses.map(o => (o, ListBuffer[ScoredVector]())).toMap
+          //println(s"    retTokens: $retTokens")
           val (bestClass, bestScore) = {
-            for(scoredToken  <- inClassScores) {
-
+            for(scoredToken  <- inClassScores) { // returns only one ScoredSequence;
+              // scoredToken.iPoint = index of the topword for this current token
               pointScores(scoredToken.iPoint) = pointScores(scoredToken.iPoint) + scoredToken.outScore
               pointCounts(scoredToken.iPoint) = pointCounts(scoredToken.iPoint) + 1
               retTokens(scoredToken.outClass) += scoredToken
+              //println(s"pointScores(${scoredToken.iPoint}): ${pointScores(scoredToken.iPoint)}; pointCounts(scoredToken.iPoint): ${pointCounts(scoredToken.iPoint)}; retTokens(${scoredToken.outClass}): ${retTokens(scoredToken.outClass)}")
             }
 
             this.links(inClass).iterator
               .map{outClass =>
                 var vectorCount = 0
-                val pointScore =
+                val pointScore = // score for each topword for this outClass
                   this.rel.get(outClass).map(_.keysIterator).getOrElse(Iterator[Int]())
                     .map{iPoint =>
                       val pointScore = if(pointCounts(iPoint) == 0) 0.0 else pointScores(iPoint)/pointCounts(iPoint)
@@ -203,15 +223,20 @@ case class ClusteringNode (
                     .reduceOption(_ + _).getOrElse(0.0)
                 (outClass, if(pointScore == 0) 0.0 else pointScore / vectorCount)
               }
-              .reduce((p1, p2) => (p1, p2) match {case ((_, score1),(_, score2)) => if(score1 > score2) p1 else p2})
+              .reduce((p1, p2) => (p1, p2) match {case ((_, score1),(_, score2)) => if(score1 > score2) p1 else p2}) // take best score of both possible outClasses
           }
-
-          ScoredSequence(inClass = inClass, outClass = bestClass, outScore = bestScore, scoredVectors = retTokens(bestClass).iterator)
+          //println("  ScoredSequence: inClass: $inClass, outClass: $bestClass, outScore: $bestScore")
+          ScoredSequence(inClass = inClass, outClass = bestClass, outScore = bestScore, scoredVectors = retTokens(bestClass).iterator) // scoredVectors : score for each token
         }
     sequenceScore
   }
-  case class ScoredVector(iVector:Int, outClass:Int, outScore:Double, iPoint:Int, iCenter:Int)
-  def score(
+  case class ScoredVector(
+    iVector:Int // index of the token in sentence
+      , outClass:Int
+      , outScore:Double
+      , iPoint:Int // index of topword
+      , iCenter:Int)
+  def score( // evaluates model and fits token to node
     iVector:Int
     , vectors:Seq[MLVector]
     , vTokens:Seq[String]
@@ -219,23 +244,27 @@ case class ClusteringNode (
     , parent:Option[ClusteringNode]=None
     , cGenerator: Iterator[Int]
     , fit:Boolean) = {
-
+    //println("\tSCORE in SCOREDVECTOR =====")
+    //println(s"\tiVector: $iVector; inClass: $inClass, vTokens: ${vTokens.mkString(";")}")
     //val vectorOrCenter = asVCenter match {case Some(v) => v case None => vectors(iVector) }
     if(fit
-        && cGenerator.hasNext
-        && this.children.size < this.classCentersMap.size
+        && cGenerator.hasNext // create children until limit is reached : maxClasses
+        && this.children.size < this.classCentersMap.size // create children only if children do not exist already
         && !this.initializing
-        && this.pScores.sum > this.childSplitSize
-        && (parent.isEmpty ||  this.clusterScore < 0.9) /*(this.clusterScore - parent.get.clusterScore)/parent.get.clusterScore > 0.02 )*/ ) {
+        && this.pScores.sum > this.childSplitSize // pScores: score for each point/topword ; sum(pScores) == number of documents went through this node
+        && (parent.isEmpty || parent.get.cHits.forall(_ > this.childSplitSize))
+        && (parent.isEmpty || this.clusterScore < 0.9) /*(this.clusterScore - parent.get.clusterScore)/parent.get.clusterScore > 0.02 )*/ 
+      ) {
       //println(s"spawning... ${this.params.annotations}, ${this.inClasses}")
-      this.fillChildren(cGenerator)
+      this.fillChildren(cGenerator) // create children
     }
-    onInit(vectors(iVector), Seq(vTokens(iVector)), inClass)
-
+    onInit(vectors(iVector), Seq(vTokens(iVector)), inClass) // affecting top words for initalisation if not initialised
+    //println(s"this.rel: ${this.rel}")
     this.links(inClass).iterator
       .filter{outClass => this.rel.contains(outClass)}
       .map{outClass =>
         val iCenter = this.classCenters(outClass)
+        //println(s"\toutClass: $outClass, iCenter: $iCenter, this.rel(outClass): ${this.rel(outClass)}")
         val (bestPoint, pSimilarity) =
            (for(iPoint <- this.rel(outClass).keysIterator)
              yield (iPoint, vectors(iVector).similarityScore(this.points(iPoint)))
@@ -245,24 +274,31 @@ case class ClusteringNode (
                 if(score1 > score2) p1
                 else p2
             })
-          ScoredVector(iVector = iVector, outClass = outClass, outScore = pSimilarity, iPoint = bestPoint, iCenter = iCenter)
+          //println(s"\toutClass: $outClass, outScore: pSimilarity, bestPoint: $bestPoint")
+          ScoredVector(iVector = iVector, outClass = outClass, outScore = pSimilarity, iPoint = bestPoint, iCenter = iCenter) // evaluates current vector on each cluster class, returns two scoredvectors
         }
   }
 
   def affectPoint(vector:MLVector, tokens:Seq[String], vClass:Int, vScore:Double, iPoint:Int, iCenter:Int, weight:Double = 1.0, asVCenter:Option[MLVector]=None, fit:Boolean) {
+    // associates a vector to a particular class
+    //println("\taffectPoint ======")
+    //println("tokens: "+tokens.mkString(" "))
+    //println(s"vClass: $vClass, vScore: $vScore, iPoint: $iPoint, iCenter: $iCenter, weight: $weight")
     this.pScores(iPoint) = this.pScores(iPoint) + vScore * weight
     val vectorOrCenter =  asVCenter match {case Some(v) => v case _ => vector}
-
+    //println(s"pScores($iPoint) : ${this.pScores(iPoint)}")
+    // if not initializing
     if((this.sequences(iPoint).size != tokens.size
           || It.range(0, tokens.size).map(i => String.CASE_INSENSITIVE_ORDER.compare(this.sequences(iPoint)(i),tokens(i)) == 0).contains(false)
         )
         && !this.initializing
         && fit
       )
-      tryAsPoint(vector = vector, tokens = tokens, vClass = vClass, iPoint = iPoint, iCenter = iCenter)
-    this.vCenters(iPoint) = this.vCenters(iPoint).scale(pScores(iPoint)/(pScores(iPoint) + weight)).sum(vectorOrCenter.scale(weight).scale(weight/(pScores(iPoint) + weight)))
+      tryAsPoint(vector = vector, tokens = tokens, vClass = vClass, iPoint = iPoint, iCenter = iCenter) // tries this point as a topword and checks if there is an improvement
+    this.vCenters(iPoint) = this.vCenters(iPoint).scale(pScores(iPoint)/(pScores(iPoint) + weight)).sum(vectorOrCenter.scale(weight).scale(weight/(pScores(iPoint) + weight))) // update center/statistic for each topword
     this.pGAP(iPoint) = 1.0 - this.vCenters(iPoint).similarityScore(this.points(iPoint))
-    //println(s"pGAP: ${this.pGAP(iPoint)}, iPoint: ${iPoint}, pScores: ${pScores(iPoint)")
+    //println(s"pGAP: ${this.pGAP(iPoint)}, iPoint: ${iPoint}, pScores: ${pScores(iPoint)}")
+    // cError: average distance/error of all tokens to its closest topword
     this.cError(iCenter) = this.cError(iCenter) * (cHits(iCenter)/(cHits(iCenter) + weight)) + (1.0 - vectorOrCenter.similarityScore(this.points(iPoint))) * (weight/(cHits(iCenter) + weight))
     this.cHits(iCenter) = this.cHits(iCenter) + weight
   }
@@ -306,7 +342,7 @@ case class ClusteringNode (
   def mergeWith(thatNode:Node, cGenerator:Iterator[Int], fit:Boolean):this.type = {
     thatNode match {
       case that:ClusteringNode =>
-        if(fit & that.children.filter(c => c.params.hits> 0).size > 1) {
+        if(fit & that.children.filter(c => c.params.hits> 0).size > 1) { // you walk until non-empty leaf nodes
             that.children.filter(c => c.params.hits> 0).foreach(c => this.mergeWith(thatNode = c, cGenerator = cGenerator, fit = fit))
         } else if(fit) {
           val vectorsInScopeCount =  that.points.size
@@ -374,7 +410,10 @@ case class ClusteringNode (
 //          TODO: calculate purity based on externalClassesFreq
 //          this.params.purity = ..
           It.range(0, this.pScores.size).foreach(i => this.pScores(i) =  this.pScores(i) + that.pScores(i) )
+          It.range(0, this.cError.size).foreach(i => this.cError(i) = this.cError(i) * (this.cHits(i)/(this.cHits(i) + that.cHits(i))) + that.cError(i) * (that.cHits(i)/(that.cHits(i) + this.cHits(i))))
           It.range(0, this.cHits.size).foreach(i => this.cHits(i) =  this.cHits(i) + that.cHits(i))
+          It.range(0, this.vCenters.size).foreach(i => this.vCenters(i) = this.vCenters(i).scale(this.pScores(i)/(this.pScores(i) + that.pScores(i))).sum(that.vCenters(i).scale(that.pScores(i)/(that.pScores(i) + this.pScores(i)))))
+          It.range(0, this.pGAP.size).foreach(i => 1.0 - this.vCenters(i).similarityScore(this.points(i)))
           It.range(0, this.children.size).foreach(i => this.children(i).mergeWith(that.children(i), cGenerator, fit))
           this
         }
@@ -395,6 +434,7 @@ case class ClusteringNode (
   }
 
   def fillChildren(cGenerator:Iterator[Int]) {
+    // creates two empty children for current node and affects classes and parameters to collect sentences as expected
     for{i <- It.range(this.children.size, this.classCenters.values.toSet.size) if cGenerator.hasNext } {
       val fromMap =
         this.classCenters.flatMap{ case (outClass, iCenter) =>

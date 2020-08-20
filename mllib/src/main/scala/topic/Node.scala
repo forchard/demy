@@ -92,7 +92,13 @@ trait Node{
   // evaluate score for each children and decide which children will receive this sentence
   // calls walk in selected children (same for classifier and clustering)
   // runs in parallel (each thread has its own count/hits and in the end merge count/hits to root-thread (done in mergeWith))
-  def walk(facts:HashMap[Int, HashMap[Int, Int]], scores:HashMap[Int, Double], vectors:Seq[MLVector], tokens:Seq[String], parent:Option[Node], cGenerator:Iterator[Int], fit:Boolean) {
+  def walk(facts:HashMap[Int, HashMap[Int, Int]]
+    , scores:HashMap[Int, Double]
+    , vectors:Seq[MLVector]
+    , tokens:Seq[String]
+    , parent:Option[Node]
+    , cGenerator:Iterator[Int]
+    , fit:Boolean) {
 //  def walk(facts:HashMap[Int, HashMap[Int, Int]], scores:HashMap[Int, Double], vectors:Seq[MLVector], tokens:Seq[String], parent:Option[Node], cGenerator:Iterator[Int], fit:Boolean, externalClasses:Map[String,String]) {
     this.params.hits = this.params.hits + 1 // counts how often node was hit by one sentence
 //    TODO:this.params.externalClasses = increase counts here

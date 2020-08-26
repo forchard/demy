@@ -122,7 +122,7 @@ trait Node{
       val i = order(o)
       val factClasses = facts.keySet.filter(k => facts(k).size > 0)
       val posIn = this.children(i).params.filterValue.toSet.filter(_ >=0)
-      val negIn = this.children(i).params.filterValue.toSet.filter(_ < 0).map(-_)
+      val negIn = this.children(i).params.filterValue.toSet.filter(_ < 0).map(-_) // negative filterValues in ClusteringBrother
       if(this.children(i).params.filterMode == FilterMode.noFilter
         || (this.children(i).params.filterMode == FilterMode.allIn && factClasses.intersect(negIn).isEmpty && posIn.subsetOf(factClasses))
         || (this.children(i).params.filterMode == FilterMode.anyIn && factClasses.intersect(negIn).isEmpty && !factClasses.intersect(posIn).isEmpty)

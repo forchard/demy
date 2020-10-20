@@ -49,7 +49,7 @@ case class ClassifierNode (
 
   /** Transform updates the facts and scores
    *
-   * @param facts @tparam HashMap[Int, HashMap[Int, Int]] Mapping for each class of vectors a HashMap with the indices of vectors having the class
+   * @param facts @tparam HashMap[Int, HashMap[Int, Int]] Mapping for each class of vectors a HashMap with the indices of vectors/tokens having the class
    * @param scores @tparam HashMap[Int, Double] Maps for each class the global score of all vectors having this class
    * @param vectors @tparam Seq[MLVector] List of word vectors
    * @param tokens @tparam Seq[String] List of tokens
@@ -65,22 +65,40 @@ case class ClassifierNode (
       , cGenerator:Iterator[Int]
       , fit:Boolean) {
 
+    // println("\nTRANSFORM\n")
+    // println(s"windowSize: ${this.windowSize}")
+    // println(s"tag name: ${this.params.name}")
+    // println("facts.keys:")
+    // println(facts.keys)
+    // //println(tokens.zipWithIndex)
+    // println("scores:")
+    // println(scores)
+
+
     var setScores = (idxs:Iterator[Int], oClass:Int, score:Double ) => {
       var first:Option[Int] = None
-      for(i <- idxs) {
-        first = first.orElse(Some(i))
-        facts.get(oClass) match {
-          case Some(f) => f(i) = first.get
-          case None => facts(oClass) = HashMap(i -> first.get)
+      if (score > 0.5) {
+        for(i <- idxs) {
+          first = first.orElse(Some(i))
+          facts.get(oClass) match {
+            case Some(f) => f(i) = first.get
+            case None => facts(oClass) = HashMap(i -> first.get)
+          }
         }
       }
+
       scores.get(oClass) match {
         case Some(s) => scores(oClass) = if(s > score) s else score
         case None => scores(oClass) = score
       }
     }
+    //println(s"this.linkPairs : ${this.linkPairs}")
     for((inClass, outClass) <- this.linkPairs) {
+      //println(s"\tinClass: $inClass, outClass: $outClass")
       val idx = facts(inClass).iterator.map{case (iIn, _) => iIn}.toSeq.sortWith(_ < _)
+      //println(s"\tidx: $idx")
+      //println(s"\tfacts($inClass).size : ${facts(inClass).size}")
+
       var allVector:Option[MLVector] = None
       var bestDocScore = 0.0
       var bestITo = -1
@@ -91,65 +109,82 @@ case class ClassifierNode (
       var sum:Option[MLVector] = None
       var bestSum:Option[MLVector] = None
 
+      var c_score = 0
+      var c_noScore = 0
       for{(iIn, iPos) <- idx.iterator.zipWithIndex} {
-        Some(this.score(outClass, vectors(iIn))) // each vector validated on classifiers
-          .map{score =>
-            if(score > 0.5) setScores(It(iIn), outClass, score)
-            if(score > bestIndScore) bestIndScore = score
-          } //always setting if current vector is classifies in the outClass
+        //println(s"\t\tiIn: ${iIn}, iPos: ${iPos}, bestITo: ${bestITo}")
+        allVector = Some(allVector.map(v => v.sum(vectors(iIn))).getOrElse(vectors(iIn))) // sum of all vectors
 
-        allVector = Some(allVector.map(v => v.sum(vectors(iIn))).getOrElse(vectors(iIn)))
-        if(iIn > bestITo) {//start expanding the right side right window
-          bestIndScore = 0.0
-          bestPosScore = 0.0
-          bestFrom = iPos
-          bestTo = iPos
-          sum = None
-          bestSum = None
-          It.range(iPos, idx.size)
-            .map(i => {
-              sum = sum.map(v =>v.sum(vectors(idx(i)))).orElse(Some(vectors(idx(i))));
-              (sum.get, i)
-              })
-            .map{case (vSum, i) => (i, this.score(outClass, vSum), vSum)} // calls classifiers
-            .map{case (i, score, vSum) =>
-              if(score > bestPosScore) {
-                bestPosScore = score
-                bestTo = i
-                bestITo = idx(i)
-                bestSum = Some(vSum)
-              }
-              (i, score) // score of expanded window
-            }.takeWhile{case (i, score) => i < iPos + windowSize || i < bestTo + windowSize} //
-            .size // just to execute
-            sum = bestSum
-        } else { //contracting the left side window
-          sum = sum.map(v => v.minus(vectors(idx(iPos -1))))
-          sum
-            .map{v => this.score(outClass, v)}
+        if (windowSize != -1) {
+          Some(this.score(outClass, vectors(iIn))) // each vector validated on classifiers
             .map{score =>
-              if(score > bestPosScore) {
-                bestPosScore = score
-                bestFrom = iPos
+              setScores(It(iIn), outClass, score) // update facts and scores
+              // if(score > 0.5) {
+              //   //println(s"\tScore for iIn: ${iIn}, iPos: $iPos, tokens: ${tokens(iIn)}")
+              //   c_score = c_score + 1
+              //   setScores(It(iIn), outClass, score) // update facts and scores
+              // }
+              // else c_noScore = c_noScore + 1
+
+              if(score > bestIndScore) bestIndScore = score
+            } //always setting if current vector is classifies in the outClass
+
+          if(iIn > bestITo) {//start expanding the right side right window
+            bestIndScore = 0.0
+            bestPosScore = 0.0
+            bestFrom = iPos
+            bestTo = iPos
+            sum = None
+            bestSum = None
+            It.range(iPos, idx.size)
+              .map(i => {
+                sum = sum.map(v =>v.sum(vectors(idx(i)))).orElse(Some(vectors(idx(i))));
+                (sum.get, i)
+                })
+              .map{case (vSum, i) => (i, this.score(outClass, vSum), vSum)} // calls classifiers
+              .map{case (i, score, vSum) =>
+                if(score > bestPosScore) {
+                  bestPosScore = score
+                  bestTo = i
+                  bestITo = idx(i)
+                  bestSum = Some(vSum)
+                }
+                (i, score) // score of expanded window
+              }.takeWhile{case (i, score) => i < iPos + windowSize || i < bestTo + windowSize} //
+              .size // just to execute
+              sum = bestSum
+          } else { //contracting the left side window
+            sum = sum.map(v => v.minus(vectors(idx(iPos -1))))
+            sum
+              .map{v => this.score(outClass, v)}
+              .map{score =>
+                if(score > bestPosScore) {
+                  bestPosScore = score
+                  bestFrom = iPos
+                }
               }
-            }
-        }
-        if(iIn == bestITo) {
-          if(bestPosScore > 0.5 && bestPosScore > bestIndScore) {
-            setScores(It.range(bestFrom, bestTo + 1).map(i => idx(i)), outClass, bestPosScore)
           }
-          if(bestPosScore > bestDocScore) bestDocScore = bestPosScore
-          if(bestIndScore > bestDocScore) bestDocScore = bestIndScore
+          if(iIn == bestITo) {
+            if(bestPosScore > bestIndScore) {
+              setScores(It.range(bestFrom, bestTo + 1).map(i => idx(i)), outClass, bestPosScore)
+            }
+            if(bestPosScore > bestDocScore) bestDocScore = bestPosScore
+            if(bestIndScore > bestDocScore) bestDocScore = bestIndScore
+          }
         }
       }
-      if (windowSize > 0)
+      //println(s"tokens scored: $c_score")
+      //println(s"tokens did not score: $c_noScore")
+      if (windowSize > 0 || windowSize == -1)
         allVector
           .map(v => this.score(outClass, v))
           .map{allScore =>
-            if(allScore > bestDocScore && allScore > 0.5) {
-              setScores(idx.iterator, outClass, bestDocScore)
+            if(allScore > bestDocScore) {
+              //println(s"\tallScore: $allScore, outClass: $outClass, bestDocScore:$bestDocScore")
+              setScores(idx.iterator, outClass, allScore)
             }
           }
+      //}
     }
   }
 
@@ -203,7 +238,6 @@ case class ClassifierNode (
    * @return Fitted Classifier Node
   */
   def fit(spark:SparkSession, excludedNodes:Seq[Node]) = {
-//  def fit(spark:SparkSession, excludedNodes:Seq[Node]) = {
     l.msg(s"Start classifier fitting models for windowSize ${this.windowSize}")
     this.models.clear
     val thisPoints = this.points.filter(_ != null)
@@ -220,8 +254,10 @@ case class ClassifierNode (
 
     val otherPointsOut = getPoints(excludedNodes, true, false).map{case (v, inRel) => (v)}.toSeq
     val otherChildrenPoints = getPoints(this.children, true, false).toSeq
-    //println("name:"+this.params.name)
-    //println("size annotations: "+this.params.annotations.size)
+    println("name:"+this.params.name)
+    println("size annotations: "+this.params.annotations.size)
+    println("Positive annotations:"+this.params.annotations.filter(a => a.inRel).size)
+    println("negative annotations:"+this.params.annotations.filter(a => !a.inRel).size)
 
     for(c <- this.outClasses) {
       this.models(c) = WrappedClassifier(

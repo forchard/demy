@@ -104,10 +104,6 @@ trait Node{
 //    TODO:this.params.externalClasses = increase counts here
 //    calculatePurity()
     transform(facts, scores, vectors, tokens, parent, cGenerator, fit) // add scores, facts (=index)
-    //println("\nWAALK ================================")
-    //println("\nTokens: "+tokens.mkString(", "))
-    //println("facts: "+facts)
-    //println(s"scores: ${scores}")
     val order = Seq.range(0, this.children.size) // needs to evaluate first classifiers and in the end clustering brother
       .sortWith((a, b) =>
         if(this.children(a).params.algo == this.children(b).params.algo)
@@ -310,6 +306,14 @@ trait Node{
     ret
   }
 
+  def getTopwordSum(filterValue:Int) : Option[MLVector] = {
+    this.nodesIterator.filter{
+      case node:ClusteringNode => node.links.values.flatMap(n => n).toSet.contains(filterValue)
+      case _ => false
+    }.toSeq.headOption
+    .map(n => n.rel(filterValue).keys.map(i => n.points(i)).toSeq.reduce(_.sum(_)))
+  }
+
 }
 
 object Node {
@@ -408,5 +412,7 @@ object EncodedNode {
     }
     obj.asInstanceOf[T]
   }
+
+
 
 }

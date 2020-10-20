@@ -56,7 +56,7 @@ object WrappedClassifier {
         .toDF("features", "label")
     if(count0 == 0 || count1 == 0) throw new Exception(s"Epi Wrapped Classifier needs two classes? Cannot train for class $forClass")
 
-    val model = new LinearSVC().setRegParam(0.01).fit(training)
+    val model = new LinearSVC().setRegParam(1.0).fit(training) // .setRegParam(0.01)
     WrappedClassifier(model = model)
   }
 }

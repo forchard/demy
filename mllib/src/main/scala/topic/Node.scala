@@ -87,11 +87,8 @@ trait Node{
     , cGeneratror:Iterator[Int]
     , fit:Boolean)
 
-  // "each sentences walks through tree" -> starts by walking thorug classifiers until comes to clusteringNode
-  // walk is called once for in scope,
-  // evaluate score for each children and decide which children will receive this sentence
-  // calls walk in selected children (same for classifier and clustering)
-  // runs in parallel (each thread has its own count/hits and in the end merge count/hits to root-thread (done in mergeWith))
+
+  // "each sentences walks through tree" -> first classifierNodes then clusteringNodes  (runs in parallel, each thread has its own count/hits, merge in the end 'mergeWith')
   def walk(facts:HashMap[Int, HashMap[Int, Int]]
     , scores:HashMap[Int, Double]
     , vectors:Seq[MLVector]
@@ -99,11 +96,9 @@ trait Node{
     , parent:Option[Node]
     , cGenerator:Iterator[Int]
     , fit:Boolean) {
-//  def walk(facts:HashMap[Int, HashMap[Int, Int]], scores:HashMap[Int, Double], vectors:Seq[MLVector], tokens:Seq[String], parent:Option[Node], cGenerator:Iterator[Int], fit:Boolean, externalClasses:Map[String,String]) {
-    this.params.hits = this.params.hits + 1 // counts how often node was hit by one sentence
-//    TODO:this.params.externalClasses = increase counts here
-//    calculatePurity()
-    transform(facts, scores, vectors, tokens, parent, cGenerator, fit) // add scores, facts (=index)
+
+    this.params.hits = this.params.hits + 1 // counts number of documents that passed through this node
+    transform(facts, scores, vectors, tokens, parent, cGenerator, fit) // updates scores and facts
     val order = Seq.range(0, this.children.size) // needs to evaluate first classifiers and in the end clustering brother
       .sortWith((a, b) =>
         if(this.children(a).params.algo == this.children(b).params.algo)
@@ -250,12 +245,7 @@ trait Node{
   }
   def getClassGenerator(max:Option[Int]) = It.range(this.nodesIterator.flatMap(n => n.links.keys.iterator ++ n.links.values.iterator.flatMap(s => s)).max + 1, max.getOrElse(Int.MaxValue))
   def updateParams(id:Option[Int] = None, updateChildren:Boolean=true):Option[Int] = {
-    //if(this.rel.keySet != this.inRel.keySet) {
-      //println(s"annotations : ${this.params.annotations}")
-      //println(s"tokens : ${this.tokens}")
-      //println(s"rel : ${this.rel}")
-      //println(s"inRel : ${this.inRel}")
-    //}
+
     val newAnnotations = (
       this.rel.flatMap{ case (outClass, rels) =>
         rels.map{case (iOut, iFrom) =>
@@ -273,15 +263,12 @@ trait Node{
            , inRel = this.inRel.get(outClass) match {case Some(map) => map(iOut -> iFrom) case None => true}
            , score = this match { case c:ClusteringNode =>c.pScores(iOut) case _ => 0.0}
          )
-         //println(ret)
          ret
        }
     )
     this.params.annotations.clear
     this.params.annotations ++= newAnnotations
 
-    //if(this.rel.keySet != this.inRel.keySet)
-    //  println(s"new annotations : ${this.params.annotations}")
     updateParamsExtras
     var currentId = id
     if(updateChildren) {
@@ -338,7 +325,7 @@ object Node {
      , strLinks = Map("0" -> Set(1, 2))
      , filterMode = FilterMode.bestScore
      , filterValue = ArrayBuffer(0)
-     , maxTopWords = Some(5)//Some(5)
+     , maxTopWords = Some(5)
      , classCenters= Some(Map("1"->0, "2" -> 1))
      , childSplitSize = Some(50)
      , hits = 0.0

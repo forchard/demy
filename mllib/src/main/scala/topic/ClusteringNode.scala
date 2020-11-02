@@ -34,7 +34,7 @@ case class ClusteringNode (
   val cError = this.params.cError.getOrElse(Array.fill(numCenters)(0.0)) // average distance/error of all tokens to its closest topword
 
   var initializing = this.points.size < this.maxTopWords
-  lazy val vectorSize = this.points(0).size
+  lazy val vectorSize = 200//this.points(0).size
   lazy val vZero = Vectors.dense(Array.fill(vectorSize)(0.0))
   lazy val vCenters = ArrayBuffer.fill(maxTopWords)(vZero) // Array over topwords: Weighted average of all tokens having the highest score for the topword of a center
   var center = null.asInstanceOf[MLVector] // average vector of all tokens going through this node
@@ -93,9 +93,7 @@ case class ClusteringNode (
     //println("facts:")
     //println(facts)
     //println("tokens:"+tokens.zipWithIndex.mkString(";"))
-    // calculate word2vec combinations..
-    //println("this.links: "+this.links)
-    //println("this.rel: "+this.rel)
+
     // for each token calculate a score for each possible child class (two scores for each token
     val scoresByClass =
       for(inClass <- this.links.keySet.iterator)
@@ -181,9 +179,6 @@ case class ClusteringNode (
 
       }
     }.size
-    //if (this.links.valuesIterator.flatMap(outClasses => outClasses.map(outClass => facts.get(outClass).map(outIndexes => outIndexes.size).getOrElse(0))).sum < 1) {
-    //  println("ERROR size facts outClasses")
-    //}
 
   }
 
@@ -483,10 +478,12 @@ case class ClusteringNode (
     // if(newGAP < currentGap) {
 
     // option 3 : Force topword to be more different, not too close to existing topwords
+    // tooClose: if topword candidate is more similar to all documents (true) or more similar to center of topwords (false)
     val newGAP = 1.0 - this.vCenters(iPoint).similarityScore(vector)
     val classPointsSum = this.rel(vClass).keysIterator.map(i => this.points(i)).reduce(_.sum(_)) // center of topwords
     val tooClose = this.center.similarityScore(vector) > classPointsSum.similarityScore(vector)    //val tooClose = this.center.similarityScore(vector) > this.classPointsSum(vClass).similarityScore(vector)
     if(newGAP - this.pGAP(iPoint) < 0 && !tooClose) {
+
       /*if(Seq(2, 3).contains(vClass)){
         println(s"gap: ${this.pGAP(iPoint)}> $newGAP replacing ${this.sequences(iPoint)} ${newGAP - this.pGAP(iPoint)} by ${tokens} ${this.points(iPoint).similarityScore(vector)}")
       }*/

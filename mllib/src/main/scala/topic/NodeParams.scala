@@ -29,14 +29,14 @@ import java.io.{ObjectInputStream,ByteArrayInputStream}
  * @param names @tparam Map[String, Int]
  * @param filterMode @tparam FilterMode Defines the mode how sentences are processed in this node
  * @param filterValue @tparam ArrayBuffer[Int] Defines what sentences go through this Node
- * @param maxTopWords
+ * @param maxTopWords @tparam Option[Int] Defines number of topwords for a node
  * @param windowSize
  * @param classCenters
  * @param cError
- * @param childSplitSize
+ * @param childSplitSize @tparam Option[Int] Number of documents needed to create two new children for a node
  * @param children
- * @param hits
- * @param metrics
+ * @param hits @tparam Double Number of documents which passed through this node
+ * @param metrics @tparam Map[String, Double] Performance metrics 
  */
 case class NodeParams(
   name:String

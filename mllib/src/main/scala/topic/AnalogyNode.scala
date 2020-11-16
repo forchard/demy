@@ -8,7 +8,7 @@ import org.apache.spark.sql.{SparkSession}
 import org.apache.spark.ml.classification.{LinearSVC, LinearSVCModel}
 import scala.collection.mutable.{ArrayBuffer, HashSet, HashMap}
 import scala.{Iterator => It}
-import java.sql.Timestamp 
+import java.sql.Timestamp
 
 case class AnalogyNode (
   points:ArrayBuffer[MLVector] = ArrayBuffer[MLVector]()
@@ -25,8 +25,8 @@ case class AnalogyNode (
   assert(this.links(baseClass)(analogyClass))
 
   def encodeExtras(encoder:EncodedNode) {
-    encoder.serialized += (("models", serialize(models.map(p => (p._1, p._2.model))))) 
-    encoder.serialized += (("analogies", serialize(analogies))) 
+    encoder.serialized += (("models", serialize(models.map(p => (p._1, p._2.model)))))
+    encoder.serialized += (("analogies", serialize(analogies)))
   }
   def prettyPrintExtras(level:Int = 0, buffer:ArrayBuffer[String]=ArrayBuffer[String](), stopLevel:Int = -1):ArrayBuffer[String] = {
     buffer
@@ -49,15 +49,15 @@ case class AnalogyNode (
       , tokens:Seq[String]
       , parent:Option[Node]
       , cGeneratror:Iterator[Int]
-      , fit:Boolean) { 
+      , fit:Boolean) {
     (for((iRef, _) <- facts(referenceClass).iterator )
       yield (iRef, (
         for((iBase, _) <- facts(baseClass).iterator)
-          yield 
+          yield
           (iBase, this.analogyScore(forClass = analogyClass, reference = vectors(iRef), analogy = vectors(iBase)))
         ).reduceOption((p1, p2) => (p1, p2) match {case ((i1, s1), (i2, s2)) => if(s1 > s2) p1 else p2})
          .getOrElse((0, 0.0))
-       ) 
+       )
     )
     .filter{case (iRef, (iBase, score)) => score > 0.5}
     .foreach{case (iRef, (iBase, score)) =>
@@ -71,37 +71,37 @@ case class AnalogyNode (
       }
     }
   }
-  def canFitClassifier = this.inRel(analogyClass).values.toSet.size == 2 
+  def canFitClassifier = this.inRel(analogyClass).values.toSet.size == 2
   def fit(spark:SparkSession) ={
     l.msg("start fitting analogy models")
     this.models.clear
     this.analogies.clear
     val c = analogyClass
     if(this.canFitClassifier) {
-      this.models(c) = 
+      this.models(c) =
         WrappedClassifier(
           forClass = c
-          , points = 
+          , points =
             this.rel(c).iterator
               .map{case(iAna, iRef) => this.points(iRef).minus(this.points(iAna)) }
               .toSeq
-          , pClasses = 
+          , pClasses =
             this.rel(c).iterator
               .map{case (iAna, iRef) => if(this.inRel(c)((iAna, iRef))) c else -1}
               .toSeq
           , spark = spark
         )
     } else {
-      this.analogies(c) = 
+      this.analogies(c) =
         (
           this.rel(analogyClass).iterator
-              .map{case(iAna, iRef) => this.points(iRef).minus(this.points(iAna)) } 
+              .map{case(iAna, iRef) => this.points(iRef).minus(this.points(iAna)) }
         ) match {
           case analogies => analogies.reduce(_.sum(_)).scale(1.0/analogies.size)
         }
     }
     l.msg("analogy fit")
-    this 
+    this
   }
 
   def analogyScore(forClass:Int, reference:MLVector, analogy:MLVector):Double = {
@@ -115,10 +115,12 @@ case class AnalogyNode (
   }
   def mergeWith(that:Node, cGenerator:Iterator[Int], fit:Boolean):this.type = {
     this.params.hits = this.params.hits + that.params.hits
+//    TODO: merge externalClassesFreq for this that
+
     It.range(0, this.children.size).foreach(i => this.children(i).mergeWith(that.children(i), cGenerator, fit))
     this
   }
-  def updateParamsExtras {} 
+  def updateParamsExtras {}
   def resetHitsExtras {}
   def cloneUnfittedExtras = this
 }
@@ -126,11 +128,11 @@ case class AnalogyNode (
 object AnalogyNode {
   def apply(params:NodeParams, index:Option[VectorIndex]):AnalogyNode = {
     val ret = AnalogyNode(
-      points = ArrayBuffer[MLVector]() 
+      points = ArrayBuffer[MLVector]()
       , params = params
     )
     index match {
-      case Some(ix) => ret.points ++= (ix(ret.sequences.flatMap(t => t).distinct) match {case map => ret.sequences.map(tts => tts.flatMap(token => map.get(token)).reduceOption(_.sum(_)).getOrElse(null))})  
+      case Some(ix) => ret.points ++= (ix(ret.sequences.flatMap(t => t).distinct) match {case map => ret.sequences.map(tts => tts.flatMap(token => map.get(token)).reduceOption(_.sum(_)).getOrElse(null))})
       case _ =>
     }
       ret
@@ -142,7 +144,6 @@ object AnalogyNode {
     )
     ret.models ++= encoded.deserialize[HashMap[Int, LinearSVCModel]]("models").mapValues(m => WrappedClassifier(m))
     ret.analogies ++= encoded.deserialize[HashMap[Int, MLVector]]("analogies")
-    ret 
+    ret
   }
 }
-

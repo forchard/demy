@@ -55,4 +55,26 @@
       name: zeppelin
       state: stopped
     when: thrift_status.stat.exists
+  - name: airflow scheduler service exists 
+    stat: path=/lib/systemd/system/airflow-scheduler.service
+    register: afs_status
+  - name: airflow scheduler is running
+    service:
+      name: airflow-scheduler
+      state: stopped
+    when: afs_status.stat.exists
+  - name: start maria db server on airflow schaduler machine
+    service: 
+      name: mariadb
+      state: stopped
+    when: afs_status.stat.exists
+  - name: airflow web server service exists 
+    stat: path=/lib/systemd/system/airflow-webserver.service
+    register: afw_status
+  - name: airflow web server is running
+    service:
+      name: airflow-webserver
+      state: stopped
+    when: afw_status.stat.exists
+
 

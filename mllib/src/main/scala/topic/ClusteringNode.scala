@@ -34,11 +34,11 @@ case class ClusteringNode (
   val cError = this.params.cError.getOrElse(Array.fill(numCenters)(0.0)) // average distance/error of all tokens to its closest topword
 
   var initializing = this.points.size < this.maxTopWords
-  lazy val vectorSize = this.points(0).size // BioWord2Vec : 200 dim
+  lazy val vectorSize = 200//this.points(0).size // BioWord2Vec : 200 dim
   lazy val vZero = Vectors.dense(Array.fill(vectorSize)(0.0))
   lazy val vCenters = ArrayBuffer.fill(maxTopWords)(vZero) // Array over topwords: Weighted average of all tokens having the highest score for the topword of a center
   var center = null.asInstanceOf[MLVector] // average vector of all tokens going through this node
-  //lazy val classPointsSum = HashMap(this.params.classCenters.get.map{case (classStr, center) => (classStr.toInt, vZero)}.toSeq :_*) // Map [outClass, sum of vectors for each topwords]
+  //lazy val centerHeadwords = HashMap(this.params.classCenters.get.map{case (classStr, center) => (classStr.toInt, vZero)}.toSeq :_*) // Map [outClass, sum of vectors for each topwords]
   val pGAP = ArrayBuffer.fill(maxTopWords)(1.0) // distance of a token to its center for the specific topword
   val cHits = ArrayBuffer.fill(numCenters)(0.0) // number of documents going through one of the (two) child clusters
 
@@ -129,13 +129,16 @@ case class ClusteringNode (
       val vectorsInClass = {
         if (vectorsInClassCount > 0)
         scoredVectors.filter(_.hasHighestScore)
-        else // no token scored highest for the outClass with highest global score
-          Seq(scoredVectors.sortWith(_.outScore > _.outScore).take(1)) // takes first element
+        else { // no token scored highest for the outClass with highest global score
+          scoredVectors.sortWith(_.outScore > _.outScore).take(1)// takes first element
+        }
       }
       //val vectorsInClass = scoredVectors
 
+
       for(ScoredVector(iVector, outVectorClass, outVectorScore, iPoint, iCenter, hasHighestScore) <- vectorsInClass ) {
         //println(s"\t outClass: $outClass, outVectorClass: $outVectorClass, outVectorScore: $outVectorScore, iVector: $iVector, iPoint: $iPoint, iCenter: $iCenter, tokens: ${Seq(tokens(iVector)).mkString("; ")}")
+
 
         //affects this class outClass to this vector ; all tokens of this sentence have the class outClass
         facts.get(outClass) match {
@@ -186,7 +189,7 @@ case class ClusteringNode (
                  this.rel(classToFill) = HashMap(this.sequences.size -1 -> (this.sequences.size -1))
                  this.inRel(classToFill) = HashMap((this.sequences.size -1 -> (this.sequences.size -1), true))
              }
-             //this.classPointsSum(classToFill) = this.rel(classToFill).keysIterator.map(i => this.points(i)).reduce(_.sum(_)) // center of topwords
+             //this.centerHeadwords(classToFill) = this.rel(classToFill).keysIterator.map(i => this.points(i)).reduce(_.sum(_)) // center of topwords
              initializing = this.points.size < this.maxTopWords
              classToFill
          }
@@ -422,18 +425,18 @@ case class ClusteringNode (
     // if(newGAP - this.pGAP(iPoint) < 0 && centerSimilarity < 0.8) {
 
     // option 2: instead of comparing gap to single topword, compare to all topwords
-    // val classPointsSum = this.rel(vClass).keysIterator.map(i => this.points(i)).reduce(_.sum(_)) // center of topwords
+    // val centerHeadwords = this.rel(vClass).keysIterator.map(i => this.points(i)).reduce(_.sum(_)) // center of topwords
     // val classCenterSum = this.rel(vClass).keysIterator.map(i => this.vCenters(i)).reduce(_.sum(_))
     // val newPointSum =  this.rel(vClass).keysIterator.map(i => if (i == iPoint) vector else this.points(i)).reduce(_.sum(_))
     // val newGAP = 1.0 - newPointSum.similarityScore(classCenterSum)
-    // val currentGap = 1.0 - classPointsSum.similarityScore(classCenterSum)
+    // val currentGap = 1.0 - centerHeadwords.similarityScore(classCenterSum)
     // if(newGAP < currentGap) {
 
     // option 3 : Force topword to be more different, not too close to existing topwords
     // tooClose: if topword candidate is more similar to all documents (true) or more similar to center of topwords (false)
     val newGAP = 1.0 - this.vCenters(iPoint).similarityScore(vector)
-    val classPointsSum = this.rel(vClass).keysIterator.map(i => this.points(i)).reduce(_.sum(_)) // center of topwords
-    val tooClose = this.center.similarityScore(vector) > classPointsSum.similarityScore(vector)    //val tooClose = this.center.similarityScore(vector) > this.classPointsSum(vClass).similarityScore(vector)
+    val centerHeadwords = this.rel(vClass).keysIterator.map(i => this.points(i)).reduce(_.sum(_)) // center of topwords of child to which sentence goes
+    val tooClose = this.center.similarityScore(vector) > centerHeadwords.similarityScore(vector)    //val tooClose = this.center.similarityScore(vector) > this.centerHeadwords(vClass).similarityScore(vector)
     if(newGAP - this.pGAP(iPoint) < 0 && !tooClose) {
 
       //this.classPointsSum(vClass) = this.rel(vClass).keysIterator.map(i => this.points(i)).reduce(_.sum(_)) // center of topwords

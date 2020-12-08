@@ -42,7 +42,7 @@ trait Node{
 
   val links = this.params.strLinks.map(p => (p._1.toInt, p._2))
   val classPath = this.params.strClassPath.map(p => (p._1.toInt, p._2))
-  val sequences = params.annotations.map(n => n.tokens) ++ params.annotations.flatMap(n => n.from)
+  val sequences = params.annotations.map(n => n.tokens) ++ params.annotations.flatMap(n => n.from) // clusteringNode: headword tokens
   lazy val outClasses = links.values.toSeq.flatMap(v => v).toSet
   lazy val rel = {
     val fromIndex = params.annotations.zipWithIndex.filter{case (n, i) => !n.from.isEmpty}.zipWithIndex.map{case ((_, i), j) => (i, params.annotations.size + j)}.toMap
@@ -121,6 +121,7 @@ trait Node{
       ){
         this.children(i).walk(facts, scores, vectors, tokens, Some(this), cGenerator, fit)
       }
+
     }
   }
 
